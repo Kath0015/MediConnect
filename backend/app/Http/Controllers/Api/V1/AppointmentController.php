@@ -68,6 +68,8 @@ class AppointmentController extends Controller
 
         return DB::transaction(function () use ($request) {
             $validated = $request->validated();
+            // All newly booked appointments must wait for staff approval first.
+            $validated['status'] = 'scheduled';
 
             // Set patient_id for patient users
             if ($request->user()->isPatient()) {
@@ -125,6 +127,8 @@ class AppointmentController extends Controller
         }
 
         $validated = $request->validated();
+        // Keep status transitions on dedicated endpoints only.
+        unset($validated['status']);
 
         // Check for scheduling conflicts (excluding current appointment)
         if (isset($validated['start_time']) || isset($validated['end_time'])) {
@@ -278,6 +282,12 @@ class AppointmentController extends Controller
             return $this->forbiddenResponse();
         }
 
+        if ($appointment->status !== 'scheduled') {
+            return response()->json([
+                'message' => 'Only appointments waiting for approval can be accepted.'
+            ], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
         $appointment->update([
             'status' => 'confirmed',
         ]);
@@ -299,6 +309,12 @@ class AppointmentController extends Controller
     {
         if (! $this->canReject($request->user(), $appointment)) {
             return $this->forbiddenResponse();
+        }
+
+        if ($appointment->status !== 'scheduled') {
+            return response()->json([
+                'message' => 'Only appointments waiting for approval can be declined.'
+            ], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
         $validated = $request->validate([
@@ -385,17 +401,12 @@ class AppointmentController extends Controller
      */
     private function hasSchedulingConflict(array $data, $ignoreId = null): bool
     {
-        // Check for any overlapping appointments (not just specific clinician)
-        // This prevents double-booking the same time slot
+        // Strict overlap check:
+        // new.start < existing.end AND new.end > existing.start
+        // This allows back-to-back bookings where end == next start.
         return Appointment::where('id', '!=', $ignoreId)
-            ->where(function ($query) use ($data) {
-                $query->whereBetween('start_time', [$data['start_time'], $data['end_time']])
-                    ->orWhereBetween('end_time', [$data['start_time'], $data['end_time']])
-                    ->orWhere(function ($q) use ($data) {
-                        $q->where('start_time', '<=', $data['start_time'])
-                            ->where('end_time', '>=', $data['end_time']);
-                    });
-            })
+            ->where('start_time', '<', $data['end_time'])
+            ->where('end_time', '>', $data['start_time'])
             ->whereIn('status', ['scheduled', 'confirmed', 'in_progress'])
             ->exists();
     }

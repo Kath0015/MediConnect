@@ -24,6 +24,7 @@ class Patient extends Model
         'blood_type',
         'insurance_provider',
         'insurance_number',
+        'patient_category',
         'is_active',
     ];
 

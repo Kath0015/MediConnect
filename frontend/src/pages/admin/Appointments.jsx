@@ -27,7 +27,7 @@ export const Appointments = () => {
 
   const STATUS_OPTIONS = useMemo(() => ([
     { value: 'all', label: 'All Statuses' },
-    { value: 'scheduled', label: 'Scheduled' },
+    { value: 'scheduled', label: 'Waiting for Approval' },
     { value: 'confirmed', label: 'Confirmed' },
     { value: 'in_progress', label: 'In Progress' },
     { value: 'completed', label: 'Completed' },
@@ -134,7 +134,7 @@ export const Appointments = () => {
     const key = (status || '').toLowerCase();
     switch (key) {
       case 'scheduled':
-        return 'Scheduled';
+        return 'Waiting for approval';
       case 'confirmed':
         return 'Confirmed';
       case 'in_progress':
@@ -236,7 +236,7 @@ export const Appointments = () => {
           <CardContent className="p-4">
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-amber-700">Scheduled</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-amber-700">Waiting Approval</p>
                 <p className="mt-3 text-3xl font-semibold text-amber-700">{statusCounts['scheduled'] || 0}</p>
                 <p className="mt-1 text-xs text-amber-700/80">Waiting for clinician handling</p>
               </div>

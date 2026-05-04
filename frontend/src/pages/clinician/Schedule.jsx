@@ -1,5 +1,5 @@
 // Schedule.jsx - Appointment Calendar with Real Data
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
@@ -17,39 +17,83 @@ export const Schedule = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date()); // For calendar selection
   const [appointments, setAppointments] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [monthLoading, setMonthLoading] = useState(false);
   const [confirmingId, setConfirmingId] = useState(null);
   const [rejectingId, setRejectingId] = useState(null);
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
   const [selectedAppointment, setSelectedAppointment] = useState(null);
   const [updatingStatusId, setUpdatingStatusId] = useState(null);
+  const monthCacheRef = useRef(new Map());
+  const activeRequestRef = useRef(0);
 
   useEffect(() => {
-    loadAppointments();
+    loadAppointments(currentDate);
   }, [currentDate]);
 
-  const loadAppointments = async () => {
+  const getMonthKey = (date) => format(date, 'yyyy-MM');
+
+  const prefetchAdjacentMonths = (date) => {
+    const prevMonth = new Date(date.getFullYear(), date.getMonth() - 1, 1);
+    const nextMonth = new Date(date.getFullYear(), date.getMonth() + 1, 1);
+    loadAppointments(prevMonth, { background: true });
+    loadAppointments(nextMonth, { background: true });
+  };
+
+  const loadAppointments = async (targetDate = currentDate, options = {}) => {
+    const { background = false } = options;
+    const monthKey = getMonthKey(targetDate);
+
+    if (monthCacheRef.current.has(monthKey)) {
+      if (!background) {
+        setAppointments(monthCacheRef.current.get(monthKey));
+        setInitialLoading(false);
+      }
+      return;
+    }
+
+    const requestId = ++activeRequestRef.current;
+
     try {
-      setLoading(true);
-      const monthStart = startOfMonth(currentDate);
-      const monthEnd = endOfMonth(currentDate);
-      
+      if (!background) {
+        if (initialLoading) {
+          setInitialLoading(true);
+        } else {
+          setMonthLoading(true);
+        }
+      }
+
+      const monthStart = startOfMonth(targetDate);
+      const monthEnd = endOfMonth(targetDate);
+
       const response = await getClinicianAppointments({
         start_date: format(monthStart, 'yyyy-MM-dd'),
-        end_date: format(monthEnd, 'yyyy-MM-dd')
+        end_date: format(monthEnd, 'yyyy-MM-dd'),
+        per_page: 500,
       });
-      
-      console.log('Clinician appointments response:', response);
-      console.log('Appointments data:', response.data);
-      console.log('Parsed appointments:', response.data.data || []);
-      
-      setAppointments(response.data.data || []);
+
+      const rows = response?.data?.data || [];
+      monthCacheRef.current.set(monthKey, rows);
+
+      // Prevent stale requests from replacing current month data.
+      if (!background && requestId === activeRequestRef.current) {
+        setAppointments(rows);
+      }
+
+      if (!background) {
+        prefetchAdjacentMonths(targetDate);
+      }
     } catch (err) {
       console.error('Failed to load appointments:', err);
-      toast.error('Failed to load appointments');
+      if (!background) {
+        toast.error('Failed to load appointments');
+      }
     } finally {
-      setLoading(false);
+      if (!background) {
+        setInitialLoading(false);
+        setMonthLoading(false);
+      }
     }
   };
 
@@ -58,7 +102,8 @@ export const Schedule = () => {
       setConfirmingId(appointmentId);
       await confirmAppointment(appointmentId);
       toast.success('Appointment confirmed successfully');
-      loadAppointments(); // Reload to update the list
+      monthCacheRef.current.clear();
+      loadAppointments(currentDate);
     } catch (err) {
       console.error('Failed to confirm appointment:', err);
       toast.error('Failed to confirm appointment');
@@ -86,7 +131,8 @@ export const Schedule = () => {
       setShowRejectDialog(false);
       setSelectedAppointment(null);
       setRejectReason('');
-      loadAppointments();
+      monthCacheRef.current.clear();
+      loadAppointments(currentDate);
     } catch (err) {
       console.error('Failed to reject appointment:', err);
       toast.error('Failed to reject appointment');
@@ -100,7 +146,8 @@ export const Schedule = () => {
       setUpdatingStatusId(appointmentId);
       await updateAppointmentStatus(appointmentId, newStatus);
       toast.success(successMessage);
-      loadAppointments();
+      monthCacheRef.current.clear();
+      loadAppointments(currentDate);
     } catch (err) {
       console.error(`Failed to update status to ${newStatus}:`, err);
       toast.error('Failed to update appointment status');
@@ -145,6 +192,14 @@ export const Schedule = () => {
     apt.status?.toLowerCase() === 'scheduled' && new Date(apt.start_time) > new Date()
   );
 
+  const todayConfirmedCount = appointments.filter((apt) => {
+    if (!apt.start_time) return false;
+    const status = apt.status?.toLowerCase();
+    return isToday(new Date(apt.start_time)) && (status === 'confirmed' || status === 'in_progress');
+  }).length;
+
+  const selectedDateLabel = format(selectedDate, 'EEEE, MMMM d, yyyy');
+
   const navigateMonth = (direction) => {
     const newDate = new Date(currentDate);
     newDate.setMonth(currentDate.getMonth() + direction);
@@ -178,6 +233,16 @@ export const Schedule = () => {
     return appointment.appointment_type || appointment.type || 'Consultation';
   };
 
+  const formatStatusLabel = (status) => {
+    const key = (status || '').toLowerCase();
+    if (key === 'scheduled') return 'Waiting for approval';
+    if (key === 'no_show') return 'No show';
+    return (status || '').replace('_', ' ');
+  };
+
+  const cardClass =
+    'border-[#D8EBFA] bg-white shadow-[0_4px_20px_rgba(15,23,42,0.05)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_10px_26px_rgba(2,132,199,0.12)]';
+
   // Generate calendar days
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
@@ -196,7 +261,7 @@ export const Schedule = () => {
     });
   };
 
-  if (loading) {
+  if (initialLoading) {
     return <StaffPageSkeleton variant="dashboard" rows={3} />;
   }
 
@@ -208,15 +273,41 @@ export const Schedule = () => {
         primaryAction={{ label: 'Request Management', to: '/clinician/requests' }}
       />
 
-      <div>
-        <h1 className="text-3xl font-bold text-[#01377D]">Schedule</h1>
-        <p className="text-[#009DD1] mt-2">View and manage your appointments</p>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <Card className="border-amber-200/60 bg-gradient-to-b from-white to-amber-50/40 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+          <CardContent className="p-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Waiting Approval</p>
+            <p className="mt-3 text-3xl font-semibold text-amber-700">{pendingAppointments.length}</p>
+            <p className="mt-1 text-xs text-slate-500">Appointments needing action</p>
+            <p className={`mt-2 text-xs ${pendingAppointments.length > 0 ? 'text-amber-700' : 'text-emerald-600'}`}>
+              {pendingAppointments.length > 0 ? 'Action required' : 'All caught up'}
+            </p>
+          </CardContent>
+        </Card>
+        <Card className="border-cyan-200/60 bg-gradient-to-b from-white to-cyan-50/40 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+          <CardContent className="p-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Today Active</p>
+            <p className="mt-3 text-3xl font-semibold text-cyan-700">{todayConfirmedCount}</p>
+            <p className="mt-1 text-xs text-slate-500">Confirmed or in progress today</p>
+            <p className={`mt-2 text-xs ${todayConfirmedCount > 0 ? 'text-emerald-600' : 'text-slate-500'}`}>
+              {todayConfirmedCount > 0 ? 'Active clinical workload' : 'No active visits yet'}
+            </p>
+          </CardContent>
+        </Card>
+        <Card className="border-violet-200/60 bg-gradient-to-b from-white to-violet-50/40 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+          <CardContent className="p-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Selected Date</p>
+            <p className="mt-3 text-base font-semibold leading-tight text-violet-700">{selectedDateLabel}</p>
+            <p className="mt-1 text-xs text-slate-500">Live detail panel context</p>
+            <p className="mt-2 text-xs text-violet-700">{isToday(selectedDate) ? 'Viewing today' : 'Viewing custom date'}</p>
+          </CardContent>
+        </Card>
       </div>
 
       <>
           <div className="grid lg:grid-cols-3 gap-6">
             {/* Calendar */}
-            <Card className="lg:col-span-2 border-[#97E7F5] shadow-sm bg-white">
+            <Card className={`lg:col-span-2 ${cardClass}`}>
               <CardHeader>
                 <div className="flex justify-between items-center">
                   <CardTitle className="flex items-center gap-2 text-[#01377D]">
@@ -225,23 +316,31 @@ export const Schedule = () => {
                   </CardTitle>
                   <div className="flex gap-2">
                     <Button 
+                      type="button"
                       variant="outline" 
                       size="sm" 
                       onClick={() => navigateMonth(-1)}
-                      className="border-[#97E7F5] hover:bg-blue-50"
+                      className="border-slate-200 text-slate-700 hover:bg-slate-100"
                     >
                       <ChevronLeft className="w-4 h-4" />
                     </Button>
                     <Button 
+                      type="button"
                       variant="outline" 
                       size="sm" 
                       onClick={() => navigateMonth(1)}
-                      className="border-[#97E7F5] hover:bg-blue-50"
+                      className="border-slate-200 text-slate-700 hover:bg-slate-100"
                     >
                       <ChevronRight className="w-4 h-4" />
                     </Button>
                   </div>
                 </div>
+                {monthLoading && (
+                  <div className="inline-flex items-center gap-2 rounded-full border border-[#97E7F5] bg-blue-50 px-3 py-1 text-xs text-[#01377D]">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    Updating month data...
+                  </div>
+                )}
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-7 gap-2 mb-2">
@@ -260,6 +359,7 @@ export const Schedule = () => {
                     
                     return (
                       <button
+                        type="button"
                         key={i}
                         onClick={() => isCurrentMonth && setSelectedDate(day)}
                         disabled={!isCurrentMonth}
@@ -284,7 +384,7 @@ export const Schedule = () => {
             </Card>
 
             {/* Selected Date Appointments */}
-            <Card className="border-[#97E7F5] shadow-sm bg-white">
+            <Card className={cardClass}>
               <CardHeader>
                 <CardTitle className="text-[#01377D]">
                   {isToday(selectedDate) ? "Today's Appointments" : "Appointments"}
@@ -309,29 +409,29 @@ export const Schedule = () => {
                       const status = appointment.status?.toLowerCase();
                       
                       return (
-                        <div key={appointment.id} className="p-3 border border-[#97E7F5] rounded-lg space-y-3">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
+                        <div key={appointment.id} className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-sm space-y-3">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1">
                               <Clock className="w-4 h-4 text-gray-500" />
-                              <span className="text-sm font-medium text-[#01377D]">
+                              <span className="text-sm font-semibold text-[#01377D]">
                                 {appointment.start_time ? format(new Date(appointment.start_time), 'h:mm a') : 'N/A'}
                               </span>
                             </div>
                             <Badge variant="outline" className={getStatusBadgeVariant(appointment.status)}>
-                              {appointment.status?.replace('_', ' ')}
+                              {formatStatusLabel(appointment.status)}
                             </Badge>
                           </div>
-                          <div>
-                            <p className="text-sm font-medium text-[#01377D]">
+                          <div className="space-y-1">
+                            <p className="text-sm font-semibold text-[#01377D] leading-tight">
                               {appointment.patient?.user?.name || 'Unknown Patient'}
                             </p>
-                            <p className="text-xs text-gray-600">
+                            <p className="text-xs text-gray-600 leading-tight">
                               {getAppointmentTypeLabel(appointment)}
                             </p>
                           </div>
                           
                           {/* Action Buttons */}
-                          <div className="flex gap-2 flex-wrap">
+                          <div className="flex gap-2 flex-wrap pt-1">
                             {status === 'confirmed' && (isWithin30Min || isToday(selectedDate)) && (
                               <Button 
                                 size="sm" 
@@ -381,10 +481,10 @@ export const Schedule = () => {
 
           {/* Pending Appointments (Need Confirmation) */}
           {pendingAppointments.length > 0 && (
-            <Card className="border-yellow-200 shadow-sm bg-yellow-50">
+            <Card className={cardClass}>
               <CardHeader>
                 <CardTitle className="text-[#01377D] flex items-center gap-2">
-                  <Clock className="w-5 h-5 text-yellow-600" />
+                  <Clock className="w-5 h-5 text-[#009DD1]" />
                   Pending Appointments ({pendingAppointments.length})
                 </CardTitle>
                 <CardDescription className="text-[#009DD1]">
@@ -394,7 +494,7 @@ export const Schedule = () => {
               <CardContent>
                 <div className="space-y-3">
                   {pendingAppointments.map((appointment) => (
-                    <div key={appointment.id} className="flex items-center justify-between p-4 border border-yellow-300 bg-white rounded-lg hover:bg-yellow-50 transition-colors">
+                    <div key={appointment.id} className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 transition-colors hover:bg-slate-50 sm:flex-row sm:items-center sm:justify-between">
                       <div className="flex items-center gap-4">
                         <div className="text-center min-w-[60px]">
                           <p className="text-xs text-gray-500">
@@ -404,7 +504,7 @@ export const Schedule = () => {
                             {appointment.start_time ? format(new Date(appointment.start_time), 'd') : ''}
                           </p>
                         </div>
-                        <div className="h-12 w-px bg-gray-200"></div>
+                        <div className="h-12 w-px bg-slate-200"></div>
                         <div>
                           <p className="font-medium text-[#01377D]">
                             {appointment.patient?.user?.name || 'Unknown Patient'}
@@ -420,7 +520,7 @@ export const Schedule = () => {
                           )}
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <Button 
                           size="sm"
                           variant="outline"
@@ -458,7 +558,7 @@ export const Schedule = () => {
           )}
 
           {/* Upcoming Appointments */}
-          <Card className="border-[#97E7F5] shadow-sm bg-white">
+          <Card className={cardClass}>
             <CardHeader>
               <CardTitle className="text-[#01377D]">Upcoming Appointments</CardTitle>
               <CardDescription className="text-[#009DD1]">Next scheduled appointments</CardDescription>
@@ -479,7 +579,7 @@ export const Schedule = () => {
                     const status = appointment.status?.toLowerCase();
                     
                     return (
-                      <div key={appointment.id} className="flex items-center justify-between p-4 border border-[#97E7F5] rounded-lg hover:bg-blue-50 transition-colors">
+                      <div key={appointment.id} className="flex flex-col gap-3 rounded-xl border border-slate-200 p-4 transition-colors hover:bg-slate-50 sm:flex-row sm:items-center sm:justify-between">
                         <div className="flex items-center gap-4 flex-1">
                           <div className="text-center min-w-[60px]">
                             <p className="text-xs text-gray-500">
@@ -489,7 +589,7 @@ export const Schedule = () => {
                               {appointment.start_time ? format(new Date(appointment.start_time), 'd') : ''}
                             </p>
                           </div>
-                          <div className="h-12 w-px bg-gray-200"></div>
+                          <div className="h-12 w-px bg-slate-200"></div>
                           <div className="flex-1">
                             <p className="font-medium text-[#01377D]">
                               {appointment.patient?.user?.name || 'Unknown Patient'}
@@ -500,9 +600,9 @@ export const Schedule = () => {
                             </p>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                           <Badge variant="outline" className={getStatusBadgeVariant(appointment.status)}>
-                            {appointment.status?.replace('_', ' ')}
+                            {formatStatusLabel(appointment.status)}
                           </Badge>
                           
                           {status === 'confirmed' && (isWithin30Min || isToday(appointmentTime)) && (

@@ -8,16 +8,9 @@ import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
 import { useAuth } from '../../contexts/AuthContext';
 import { fetchPatientDashboardOverview } from '../../api/PatientPortal';
-import { Calendar, FileText, Upload, FileCheck, Clock, Activity, Loader2 } from 'lucide-react';
+import { Calendar, FileText, FileCheck, Clock, ArrowRight, MessageCircle, Activity } from 'lucide-react';
 import PatientRoleBanner from '../../components/patient/PatientRoleBanner';
 import PatientPageSkeleton from '../../components/patient/PatientPageSkeleton';
-
-const quickActions = [
-  { icon: Calendar, label: 'Book Appointment', link: '/patient/appointment' },
-  { icon: FileText, label: 'View Records', link: '/patient/records' },
-  { icon: Upload, label: 'Upload Document', link: '/patient/upload-document' },
-  { icon: FileCheck, label: 'Request Certificate', link: '/patient/request-certificate' },
-];
 
 const formatDisplayDate = (date, withTime = false) => {
   if (!date) return '—';
@@ -36,6 +29,30 @@ const titleCase = (value = '') =>
     .split('_')
     .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
     .join(' ');
+
+const getStatusStyles = (status = '') => {
+  switch ((status || '').toLowerCase()) {
+    case 'confirmed':
+      return 'bg-green-100 text-green-700 border-green-200';
+    case 'scheduled':
+      return 'bg-yellow-100 text-yellow-700 border-yellow-200';
+    case 'in_progress':
+      return 'bg-blue-100 text-blue-700 border-blue-200';
+    case 'completed':
+      return 'bg-gray-100 text-gray-700 border-gray-200';
+    case 'cancelled':
+      return 'bg-red-100 text-red-700 border-red-200';
+    default:
+      return 'bg-gray-100 text-gray-700 border-gray-200';
+  }
+};
+
+const formatStatusLabel = (status = '') => {
+  const key = (status || '').toLowerCase();
+  if (key === 'scheduled') return 'Waiting for approval';
+  if (key === 'in_progress') return 'In progress';
+  return titleCase(key || status);
+};
 
 export const PatientDashboard = () => {
   const { user } = useAuth();
@@ -168,6 +185,10 @@ export const PatientDashboard = () => {
       subtext: 'Confirmed/In Progress',
       trend: upcomingAppointments.length > 0 ? `+${upcomingAppointments.length} active this week` : 'No upcoming schedule',
       icon: Calendar,
+      iconWrap: 'bg-cyan-100 text-cyan-700',
+      cardClass: 'border-cyan-200/60 bg-gradient-to-b from-white to-cyan-50/40',
+      textClass: 'text-cyan-700',
+      positive: upcomingAppointments.length > 0,
     },
     {
       label: 'Pending Appointments',
@@ -175,6 +196,10 @@ export const PatientDashboard = () => {
       subtext: 'Awaiting confirmation',
       trend: pendingAppointments.length > 0 ? `${pendingAppointments.length} pending requests` : 'All clear for now',
       icon: Clock,
+      iconWrap: 'bg-amber-100 text-amber-700',
+      cardClass: 'border-amber-200/60 bg-gradient-to-b from-white to-amber-50/40',
+      textClass: 'text-amber-700',
+      positive: pendingAppointments.length === 0,
     },
     {
       label: 'Pending Certificates',
@@ -182,6 +207,10 @@ export const PatientDashboard = () => {
       subtext: 'Awaiting review',
       trend: pendingMedCerts.length > 0 ? `${pendingMedCerts.length} awaiting action` : 'No pending certificates',
       icon: FileCheck,
+      iconWrap: 'bg-violet-100 text-violet-700',
+      cardClass: 'border-violet-200/60 bg-gradient-to-b from-white to-violet-50/40',
+      textClass: 'text-violet-700',
+      positive: pendingMedCerts.length === 0,
     },
     {
       label: 'Uploaded Documents',
@@ -189,10 +218,15 @@ export const PatientDashboard = () => {
       subtext: 'All-time total',
       trend: 'Lifetime records',
       icon: FileText,
+      iconWrap: 'bg-slate-100 text-slate-700',
+      cardClass: 'border-slate-200/80 bg-gradient-to-b from-white to-slate-50',
+      textClass: 'text-slate-900',
+      positive: true,
     },
   ];
 
   const patientDetails = overview.patient || user?.patient || null;
+  const cardClass = 'border-slate-200/80 bg-white/95 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md';
 
   if (loading) {
     return <PatientPageSkeleton variant="dashboard" rows={4} />;
@@ -206,9 +240,12 @@ export const PatientDashboard = () => {
             ? `Welcome back, ${patientDetails.user.name}`
             : 'Welcome to your patient dashboard'
         }
-        subtitle="Track appointments, certificates, and previous laboratory files with quick access tools."
-        primaryAction={{ label: 'Book Appointment', to: '/patient/appointment' }}
-        secondaryAction={{ label: 'Previous Laboratory', to: '/patient/previous-laboratory' }}
+        subtitle="Track appointments, certificates, and documents with quick access tools."
+        floatingAction={{
+          to: '/patient/symptom-checker',
+          label: 'AI Symptom Checker',
+          icon: Activity,
+        }}
       />
 
       {loadError && (
@@ -223,210 +260,209 @@ export const PatientDashboard = () => {
         </div>
       )}
 
-      <>
-          {/* Quick Actions */}
-          <Card className="border-[#BFE6FB] bg-[#F4FAFF] shadow-[0_4px_20px_rgba(14,165,233,0.08)] transition-all duration-300 hover:shadow-[0_8px_28px_rgba(14,165,233,0.14)]">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg font-semibold text-[#0f2d57]">Quick Actions</CardTitle>
-              <CardDescription className="text-sm text-[#406A93]">
-                Fast shortcuts to common patient tasks.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                {quickActions.map((action) => {
-                  const ActionIcon = action.icon;
-                  return (
-                    <Link key={action.label} to={action.link}>
-                      <div className="group rounded-xl border border-[#D8EBFA] bg-white p-4 transition-all duration-300 hover:-translate-y-1 hover:border-[#9FD5F5] hover:shadow-[0_8px_24px_rgba(2,132,199,0.14)]">
-                        <div className="mb-3 inline-flex rounded-lg bg-[#E8F5FF] p-2 text-[#0284c7] transition-all duration-300 group-hover:scale-110 group-hover:bg-[#d9efff]">
-                          <ActionIcon className="h-5 w-5" />
-                        </div>
-                        <p className="text-sm font-normal text-[#20466e] group-hover:text-[#0f2d57]">
-                          {action.label}
-                        </p>
-                      </div>
-                    </Link>
-                  );
-                })}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {stats.map((stat) => (
+          <Card key={stat.label} className={`${stat.cardClass} shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md`}>
+            <CardContent className="p-4">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">{stat.label}</p>
+                  <p className={`mt-3 text-3xl font-semibold ${stat.textClass}`}>{stat.value}</p>
+                  <p className="mt-1 text-xs text-slate-500">{stat.subtext}</p>
+                  <p className={`mt-2 text-xs ${stat.positive ? 'text-emerald-600' : 'text-rose-600'}`}>{stat.trend}</p>
+                </div>
+                <div className={`grid h-10 w-10 place-items-center rounded-xl ${stat.iconWrap}`}>
+                  <stat.icon className="h-4 w-4" />
+                </div>
               </div>
             </CardContent>
           </Card>
+        ))}
+      </div>
 
-          {/* Quick Stats */}
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            {stats.map((stat) => (
-              <Card
-                key={stat.label}
-                className="border-[#D8EBFA] bg-white shadow-[0_4px_20px_rgba(15,23,42,0.05)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_10px_26px_rgba(2,132,199,0.12)]"
-              >
-                <CardHeader className="pb-2">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-sm font-medium text-[#21476f]">{stat.label}</CardTitle>
-                    <div className="rounded-md bg-[#E8F5FF] p-1.5 text-[#0284c7]">
-                      <stat.icon className="h-4 w-4" />
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-4xl font-bold leading-none text-[#0f2d57]">{stat.value}</p>
-                  {stat.subtext && <p className="mt-1 text-xs text-gray-500">{stat.subtext}</p>}
-                  <p className="mt-2 text-[11px] font-medium text-[#0284c7]">{stat.trend}</p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+      {/* Quick Access Cards */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <Link to="/patient/medibot" className="group">
+          <Card className="border-cyan-200/60 bg-gradient-to-b from-white to-cyan-50/40 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md cursor-pointer">
+            <CardContent className="p-6">
+              <div className="flex items-start justify-between mb-3">
+                <div className="grid h-12 w-12 place-items-center rounded-xl bg-cyan-100 text-cyan-700">
+                  <MessageCircle className="h-6 w-6" />
+                </div>
+              </div>
+              <h3 className="font-semibold text-slate-900 mb-1">MediBot Assistant</h3>
+              <p className="text-sm text-slate-600 mb-4">Chat for lab prep, appointments, and clinic FAQs</p>
+              <div className="flex items-center text-sm font-medium text-cyan-700 group-hover:text-cyan-800">
+                Chat now
+                <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
 
-          <div className="space-y-5">
-            {/* Appointments Section - Two Column Layout */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Upcoming Appointments */}
-              <Card className="border-[#D8EBFA] bg-white shadow-[0_4px_20px_rgba(15,23,42,0.05)] transition-all duration-300 hover:shadow-[0_10px_26px_rgba(2,132,199,0.12)]">
-                <CardHeader>
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <CardTitle className="text-[#01377D]">Upcoming Appointments</CardTitle>
-                      <CardDescription className="text-[#009DD1]">
-                        Confirmed & In Progress
-                      </CardDescription>
-                    </div>
-                    <Link to="/patient/appointment">
-                      <Button size="sm" className="border-[#01377D] text-[#01377D]">
-                        View All
-                      </Button>
-                    </Link>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  {upcomingAppointments.length === 0 ? (
-                    <div className="text-center py-8 text-gray-500">
-                      <Calendar className="w-10 h-10 mx-auto mb-3 text-gray-300" />
-                      <p>No upcoming appointments</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {upcomingAppointments.map((appointment) => (
-                        <div
-                          key={appointment.id}
-                          className="flex items-start gap-3 rounded-lg border border-[#97E7F5] p-3 transition-all duration-300 hover:border-[#009DD1] hover:bg-[#F8FCFF]"
-                        >
-                          <div className="bg-green-50 p-2 rounded-lg flex-shrink-0">
-                            <Calendar className="w-5 h-5 text-green-600" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium text-[#01377D] mb-1 truncate">
-                              {appointment.type || appointment.title || 'Clinic Visit'}
-                            </p>
-                            <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
-                              <Clock className="w-4 h-4 flex-shrink-0" />
-                              <span className="truncate">
-                                {formatDisplayDate(appointment.start_time, true)}
-                              </span>
-                            </div>
-                            {appointment.status?.toLowerCase() === 'in_progress' && (
-                              <Badge className="border-0 bg-blue-100 text-xs font-medium text-blue-800">
-                                In progress
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+        <Link to="/patient/appointment" className="group">
+          <Card className="border-blue-200/60 bg-gradient-to-b from-white to-blue-50/40 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md cursor-pointer">
+            <CardContent className="p-6">
+              <div className="flex items-start justify-between mb-3">
+                <div className="grid h-12 w-12 place-items-center rounded-xl bg-blue-100 text-blue-700">
+                  <Calendar className="h-6 w-6" />
+                </div>
+              </div>
+              <h3 className="font-semibold text-slate-900 mb-1">Book Appointment</h3>
+              <p className="text-sm text-slate-600 mb-4">Schedule a meeting with a healthcare professional</p>
+              <div className="flex items-center text-sm font-medium text-blue-700 group-hover:text-blue-800">
+                Book now
+                <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
 
-              {/* Pending Appointments */}
-              <Card className="border-[#D8EBFA] bg-white shadow-[0_4px_20px_rgba(15,23,42,0.05)] transition-all duration-300 hover:shadow-[0_10px_26px_rgba(2,132,199,0.12)]">
-                <CardHeader>
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <CardTitle className="text-[#01377D]">Pending Appointments</CardTitle>
-                      <CardDescription className="text-[#009DD1]">
-                        Awaiting confirmation
-                      </CardDescription>
-                    </div>
-                    <Link to="/patient/appointment">
-                      <Button size="sm" className="border-[#01377D] text-[#01377D]">
-                        View All
-                      </Button>
-                    </Link>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  {pendingAppointments.length === 0 ? (
-                    <div className="text-center py-8 text-gray-500">
-                      <Calendar className="w-10 h-10 mx-auto mb-3 text-gray-300" />
-                      <p>No pending appointments</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {pendingAppointments.map((appointment) => (
-                        <div
-                          key={appointment.id}
-                          className="flex items-start gap-3 rounded-lg border border-[#97E7F5] p-3 transition-all duration-300 hover:border-[#009DD1] hover:bg-[#F8FCFF]"
-                        >
-                          <div className="bg-yellow-50 p-2 rounded-lg flex-shrink-0">
-                            <Clock className="w-5 h-5 text-yellow-600" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium text-[#01377D] mb-1 truncate">
-                              {appointment.type || appointment.title || 'Clinic Visit'}
-                            </p>
-                            <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
-                              <Calendar className="w-4 h-4 flex-shrink-0" />
-                              <span className="truncate">
-                                {formatDisplayDate(appointment.start_time, true)}
-                              </span>
-                            </div>
-                            <Badge className="border-0 bg-yellow-100 text-xs font-medium text-yellow-800">
-                              Awaiting confirmation
-                            </Badge>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+        <Link to="/patient/request-certificate" className="group">
+          <Card className="border-violet-200/60 bg-gradient-to-b from-white to-violet-50/40 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md cursor-pointer">
+            <CardContent className="p-6">
+              <div className="flex items-start justify-between mb-3">
+                <div className="grid h-12 w-12 place-items-center rounded-xl bg-violet-100 text-violet-700">
+                  <FileCheck className="h-6 w-6" />
+                </div>
+              </div>
+              <h3 className="font-semibold text-slate-900 mb-1">Request Certificate</h3>
+              <p className="text-sm text-slate-600 mb-4">Request a medical, sick, or fitness certificate</p>
+              <div className="flex items-center text-sm font-medium text-violet-700 group-hover:text-violet-800">
+                Request now
+                <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+      </div>
+
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
+        <Card className="border-slate-200/80 bg-white/95 shadow-sm">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <CardTitle className="text-slate-900">Upcoming Appointments</CardTitle>
+                <CardDescription className="text-slate-500">Confirmed & in progress</CardDescription>
+              </div>
+              <Link to="/patient/appointment">
+                <Button variant="outline" size="sm" className="h-8 border-slate-200 px-2.5 text-xs text-slate-700 hover:bg-slate-100">
+                  View all
+                  <ArrowRight className="ml-1 h-3.5 w-3.5" />
+                </Button>
+              </Link>
             </div>
-
-            {/* Recent Activity */}
-            <Card className="border-[#D8EBFA] bg-white shadow-[0_4px_20px_rgba(15,23,42,0.05)] transition-all duration-300 hover:shadow-[0_10px_26px_rgba(2,132,199,0.12)]">
-              <CardHeader>
-                <CardTitle className="text-[#01377D]">Recent Activity</CardTitle>
-                <CardDescription className="text-[#009DD1]">
-                  Latest updates across your records
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {recentActivity.length === 0 ? (
-                  <p className="text-center text-gray-500 py-8">
-                    No activity recorded yet.
-                  </p>
-                ) : (
-                  <div className="space-y-3">
-                    {recentActivity.map((activity) => (
-                      <div
-                        key={activity.id}
-                        className="flex items-start gap-3 rounded-lg border border-transparent p-2 transition-all duration-300 hover:border-[#97E7F5] hover:bg-[#F8FCFF]"
-                      >
-                        <Activity className="mt-0.5 w-5 h-5 text-[#01377D]" />
-                        <div className="flex-1">
-                          <p className="text-sm text-[#01377D]">{activity.message}</p>
-                          <p className="text-xs text-gray-500 mt-1">
-                            {formatDisplayDate(activity.date)}
-                          </p>
-                        </div>
+          </CardHeader>
+          <CardContent>
+            {upcomingAppointments.length === 0 ? (
+              <div className="py-10 text-center text-sm text-slate-500">No upcoming appointments.</div>
+            ) : (
+              <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+                <div className="hidden bg-slate-50/80 px-4 py-2 md:grid md:grid-cols-[1.3fr_1.1fr_130px] md:items-center md:gap-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Service</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Date & Time</p>
+                  <p className="text-center text-[11px] font-semibold uppercase tracking-wide text-slate-500">Status</p>
+                </div>
+                {upcomingAppointments.map((appointment, index) => (
+                  <div key={appointment.id} className={index === 0 ? '' : 'border-t border-slate-100'}>
+                    <div className="hidden items-center gap-3 px-4 py-3 md:grid md:grid-cols-[1.3fr_1.1fr_130px]">
+                      <p className="truncate text-sm font-semibold text-slate-900">{appointment.type || appointment.title || 'Clinic Visit'}</p>
+                      <p className="text-xs text-slate-500">{formatDisplayDate(appointment.start_time, true)}</p>
+                      <div className="flex justify-center">
+                        <Badge className={`capitalize border ${getStatusStyles(appointment.status)}`}>{formatStatusLabel(appointment.status)}</Badge>
                       </div>
-                    ))}
+                    </div>
+                    <div className="space-y-1.5 p-3 md:hidden">
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="truncate text-sm font-semibold text-slate-900">{appointment.type || appointment.title || 'Clinic Visit'}</p>
+                        <Badge className={`capitalize border ${getStatusStyles(appointment.status)}`}>{formatStatusLabel(appointment.status)}</Badge>
+                      </div>
+                      <p className="text-xs text-slate-500">{formatDisplayDate(appointment.start_time, true)}</p>
+                    </div>
                   </div>
-                )}
-              </CardContent>
-            </Card>
-          
-          </div>
-      </>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="border-slate-200/80 bg-white/95 shadow-sm">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <CardTitle className="text-slate-900">Waiting Approval</CardTitle>
+                <CardDescription className="text-slate-500">Pending appointment requests</CardDescription>
+              </div>
+              <Link to="/patient/appointment">
+                <Button variant="outline" size="sm" className="h-8 border-slate-200 px-2.5 text-xs text-slate-700 hover:bg-slate-100">
+                  View all
+                  <ArrowRight className="ml-1 h-3.5 w-3.5" />
+                </Button>
+              </Link>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {pendingAppointments.length === 0 ? (
+              <div className="py-10 text-center text-sm text-slate-500">No pending appointments.</div>
+            ) : (
+              <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+                <div className="hidden bg-slate-50/80 px-4 py-2 md:grid md:grid-cols-[1.3fr_1.1fr_130px] md:items-center md:gap-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Service</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Date & Time</p>
+                  <p className="text-center text-[11px] font-semibold uppercase tracking-wide text-slate-500">Status</p>
+                </div>
+                {pendingAppointments.map((appointment, index) => (
+                  <div key={appointment.id} className={index === 0 ? '' : 'border-t border-slate-100'}>
+                    <div className="hidden items-center gap-3 px-4 py-3 md:grid md:grid-cols-[1.3fr_1.1fr_130px]">
+                      <p className="truncate text-sm font-semibold text-slate-900">{appointment.type || appointment.title || 'Clinic Visit'}</p>
+                      <p className="text-xs text-slate-500">{formatDisplayDate(appointment.start_time, true)}</p>
+                      <div className="flex justify-center">
+                        <Badge className="border border-yellow-200 bg-yellow-100 text-yellow-700">Waiting for approval</Badge>
+                      </div>
+                    </div>
+                    <div className="space-y-1.5 p-3 md:hidden">
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="truncate text-sm font-semibold text-slate-900">{appointment.type || appointment.title || 'Clinic Visit'}</p>
+                        <Badge className="border border-yellow-200 bg-yellow-100 text-yellow-700">Waiting</Badge>
+                      </div>
+                      <p className="text-xs text-slate-500">{formatDisplayDate(appointment.start_time, true)}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card className="border-slate-200/80 bg-white/95 shadow-sm">
+        <CardHeader>
+          <CardTitle className="text-slate-900">Recent Activity</CardTitle>
+          <CardDescription className="text-slate-500">Latest updates across your records</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {recentActivity.length === 0 ? (
+            <p className="py-8 text-center text-sm text-slate-500">No activity recorded yet.</p>
+          ) : (
+            <div className="space-y-3">
+              {recentActivity.map((activity) => (
+                <div
+                  key={activity.id}
+                  className="flex items-start gap-3 border-b border-slate-100 pb-3 last:border-0"
+                >
+                  <div className="mt-0.5 grid h-7 w-7 place-items-center rounded-full bg-blue-50 text-blue-600">
+                    <Activity className="h-4 w-4" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm text-slate-800">{activity.message}</p>
+                    <p className="mt-1 text-xs text-slate-500">{formatDisplayDate(activity.date)}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 };

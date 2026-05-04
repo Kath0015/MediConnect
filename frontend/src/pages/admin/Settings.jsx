@@ -436,7 +436,7 @@ export const Settings = () => {
 
     const normalizedInterval = Number(appointmentInterval);
     if (!Number.isFinite(normalizedInterval) || normalizedInterval < 1) {
-      toast.error('Booking interval must be at least 1 minute');
+      toast.error('Appointment interval must be at least 1 minute');
       return;
     }
 
@@ -447,7 +447,7 @@ export const Settings = () => {
       if (refreshed?.appointment_interval !== undefined) {
         setAppointmentInterval(Number(refreshed.appointment_interval));
       }
-      toast.success('Booking interval saved');
+      toast.success('Appointment interval saved');
     } catch (err) {
       console.error(err);
       toast.error('Failed to save interval');
@@ -456,7 +456,7 @@ export const Settings = () => {
     }
   };
 
-  const bookingIntervalPreview = useMemo(() => {
+  const appointmentIntervalPreview = useMemo(() => {
     const interval = Math.max(1, Math.round(Number(appointmentInterval) || 1));
     const toMinutes = (timeString) => {
       if (!timeString || typeof timeString !== 'string' || !timeString.includes(':')) return null;
@@ -528,19 +528,19 @@ export const Settings = () => {
   const modalBackdropClass =
     'fixed inset-0 z-[9999] grid place-items-center bg-slate-900/55 p-4';
   const modalPanelClass =
-    'w-full max-h-[90vh] max-w-xl overflow-y-auto rounded-2xl border border-[#CFE5F7] bg-white p-6 sm:p-7 shadow-[0_24px_65px_rgba(2,32,71,0.34)]';
+    'w-[min(92vw,720px)] max-h-[86vh] overflow-y-auto rounded-2xl border border-[#CFE5F7] bg-white p-4 shadow-[0_24px_65px_rgba(2,32,71,0.34)] sm:max-h-[90vh] sm:p-7';
   const smtpModalBackdropClass =
     'fixed inset-0 z-[9999] grid place-items-center bg-slate-900/60 p-3 backdrop-blur-[1px] transition-opacity duration-300 ease-out';
   const smtpModalPanelClass =
-    'w-full max-h-[94vh] max-w-[760px] overflow-y-auto rounded-2xl border border-cyan-100 bg-white p-4 shadow-[0_30px_75px_rgba(2,32,71,0.35)] transition-all duration-300 ease-out sm:max-h-[92vh] sm:rounded-3xl sm:p-7';
+    'w-[min(92vw,760px)] max-h-[86vh] overflow-y-auto rounded-2xl border border-cyan-100 bg-white p-4 shadow-[0_30px_75px_rgba(2,32,71,0.35)] transition-all duration-300 ease-out sm:max-h-[92vh] sm:rounded-3xl sm:p-7';
   const closureModalBackdropClass =
     'fixed inset-0 z-[9999] grid place-items-center bg-slate-900/55 p-4 backdrop-blur-[1px] transition-opacity duration-300 ease-out';
   const closureModalPanelClass =
-    'w-full max-h-[92vh] max-w-lg overflow-y-auto rounded-2xl border border-cyan-100 bg-white p-5 shadow-[0_24px_65px_rgba(2,32,71,0.34)] transition-all duration-300 ease-out sm:p-7';
+    'w-[min(92vw,540px)] max-h-[86vh] overflow-y-auto rounded-2xl border border-cyan-100 bg-white p-4 shadow-[0_24px_65px_rgba(2,32,71,0.34)] transition-all duration-300 ease-out sm:max-h-[92vh] sm:p-7';
   const typeModalBackdropClass =
     'fixed inset-0 z-[9999] grid place-items-center bg-slate-900/55 p-4 backdrop-blur-[1px] transition-opacity duration-300 ease-out';
   const typeModalPanelClass =
-    'w-full max-h-[90vh] max-w-[840px] overflow-y-auto rounded-2xl border border-cyan-100 bg-white p-4 shadow-[0_24px_65px_rgba(2,32,71,0.34)] transition-all duration-300 ease-out sm:p-5';
+    'w-[min(92vw,840px)] max-h-[86vh] overflow-y-auto rounded-2xl border border-cyan-100 bg-white p-3 shadow-[0_24px_65px_rgba(2,32,71,0.34)] transition-all duration-300 ease-out sm:max-h-[90vh] sm:p-5';
   const formInputClass =
     'h-10 rounded-lg border border-slate-200 bg-white text-slate-700 transition-all duration-200 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-200';
   const formLabelClass = 'text-xs font-semibold uppercase tracking-[0.08em] text-slate-500';
@@ -566,6 +566,8 @@ export const Settings = () => {
   const [reasonsPage, setReasonsPage] = useState(1);
   const reasonsPerPage = 10;
   const [reasonsSearchQuery, setReasonsSearchQuery] = useState('');
+  const [reasonDeleteConfirmId, setReasonDeleteConfirmId] = useState(null);
+  const [reasonDeleteLoadingId, setReasonDeleteLoadingId] = useState(null);
   const reasonModalTimerRef = useRef(null);
 
   // Document types state
@@ -668,7 +670,7 @@ export const Settings = () => {
       toast.success(
         nextIsActive
           ? 'Appointment type activated'
-          : 'Appointment type deactivated (not available for booking)'
+          : 'Appointment type deactivated (not available for appointment)'
       );
       await loadAppointmentTypes();
     } catch (err) {
@@ -959,6 +961,10 @@ export const Settings = () => {
   };
 
   const handleDeleteReason = async (id) => {
+    if (reasonDeleteLoadingId === id) return;
+    setReasonDeleteLoadingId(id);
+    setReasonDeleteConfirmId(null);
+
     try {
       await deleteMedcertReason(id);
       toast.success('Reason removed');
@@ -966,6 +972,8 @@ export const Settings = () => {
     } catch (err) {
       console.error(err);
       toast.error('Failed to remove reason');
+    } finally {
+      setReasonDeleteLoadingId(null);
     }
   };
 
@@ -1023,7 +1031,7 @@ export const Settings = () => {
         <div className="pointer-events-none absolute -right-16 -top-16 h-44 w-44 rounded-full bg-white/10 blur-2xl" />
         <div className="pointer-events-none absolute -bottom-10 left-20 h-36 w-36 rounded-full bg-cyan-300/20 blur-2xl" />
         <h2 className="text-2xl font-semibold">System Settings</h2>
-        <p className="max-w-2xl text-sm text-cyan-100/90">Control clinic operations, booking rules, and available services in one modern settings hub.</p>
+        <p className="max-w-2xl text-sm text-cyan-100/90">Control clinic operations, appointment rules, and available services in one modern settings hub.</p>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-1">
@@ -1054,11 +1062,11 @@ export const Settings = () => {
           </TabsTrigger>
           <TabsTrigger
             value="scheduling"
-            aria-label="Booking Interval"
+            aria-label="Appointment Interval"
             className={tabTriggerClass}
           >
             <Clock className="h-4 w-4 sm:mr-2" />
-            <span className="hidden sm:inline">Booking Interval</span>
+            <span className="hidden sm:inline">Appointment Interval</span>
           </TabsTrigger>
           <TabsTrigger
             value="medcert"
@@ -1722,7 +1730,7 @@ export const Settings = () => {
               <div>
                 <CardTitle className="flex items-center gap-2 text-[#01377D] font-semibold">
                   <Clock className="w-5 h-5 text-[#009DD1]" />
-                  Booking Interval
+                  Appointment Interval
                 </CardTitle>
                 <CardDescription className="text-[#009DD1]">Set the minimum spacing between appointments for all visit types.</CardDescription>
               </div>
@@ -1748,9 +1756,9 @@ export const Settings = () => {
                 <div className="flex items-start gap-2">
                   <Info className="mt-0.5 h-4 w-4 text-cyan-600" />
                   <div>
-                    <p className="font-semibold">Meaning of Booking Interval</p>
+                    <p className="font-semibold">Meaning of Appointment Interval</p>
                     <p className="mt-1 text-[#2F5F87]">
-                      Ito ang pagitan (gap) ng available booking slots (e.g. every 15 mins). Hindi ito service duration; service duration comes from each Service&apos;s minutes.
+                      Ito ang pagitan (gap) ng available appointment slots (e.g. every 15 mins). Hindi ito service duration; service duration comes from each Service&apos;s minutes.
                     </p>
                   </div>
                 </div>
@@ -1791,12 +1799,12 @@ export const Settings = () => {
                 <p className="mt-1 text-sm text-[#01377D]">
                   Estimated slots/day:{' '}
                   <span className="font-semibold">
-                    {bookingIntervalPreview.slotsPerDay === null ? 'N/A' : bookingIntervalPreview.slotsPerDay}
+                    {appointmentIntervalPreview.slotsPerDay === null ? 'N/A' : appointmentIntervalPreview.slotsPerDay}
                   </span>
                 </p>
                 <div className="mt-2 flex flex-wrap gap-2">
-                  {bookingIntervalPreview.sample.length > 0 ? (
-                    bookingIntervalPreview.sample.map((slot) => (
+                  {appointmentIntervalPreview.sample.length > 0 ? (
+                    appointmentIntervalPreview.sample.map((slot) => (
                       <Badge key={`interval-sample-${slot}`} className="bg-[#EAF5FF] text-[#01377D] hover:bg-[#EAF5FF]">
                         {slot}
                       </Badge>
@@ -2165,40 +2173,80 @@ export const Settings = () => {
                     </div>
                   ) : (
                     <ul className="space-y-2">
-                      {paginatedReasons.map((r) => (
-                      <li
-                        key={r.id}
-                        className="rounded-xl border border-slate-200/80 bg-white p-3 transition-all hover:border-cyan-200 hover:shadow-sm md:grid md:grid-cols-[minmax(0,1.8fr)_120px] md:items-center md:gap-3"
-                      >
-                        <div>
-                          <div className="text-sm font-medium text-[#01377D]">{r.type || r.reason}</div>
-                          <div className="mt-0.5 text-xs text-[#009DD1]">
-                            Available certificate category for patient requests.
-                          </div>
-                        </div>
+                      {paginatedReasons.map((r) => {
+                        const isReasonDeleting = reasonDeleteLoadingId === r.id;
+                        const isReasonDeleteConfirm = reasonDeleteConfirmId === r.id;
+                        return (
+                          <li
+                            key={r.id}
+                            className="rounded-xl border border-slate-200/80 bg-white p-3 transition-all hover:border-cyan-200 hover:shadow-sm md:grid md:grid-cols-[minmax(0,1.8fr)_120px] md:items-center md:gap-3"
+                          >
+                            <div>
+                              <div className="text-sm font-medium text-[#01377D]">{r.type || r.reason}</div>
+                              <div className="mt-0.5 text-xs text-[#009DD1]">
+                                Available certificate category for patient requests.
+                              </div>
+                            </div>
 
-                        <div className="mt-2 flex w-full items-center justify-end gap-2 md:mt-0 md:w-auto md:justify-self-center md:justify-center">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            title="Edit certificate type"
-                            onClick={() => handleOpenReasonModal(r)}
-                            className="h-8 w-8 rounded-lg p-0 text-cyan-700 hover:bg-cyan-100"
-                          >
-                            <Pencil className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            title="Remove certificate type"
-                            onClick={() => handleDeleteReason(r.id)}
-                            className="h-8 w-8 rounded-lg border-rose-200 p-0 text-rose-700 hover:bg-rose-50"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
-                      </li>
-                      ))}
+                            <div className="mt-2 flex w-full items-center justify-end gap-2 md:mt-0 md:w-auto md:justify-self-center md:justify-center">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                title="Edit certificate type"
+                                onClick={() => handleOpenReasonModal(r)}
+                                disabled={isReasonDeleting}
+                                className="h-8 w-8 rounded-lg p-0 text-cyan-700 hover:bg-cyan-100"
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
+                              </Button>
+
+                              <div className="relative h-8 w-[76px] overflow-hidden">
+                                <div
+                                  className={`absolute right-0 top-0 flex items-center gap-2 transition-all duration-200 ${
+                                    isReasonDeleteConfirm ? 'translate-y-0 opacity-100' : 'translate-y-1 opacity-0 pointer-events-none'
+                                  }`}
+                                >
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    title="Confirm delete"
+                                    onClick={() => handleDeleteReason(r.id)}
+                                    className="h-8 w-8 rounded-lg p-0 text-emerald-700 hover:bg-emerald-100"
+                                  >
+                                    {isReasonDeleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    title="Cancel delete"
+                                    onClick={() => setReasonDeleteConfirmId(null)}
+                                    disabled={isReasonDeleting}
+                                    className="h-8 w-8 rounded-lg p-0 text-slate-600 hover:bg-slate-100"
+                                  >
+                                    <X className="h-3.5 w-3.5" />
+                                  </Button>
+                                </div>
+                                <div
+                                  className={`absolute right-0 top-0 transition-all duration-200 ${
+                                    isReasonDeleteConfirm ? '-translate-y-1 opacity-0 pointer-events-none' : 'translate-y-0 opacity-100'
+                                  }`}
+                                >
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    title="Remove certificate type"
+                                    onClick={() => setReasonDeleteConfirmId(r.id)}
+                                    disabled={isReasonDeleting}
+                                    className="h-8 w-8 rounded-lg border-rose-200 p-0 text-rose-700 hover:bg-rose-50"
+                                  >
+                                    {isReasonDeleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                                  </Button>
+                                </div>
+                              </div>
+                            </div>
+                          </li>
+                        );
+                      })}
                     </ul>
                   )}
 

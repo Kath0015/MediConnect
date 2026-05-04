@@ -146,7 +146,7 @@
 
             <div class="next-steps">
                 <strong>What Can You Do?</strong>
-                <p>You can request a new appointment at a different date and time. Please visit our clinic's booking portal or contact us directly to schedule a new appointment.</p>
+                <p>You can request a new appointment at a different date and time. Please visit our clinic's appointment portal or contact us directly to schedule a new appointment.</p>
             </div>
 
             <p>If you have any questions about this decision or would like to discuss other available times, please feel free to contact our clinic.</p>

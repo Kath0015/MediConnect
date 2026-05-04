@@ -3,6 +3,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Models\Document;
+use App\Models\DocumentType;
 use App\Models\Patient;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -152,9 +153,19 @@ class DocumentController extends Controller {
 
         $request->validate([
             'file' => 'required|file|max:10240',
-            'document_type_id' => 'required|exists:document_types,id',
+            'document_type_id' => 'required_without:document_type_name|nullable|exists:document_types,id',
+            'document_type_name' => 'required_without:document_type_id|nullable|string|max:100',
             'description' => 'nullable|string|max:500',
         ]);
+
+        $resolvedDocumentTypeId = $request->input('document_type_id');
+        if (!$resolvedDocumentTypeId && $request->filled('document_type_name')) {
+            $documentType = DocumentType::firstOrCreate(
+                ['name' => trim((string) $request->input('document_type_name'))],
+                ['is_active' => true]
+            );
+            $resolvedDocumentTypeId = $documentType->id;
+        }
 
         $file = $request->file('file');
         $path = $file->store("patients/{$patient->id}/documents");
@@ -166,7 +177,7 @@ class DocumentController extends Controller {
                 'mime_type' => $file->getMimeType(),
                 'size' => $file->getSize(),
                 'description' => $request->input('description'),
-                'document_type_id' => $request->input('document_type_id'),
+                'document_type_id' => $resolvedDocumentTypeId,
                 'disk' => config('filesystems.default', 'local'),
                 'path' => $path,
                 'uploaded_by' => $user->id,

@@ -2,25 +2,59 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table';
-import { Search, Loader2, FileText, Download, Eye, Trash2, Filter, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, Loader2, FileText, Download, Eye, Trash2, Filter, X, ChevronLeft, ChevronRight, Check } from 'lucide-react';
 import api from '../../api/axios';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import StaffRoleBanner from '../../components/staff/StaffRoleBanner';
 import StaffPageSkeleton from '../../components/staff/StaffPageSkeleton';
 
+const PAGE_SIZE = 10;
+const mockDocuments = [
+  {
+    id: 'mock-doc-1',
+    name: 'CBC Result - March 2026.pdf',
+    file_name: 'cbc-result-march-2026.pdf',
+    mime_type: 'application/pdf',
+    documentType: { name: 'Lab Result' },
+    patient: { user: { name: 'Sample Patient One' }, student_number: null },
+    created_at: '2026-03-01T09:20:00.000Z',
+  },
+  {
+    id: 'mock-doc-2',
+    name: 'X-Ray Report - Chest.png',
+    file_name: 'xray-chest.png',
+    mime_type: 'image/png',
+    documentType: { name: 'Image' },
+    patient: { user: { name: 'Sample Patient Two' }, student_number: null },
+    created_at: '2026-03-03T14:05:00.000Z',
+  },
+  {
+    id: 'mock-doc-3',
+    name: 'Prescription Follow-up.txt',
+    file_name: 'prescription-followup.txt',
+    mime_type: 'text/plain',
+    documentType: { name: 'Prescription' },
+    patient: { user: { name: 'Sample Patient Three' }, student_number: null },
+    created_at: '2026-03-06T08:50:00.000Z',
+  },
+];
+
 const Documents = () => {
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredDocuments, setFilteredDocuments] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
   const [documentTypes, setDocumentTypes] = useState([]);
   const [selectedType, setSelectedType] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [viewingDocument, setViewingDocument] = useState(null);
   const [documentContent, setDocumentContent] = useState('');
   const [viewLoading, setViewLoading] = useState(false);
+  const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
+  const [hiddenMockIds, setHiddenMockIds] = useState([]);
 
   useEffect(() => {
     loadDocuments();
@@ -29,7 +63,11 @@ const Documents = () => {
 
   useEffect(() => {
     // Filter documents based on search query and selected type
-    let filtered = documents;
+    const sourceDocuments =
+      documents.length > 0
+        ? documents
+        : mockDocuments.filter((doc) => !hiddenMockIds.includes(doc.id));
+    let filtered = sourceDocuments;
 
     // Apply search filter
     if (searchQuery.trim()) {
@@ -47,7 +85,11 @@ const Documents = () => {
     }
 
     setFilteredDocuments(filtered);
-  }, [searchQuery, documents, selectedType]);
+  }, [searchQuery, documents, selectedType, hiddenMockIds]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedType, documents]);
 
   const loadDocuments = async () => {
     try {
@@ -164,17 +206,25 @@ const Documents = () => {
   };
 
   const handleDelete = async (documentId) => {
-    if (!window.confirm('Are you sure you want to delete this document?')) {
+    const idText = String(documentId);
+    if (idText.startsWith('mock-')) {
+      setHiddenMockIds((prev) => [...prev, documentId]);
+      setDeleteConfirmId(null);
+      toast.success('Preview document removed');
       return;
     }
 
     try {
+      setDeletingId(documentId);
       await api.delete(`/api/documents/${documentId}`);
-      setDocuments(documents.filter(doc => doc.id !== documentId));
+      setDocuments(documents.filter((doc) => doc.id !== documentId));
       toast.success('Document deleted successfully');
     } catch (err) {
       console.error('Delete failed:', err);
       toast.error('Failed to delete document');
+    } finally {
+      setDeletingId(null);
+      setDeleteConfirmId(null);
     }
   };
 
@@ -201,9 +251,67 @@ const Documents = () => {
     );
   };
 
+  const renderDeleteControl = (documentId) => {
+    const isConfirming = deleteConfirmId === documentId;
+    const isDeleting = deletingId === documentId;
+
+    return (
+      <div className="relative ml-1 h-8 w-[76px] overflow-hidden">
+        <div
+          className={`absolute right-0 top-0 flex items-center gap-1 transition-all duration-200 ${
+            isConfirming ? 'translate-y-0 opacity-100' : 'translate-y-1 opacity-0 pointer-events-none'
+          }`}
+        >
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 w-8 rounded-lg border-emerald-300 bg-emerald-50 p-0 text-emerald-700 hover:bg-emerald-100"
+            onClick={() => handleDelete(documentId)}
+            title="Confirm delete"
+            disabled={isDeleting}
+          >
+            {isDeleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 w-8 rounded-lg border-slate-300 p-0 text-slate-600 hover:bg-slate-100"
+            onClick={() => setDeleteConfirmId(null)}
+            disabled={isDeleting}
+            title="Cancel delete"
+          >
+            <X className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+        <div
+          className={`absolute right-0 top-0 transition-all duration-200 ${
+            isConfirming ? '-translate-y-1 opacity-0 pointer-events-none' : 'translate-y-0 opacity-100'
+          }`}
+        >
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 w-8 rounded-lg border-rose-200 p-0 text-rose-700 hover:bg-rose-50"
+            onClick={() => setDeleteConfirmId(documentId)}
+            disabled={isDeleting}
+            title="Delete document"
+          >
+            {isDeleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+          </Button>
+        </div>
+      </div>
+    );
+  };
+
   if (loading) {
     return <StaffPageSkeleton variant="tabs" rows={4} />;
   }
+
+  const totalPages = Math.max(1, Math.ceil(filteredDocuments.length / PAGE_SIZE));
+  const safePage = Math.min(currentPage, totalPages);
+  const pageStart = filteredDocuments.length > 0 ? (safePage - 1) * PAGE_SIZE + 1 : 0;
+  const pageEnd = filteredDocuments.length > 0 ? Math.min(safePage * PAGE_SIZE, filteredDocuments.length) : 0;
+  const paginatedDocuments = filteredDocuments.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
   return (
     <div className="space-y-6">
@@ -212,18 +320,6 @@ const Documents = () => {
         subtitle="Manage patient-uploaded files with fast filtering, preview, and secure download."
         primaryAction={{ label: 'Previous Laboratory', to: '/clinician/previous-laboratory' }}
       />
-
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-[#01377D]">Patient Documents</h1>
-          <p className="text-sm text-gray-500 mt-1">Manage patient uploaded documents</p>
-        </div>
-        <div className="text-right">
-          <p className="text-2xl font-bold text-[#009DD1]">{documents.length}</p>
-          <p className="text-xs text-gray-500">Total Documents</p>
-        </div>
-      </div>
 
       {/* Search Bar */}
       <Card className="border-[#97E7F5] shadow-sm bg-white">
@@ -298,81 +394,124 @@ const Documents = () => {
               <p>No documents found</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader className="bg-[#F0F9FF]">
-                  <TableRow>
-                    <TableHead className="text-[#01377D] font-semibold">Document Name</TableHead>
-                    <TableHead className="text-[#01377D] font-semibold">Type</TableHead>
-                    <TableHead className="text-[#01377D] font-semibold">Patient</TableHead>
-                    <TableHead className="text-[#01377D] font-semibold">Uploaded Date</TableHead>
-                    <TableHead className="text-[#01377D] font-semibold">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredDocuments.map((document) => (
-                    <TableRow key={document.id} className="hover:bg-[#F9FAFB]">
-                      <TableCell className="font-medium text-[#01377D]">
-                        <div className="flex items-center gap-2">
-                          <FileText className="w-4 h-4 text-gray-400" />
+            <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_6px_20px_rgba(15,23,42,0.06)]">
+              <div className="hidden bg-slate-50/80 px-4 py-2 md:grid md:grid-cols-[1.4fr_0.9fr_1fr_1fr_170px] md:items-center md:gap-3">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Document</p>
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Type</p>
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Patient</p>
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Uploaded</p>
+                <p className="text-center text-[11px] font-semibold uppercase tracking-wide text-slate-500">Action</p>
+              </div>
+              {paginatedDocuments.map((document, index) => (
+                <div key={document.id} className={index === 0 ? '' : 'border-t border-slate-100'}>
+                  <div className="hidden items-center gap-3 px-4 py-3 md:grid md:grid-cols-[1.4fr_0.9fr_1fr_1fr_170px]">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <FileText className="h-4 w-4 text-gray-400" />
+                        <p className="truncate text-sm font-semibold text-[#01377D]">
                           {document.name || document.title || 'Unnamed'}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {getDocumentTypeBadge(document.documentType)}
-                      </TableCell>
-                      <TableCell className="text-sm">
-                        <div>
-                          <p className="font-medium text-[#01377D]">{document.patient?.user?.name || 'Unknown'}</p>
-                          <p className="text-xs text-gray-500">{document.patient?.student_number || '-'}</p>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-sm text-gray-600 whitespace-nowrap">
-                        <div>
-                          <p>{format(new Date(document.created_at), 'MMM dd, yyyy')}</p>
-                          <p className="text-xs text-gray-500">{format(new Date(document.created_at), 'HH:mm:ss')}</p>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-sm">
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="hover:bg-blue-50"
-                            onClick={() => handleViewDocument(document)}
-                            title="View document"
-                            disabled={viewLoading}
-                          >
-                            <Eye className="w-4 h-4 text-[#009DD1]" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="hover:bg-green-50"
-                            onClick={() => handleDownload(document)}
-                            title="Download document"
-                          >
-                            <Download className="w-4 h-4 text-green-600" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="hover:bg-red-50"
-                            onClick={() => handleDelete(document.id)}
-                            title="Delete document"
-                          >
-                            <Trash2 className="w-4 h-4 text-red-600" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                        </p>
+                      </div>
+                    </div>
+                    {getDocumentTypeBadge(document.documentType)}
+                    <p className="truncate text-xs text-[#5A6F8F]">{document.patient?.user?.name || 'Unknown'}</p>
+                    <div className="text-xs text-[#5A6F8F]">
+                      <p>{format(new Date(document.created_at), 'MMM dd, yyyy')}</p>
+                      <p>{format(new Date(document.created_at), 'HH:mm:ss')}</p>
+                    </div>
+                    <div className="flex items-center justify-center gap-2.5">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-8 w-8 rounded-lg border-emerald-200 p-0 text-emerald-700 transition-all duration-200 hover:-translate-y-0.5 hover:bg-emerald-50"
+                        onClick={() => handleDownload(document)}
+                        title="Download document"
+                      >
+                        <Download className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-8 w-8 rounded-lg border-cyan-200 p-0 text-cyan-700 transition-all duration-200 hover:-translate-y-0.5 hover:bg-cyan-50"
+                        onClick={() => handleViewDocument(document)}
+                        title="View document"
+                        disabled={viewLoading}
+                      >
+                        <Eye className="w-4 h-4" />
+                      </Button>
+                      {renderDeleteControl(document.id)}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2 p-3 md:hidden">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-[#01377D]">{document.name || document.title || 'Unnamed'}</p>
+                        <p className="truncate text-xs text-[#5A6F8F]">{document.patient?.user?.name || 'Unknown'}</p>
+                      </div>
+                      <div className="flex items-center gap-2.5">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 w-8 rounded-lg border-emerald-200 p-0 text-emerald-700 transition-all duration-200 hover:-translate-y-0.5 hover:bg-emerald-50"
+                          onClick={() => handleDownload(document)}
+                        >
+                          <Download className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 w-8 rounded-lg border-cyan-200 p-0 text-cyan-700 transition-all duration-200 hover:-translate-y-0.5 hover:bg-cyan-50"
+                          onClick={() => handleViewDocument(document)}
+                          disabled={viewLoading}
+                        >
+                          <Eye className="w-4 h-4" />
+                        </Button>
+                        {renderDeleteControl(document.id)}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-[#5A6F8F]">
+                      {getDocumentTypeBadge(document.documentType)}
+                      <span>{format(new Date(document.created_at), 'MMM dd, yyyy')}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </CardContent>
       </Card>
+
+      <div className="mt-4 flex flex-col gap-3 px-1 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-xs text-slate-500">
+          Showing {pageStart}-{pageEnd} of {filteredDocuments.length} documents
+        </p>
+        <div className="grid w-full max-w-sm grid-cols-3 items-center gap-2 sm:flex sm:w-auto sm:max-w-none sm:items-center sm:gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+            disabled={safePage === 1}
+            className="h-8 min-w-[78px] justify-self-start border-slate-200 bg-white text-slate-700 hover:bg-slate-100 disabled:opacity-50"
+          >
+            <ChevronLeft className="w-4 h-4 mr-1" />
+            Back
+          </Button>
+          <span className="min-w-[86px] justify-self-center text-center text-xs text-slate-500">
+            Page {safePage} of {totalPages}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+            disabled={safePage === totalPages}
+            className="h-8 min-w-[78px] justify-self-end border-slate-200 bg-white text-slate-700 hover:bg-slate-100 disabled:opacity-50"
+          >
+            Next
+            <ChevronRight className="w-4 h-4 ml-1" />
+          </Button>
+        </div>
+      </div>
 
       {/* Document Viewer Modal */}
       {viewingDocument && (

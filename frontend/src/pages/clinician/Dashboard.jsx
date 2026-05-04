@@ -48,12 +48,18 @@ export const ClinicianDashboard = () => {
       case 'cancelled':
         return 'bg-red-100 text-red-800 border-red-300';
       case 'scheduled':
-        return 'bg-blue-100 text-blue-800 border-blue-300';
+        return 'bg-yellow-100 text-yellow-700 border-yellow-300';
       case 'confirmed':
         return 'bg-purple-100 text-purple-800 border-purple-300';
       default:
         return 'bg-gray-100 text-gray-800 border-gray-300';
     }
+  };
+
+  const formatStatusLabel = (status = '') => {
+    const key = String(status || '').toLowerCase();
+    if (key === 'scheduled') return 'Waiting for approval';
+    return status;
   };
 
   if (loading) {
@@ -64,30 +70,42 @@ export const ClinicianDashboard = () => {
     { 
       title: "Today's Appointments", 
       value: stats?.todayAppointments || 0, 
+      subLabel: 'Scheduled for today',
+      change: `${todaySchedule.length} in queue`,
       icon: Calendar, 
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-50'
+      iconWrap: 'bg-cyan-100 text-cyan-700',
+      cardClass: 'border-cyan-200/60 bg-gradient-to-b from-white to-cyan-50/40',
+      textClass: 'text-cyan-700'
     },
     { 
       title: 'Upcoming (7 days)', 
       value: stats?.upcomingAppointments || 0, 
+      subLabel: 'Next 7 days',
+      change: (stats?.upcomingAppointments || 0) > 0 ? 'Incoming workload' : 'No upcoming visits',
       icon: TrendingUp, 
-      color: 'text-green-600',
-      bgColor: 'bg-green-50'
+      iconWrap: 'bg-emerald-100 text-emerald-700',
+      cardClass: 'border-emerald-200/60 bg-gradient-to-b from-white to-emerald-50/40',
+      textClass: 'text-emerald-700'
     },
     { 
       title: 'Total Patients', 
       value: stats?.totalPatients || 0, 
+      subLabel: 'Assigned to you',
+      change: 'Active patient panel',
       icon: Users, 
-      color: 'text-purple-600',
-      bgColor: 'bg-purple-50'
+      iconWrap: 'bg-violet-100 text-violet-700',
+      cardClass: 'border-violet-200/60 bg-gradient-to-b from-white to-violet-50/40',
+      textClass: 'text-violet-700'
     },
     { 
       title: 'Pending MedCerts', 
       value: stats?.pendingMedCerts || 0, 
+      subLabel: 'Needs review',
+      change: (stats?.pendingMedCerts || 0) > 0 ? 'Action required' : 'All caught up',
       icon: ClipboardList, 
-      color: 'text-orange-600',
-      bgColor: 'bg-orange-50'
+      iconWrap: 'bg-amber-100 text-amber-700',
+      cardClass: 'border-amber-200/60 bg-gradient-to-b from-white to-amber-50/40',
+      textClass: 'text-amber-700'
     },
   ];
 
@@ -96,29 +114,26 @@ export const ClinicianDashboard = () => {
       <StaffRoleBanner
         title="Clinician Dashboard"
         subtitle="Track schedules, pending requests, and patient workload in real time."
-        primaryAction={{ label: 'Open Schedule', to: '/clinician/schedule' }}
-        secondaryAction={{ label: 'Patient List', to: '/clinician/patients' }}
       />
 
-      <div>
-        <h1 className="text-3xl font-bold text-[#01377D]">Clinician Dashboard</h1>
-        <p className="text-[#009DD1] mt-2">Welcome back! Here's your overview for today.</p>
-      </div>
-
       {/* Stats Grid */}
-      <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {statCards.map((stat) => {
           const Icon = stat.icon;
           return (
-            <Card className="border-[#97E7F5] shadow-sm bg-white" key={stat.title}>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm text-[#01377D]">{stat.title}</CardTitle>
-                <div className={`p-2 rounded-lg ${stat.bgColor}`}>
-                  <Icon className={`w-5 h-5 ${stat.color}`} />
+            <Card className={`${stat.cardClass} shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md`} key={stat.title}>
+              <CardContent className="p-4">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">{stat.title}</p>
+                    <p className={`mt-3 text-3xl font-semibold ${stat.textClass}`}>{stat.value}</p>
+                    <p className="mt-1 text-xs text-slate-500">{stat.subLabel}</p>
+                    <p className={`mt-2 text-xs ${(stat.value || 0) > 0 ? 'text-emerald-600' : 'text-slate-500'}`}>{stat.change}</p>
+                  </div>
+                  <div className={`grid h-10 w-10 place-items-center rounded-xl ${stat.iconWrap}`}>
+                    <Icon className="h-5 w-5" />
+                  </div>
                 </div>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-[#01377D]">{stat.value}</div>
               </CardContent>
             </Card>
           );
@@ -127,18 +142,21 @@ export const ClinicianDashboard = () => {
 
       {/* Weekly Trends Chart */}
       {weeklyTrends.length > 0 && (
-        <Card className="border-[#97E7F5] shadow-sm bg-white">
+        <Card className="border-slate-200/80 bg-white/95 shadow-sm">
           <CardHeader>
-            <CardTitle className="text-[#01377D]">Weekly Appointment Trends</CardTitle>
-            <CardDescription className="text-[#009DD1]">Appointments over the last 7 days</CardDescription>
+            <CardTitle className="text-slate-900">Weekly Appointment Trends</CardTitle>
+            <CardDescription className="text-slate-500">Appointments over the last 7 days</CardDescription>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={200}>
               <BarChart data={weeklyTrends}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="day" />
-                <YAxis />
-                <Tooltip />
+                <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
+                <XAxis dataKey="day" tick={{ fill: '#64748B', fontSize: 12 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fill: '#64748B', fontSize: 12 }} axisLine={false} tickLine={false} />
+                <Tooltip
+                  contentStyle={{ borderRadius: 10, borderColor: '#E2E8F0', fontSize: 12 }}
+                  labelStyle={{ color: '#334155', fontWeight: 600 }}
+                />
                 <Bar dataKey="appointments" fill="#009DD1" />
               </BarChart>
             </ResponsiveContainer>
@@ -146,21 +164,22 @@ export const ClinicianDashboard = () => {
         </Card>
       )}
 
-      <div className="grid lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
         {/* Today's Schedule */}
-        <Card className="border-[#97E7F5] shadow-sm bg-white">
+        <Card className="border-slate-200/80 bg-white/95 shadow-sm">
           <CardHeader>
             <div className="flex justify-between items-center">
               <div>
-                <CardTitle className="text-[#01377D]">Today's Schedule</CardTitle>
-                <CardDescription className="text-[#009DD1]">
+                <CardTitle className="text-slate-900">Today's Schedule</CardTitle>
+                <CardDescription className="text-slate-500">
                   {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                 </CardDescription>
               </div>
               <Button 
                 size="sm" 
                 onClick={() => navigate('/clinician/schedule')}
-                className="bg-[#009DD1] hover:bg-[#01377D] text-white"
+                className="h-8 border-slate-200 bg-white text-slate-700 hover:bg-slate-100"
+                variant="outline"
               >
                 View All
               </Button>
@@ -173,21 +192,42 @@ export const ClinicianDashboard = () => {
                 <p>No appointments scheduled for today</p>
               </div>
             ) : (
-              <div className="space-y-4">
-                {todaySchedule.map((appointment) => (
-                  <div key={appointment.id} className="flex items-center justify-between p-3 border border-[#97E7F5] rounded-lg hover:bg-blue-50 transition-colors">
-                    <div className="flex items-center gap-3">
-                      <div className="bg-blue-100 text-[#009DD1] px-3 py-1 rounded text-sm font-medium">
+              <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_6px_20px_rgba(15,23,42,0.06)]">
+                <div className="hidden bg-slate-50/80 px-4 py-2 md:grid md:grid-cols-[0.7fr_1.2fr_1fr_130px] md:items-center md:gap-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Time</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Patient</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Type</p>
+                  <p className="text-center text-[11px] font-semibold uppercase tracking-wide text-slate-500">Status</p>
+                </div>
+                {todaySchedule.map((appointment, index) => (
+                  <div key={appointment.id} className={index === 0 ? '' : 'border-t border-slate-100'}>
+                    <div className="hidden items-center gap-3 px-4 py-3 md:grid md:grid-cols-[0.7fr_1.2fr_1fr_130px]">
+                      <div className="inline-flex w-fit items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-700">
                         {appointment.time}
                       </div>
-                      <div>
-                        <p className="text-sm font-medium text-[#01377D]">{appointment.patient}</p>
-                        <p className="text-xs text-gray-500">{appointment.type}</p>
+                      <p className="truncate text-sm font-semibold text-slate-900">{appointment.patient}</p>
+                      <p className="truncate text-xs text-slate-500">{appointment.type}</p>
+                      <div className="flex justify-center">
+                        <Badge variant="outline" className={getStatusBadgeVariant(appointment.status)}>
+                          {formatStatusLabel(appointment.status)}
+                        </Badge>
                       </div>
                     </div>
-                    <Badge variant="outline" className={getStatusBadgeVariant(appointment.status)}>
-                      {appointment.status}
-                    </Badge>
+
+                    <div className="space-y-1.5 p-3 md:hidden">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-slate-900">{appointment.patient}</p>
+                          <p className="truncate text-xs text-slate-500">{appointment.type}</p>
+                        </div>
+                        <Badge variant="outline" className={getStatusBadgeVariant(appointment.status)}>
+                          {formatStatusLabel(appointment.status)}
+                        </Badge>
+                      </div>
+                      <div className="inline-flex w-fit items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-700">
+                        {appointment.time}
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -196,11 +236,11 @@ export const ClinicianDashboard = () => {
         </Card>
 
         {/* Pending MedCert Requests */}
-        <Card className="border-[#97E7F5] shadow-sm bg-white">
+        <Card className="border-slate-200/80 bg-white/95 shadow-sm">
           <CardHeader>
             <div className="flex justify-between items-center">
               <div>
-                <CardTitle className="flex items-center gap-2 text-[#01377D]">
+                <CardTitle className="flex items-center gap-2 text-slate-900">
                   Pending MedCert Requests
                   {stats?.pendingMedCerts > 0 && (
                     <Badge variant="destructive" className="rounded-full">
@@ -208,12 +248,13 @@ export const ClinicianDashboard = () => {
                     </Badge>
                   )}
                 </CardTitle>
-                <CardDescription className="text-[#009DD1]">Requests requiring your approval</CardDescription>
+                <CardDescription className="text-slate-500">Requests requiring your approval</CardDescription>
               </div>
               <Button 
                 size="sm" 
                 onClick={() => navigate('/clinician/requests')}
-                className="bg-[#009DD1] hover:bg-[#01377D] text-white"
+                className="h-8 border-slate-200 bg-white text-slate-700 hover:bg-slate-100"
+                variant="outline"
               >
                 View All
               </Button>
@@ -226,22 +267,48 @@ export const ClinicianDashboard = () => {
                 <p>No pending medical certificate requests</p>
               </div>
             ) : (
-              <div className="space-y-4">
-                {pendingCerts.map((request) => (
-                  <div key={request.id} className="flex items-center justify-between p-3 border border-[#97E7F5] rounded-lg hover:bg-orange-50 transition-colors">
-                    <div>
-                      <p className="text-sm font-medium text-[#01377D]">{request.patient}</p>
-                      <p className="text-xs text-gray-500 truncate max-w-xs">{request.type} - {request.purpose}</p>
-                      <p className="text-xs text-orange-600 mt-1">{request.submitted}</p>
+              <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_6px_20px_rgba(15,23,42,0.06)]">
+                <div className="hidden bg-slate-50/80 px-4 py-2 md:grid md:grid-cols-[1fr_1.4fr_0.8fr_100px] md:items-center md:gap-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Patient</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Request</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Submitted</p>
+                  <p className="text-center text-[11px] font-semibold uppercase tracking-wide text-slate-500">Action</p>
+                </div>
+                {pendingCerts.map((request, index) => (
+                  <div key={request.id} className={index === 0 ? '' : 'border-t border-slate-100'}>
+                    <div className="hidden items-center gap-3 px-4 py-3 md:grid md:grid-cols-[1fr_1.4fr_0.8fr_100px]">
+                      <p className="truncate text-sm font-semibold text-slate-900">{request.patient}</p>
+                      <p className="truncate text-xs text-slate-500">{request.type} - {request.purpose}</p>
+                      <p className="text-xs text-orange-600">{request.submitted}</p>
+                      <div className="flex justify-center">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => navigate('/clinician/requests')}
+                          className="h-8 border-[#009DD1] text-[#009DD1] hover:bg-blue-50"
+                        >
+                          Review
+                        </Button>
+                      </div>
                     </div>
-                    <Button 
-                      size="sm" 
-                      variant="outline"
-                      onClick={() => navigate('/clinician/requests')}
-                      className="border-[#009DD1] text-[#009DD1] hover:bg-blue-50"
-                    >
-                      Review
-                    </Button>
+
+                    <div className="space-y-2 p-3 md:hidden">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-slate-900">{request.patient}</p>
+                          <p className="truncate text-xs text-slate-500">{request.type} - {request.purpose}</p>
+                          <p className="mt-1 text-xs text-orange-600">{request.submitted}</p>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => navigate('/clinician/requests')}
+                          className="h-8 border-[#009DD1] text-[#009DD1] hover:bg-blue-50"
+                        >
+                          Review
+                        </Button>
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -249,57 +316,6 @@ export const ClinicianDashboard = () => {
           </CardContent>
         </Card>
       </div>
-
-      {/* Quick Actions */}
-      <Card className="border-[#97E7F5] shadow-sm bg-white">
-        <CardHeader>
-          <CardTitle className="text-[#01377D]">Quick Actions</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid md:grid-cols-4 gap-4">
-            <Button 
-              variant="outline" 
-              className="h-20 border-[#97E7F5] hover:bg-blue-50"
-              onClick={() => navigate('/clinician/patients')}
-            >
-              <div className="flex flex-col items-center gap-2">
-                <Users className="w-5 h-5 text-[#009DD1]" />
-                <span className="text-sm text-[#01377D]">View Patients</span>
-              </div>
-            </Button>
-            <Button 
-              variant="outline" 
-              className="h-20 border-[#97E7F5] hover:bg-blue-50"
-              onClick={() => navigate('/clinician/schedule')}
-            >
-              <div className="flex flex-col items-center gap-2">
-                <Calendar className="w-5 h-5 text-[#009DD1]" />
-                <span className="text-sm text-[#01377D]">Schedule</span>
-              </div>
-            </Button>
-            <Button 
-              variant="outline" 
-              className="h-20 border-[#97E7F5] hover:bg-blue-50"
-              onClick={() => navigate('/clinician/requests')}
-            >
-              <div className="flex flex-col items-center gap-2">
-                <ClipboardList className="w-5 h-5 text-[#009DD1]" />
-                <span className="text-sm text-[#01377D]">MedCert Requests</span>
-              </div>
-            </Button>
-            <Button 
-              variant="outline" 
-              className="h-20 border-[#97E7F5] hover:bg-blue-50"
-              onClick={loadDashboardData}
-            >
-              <div className="flex flex-col items-center gap-2">
-                <Clock className="w-5 h-5 text-[#009DD1]" />
-                <span className="text-sm text-[#01377D]">Refresh</span>
-              </div>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 };

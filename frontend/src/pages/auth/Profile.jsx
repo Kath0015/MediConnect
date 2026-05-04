@@ -3,10 +3,11 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
+import { Checkbox } from '../../components/ui/checkbox';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
 import { Avatar, AvatarFallback } from '../../components/ui/avatar';
 import { Badge } from '../../components/ui/badge';
-import { UserCircle, Mail, User, Shield, Phone, MapPin, Calendar, AlertCircle, FileText, Activity } from 'lucide-react';
+import { UserCircle, Mail, User, Shield, Phone, MapPin, Calendar, AlertCircle, Activity } from 'lucide-react';
 import { toast } from 'sonner';
 
 export const Profile = () => {
@@ -14,9 +15,12 @@ export const Profile = () => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
-  const [studentNumber, setStudentNumber] = useState('');
-  const [program, setProgram] = useState('');
   const [dob, setDob] = useState('');
+  const [address, setAddress] = useState('');
+  const [bloodType, setBloodType] = useState('');
+  const [emergencyContactName, setEmergencyContactName] = useState('');
+  const [emergencyContactPhone, setEmergencyContactPhone] = useState('');
+  const [patientCategory, setPatientCategory] = useState('none');
   const [changingPassword, setChangingPassword] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -29,8 +33,11 @@ export const Profile = () => {
       setName(user.name || '');
       setEmail(user.email || '');
       setPhone(user.phone || user.patient?.phone || '');
-      setStudentNumber(user.patient?.student_number || '');
-      setProgram(user.patient?.program || '');
+      setAddress(user.patient?.address || '');
+      setBloodType(user.patient?.blood_type || '');
+      setEmergencyContactName(user.patient?.emergency_contact?.name || '');
+      setEmergencyContactPhone(user.patient?.emergency_contact?.phone || '');
+      setPatientCategory(user.patient?.patient_category || 'none');
       
       // Format date to yyyy-MM-dd for date input
       const dateValue = user.date_of_birth || user.patient?.date_of_birth || '';
@@ -50,6 +57,19 @@ export const Profile = () => {
     }
   }, [user]);
 
+  const age = React.useMemo(() => {
+    if (!dob) return '';
+    const birthDate = new Date(dob);
+    if (Number.isNaN(birthDate.getTime())) return '';
+    const today = new Date();
+    let years = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      years -= 1;
+    }
+    return years >= 0 ? String(years) : '';
+  }, [dob]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -61,15 +81,23 @@ export const Profile = () => {
     setLoading(true);
 
     try {
-      await updateProfile({
+      const payload = {
         name,
         email,
         phone: phone || null,
         date_of_birth: dob || null,
-        student_number: studentNumber || null,
-        program: program || null,
-        patient_date_of_birth: dob || null,
-      });
+      };
+
+      if (isPatient) {
+        payload.patient_date_of_birth = dob || null;
+        payload.patient_category = patientCategory || 'none';
+        payload.blood_type = bloodType || null;
+        payload.address = address || null;
+        payload.emergency_contact_name = emergencyContactName || null;
+        payload.emergency_contact_phone = emergencyContactPhone || null;
+      }
+
+      await updateProfile(payload);
       toast.success('Profile updated successfully!');
     } catch (error) {
       console.error('Profile update error:', error);
@@ -134,6 +162,9 @@ export const Profile = () => {
     return colors[role] || colors.default;
   };
 
+  const inputClass =
+    'h-10 rounded-lg border border-[#97E7F5] bg-white text-[#01377D] shadow-none outline-none transition-all duration-200 focus-visible:border-[#009DD1] focus-visible:ring-2 focus-visible:ring-[#97E7F5] focus-visible:ring-offset-0';
+
   if (!user) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
@@ -147,20 +178,20 @@ export const Profile = () => {
   }
 
   return (
-    <div className="min-h-screen">
-      <div className="w-full">
+    <div className="min-h-screen px-3 pb-6 sm:px-4 sm:pb-8 lg:px-6">
+      <div className="mx-auto w-full max-w-7xl">
         {/* Header Section */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-[#01377D] mb-2">Profile Settings</h1>
-          <p className="text-lg text-[#009DD1]">Manage your account information and preferences</p>
+        <div className="mb-5 sm:mb-7">
+          <h1 className="text-2xl font-bold text-[#01377D] sm:text-3xl">Profile Settings</h1>
+          <p className="mt-1 text-sm text-[#009DD1] sm:text-base">Manage your account information and preferences</p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-3">
           {/* Left Column - Profile Overview */}
           <div className="lg:col-span-1 space-y-6">
             {/* Profile Card */}
-            <Card className="bg-gradient-to-br from-[#01377D] to-[#009DD1] text-white border-0 shadow-xl">
-              <CardContent className="pt-6 text-center">
+            <Card className="border-0 bg-gradient-to-br from-[#01377D] to-[#009DD1] text-white shadow-xl">
+              <CardContent className="pt-5 text-center sm:pt-6">
                 <Avatar className="w-24 h-24 mx-auto mb-4 border-4 border-white shadow-lg">
                   <AvatarFallback className="bg-[#26B170] text-white text-3xl font-bold">
                     {getUserInitial()}
@@ -185,7 +216,7 @@ export const Profile = () => {
                   Account Overview
                 </CardTitle>
               </CardHeader>
-              <CardContent className="pt-6 space-y-4">
+              <CardContent className="space-y-4 pt-4 sm:pt-6">
                 {/* User ID hidden for privacy */}
                 
                 <div className="flex items-center justify-between p-3 rounded-lg bg-[#97E7F5]/10">
@@ -224,9 +255,9 @@ export const Profile = () => {
                   Update your personal details and contact information
                 </CardDescription>
               </CardHeader>
-              <CardContent className="pt-6">
+              <CardContent className="pt-4 sm:pt-6">
                 <form onSubmit={handleSubmit} className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 gap-4 sm:gap-5 md:grid-cols-2 md:gap-6">
                     <div className="space-y-2">
                       <Label htmlFor="name" className="flex items-center gap-2 text-[#01377D] font-semibold">
                         <User className="w-4 h-4 text-[#009DD1]" />
@@ -240,7 +271,7 @@ export const Profile = () => {
                         placeholder="Enter your full name"
                         required
                         disabled={loading}
-                        className="border-[#97E7F5] focus:border-[#009DD1] focus:ring-[#009DD1]"
+                        className={inputClass}
                       />
                     </div>
 
@@ -257,7 +288,7 @@ export const Profile = () => {
                         placeholder="Enter your email address"
                         required
                         disabled={loading}
-                        className="border-[#97E7F5] focus:border-[#009DD1] focus:ring-[#009DD1]"
+                        className={inputClass}
                       />
                     </div>
 
@@ -273,7 +304,7 @@ export const Profile = () => {
                         onChange={(e) => setPhone(e.target.value)}
                         placeholder="Enter your phone number"
                         disabled={loading}
-                        className="border-[#97E7F5] focus:border-[#009DD1] focus:ring-[#009DD1]"
+                        className={inputClass}
                       />
                     </div>
 
@@ -288,52 +319,125 @@ export const Profile = () => {
                         value={dob}
                         onChange={(e) => setDob(e.target.value)}
                         disabled={loading}
-                        className="border-[#97E7F5] focus:border-[#009DD1] focus:ring-[#009DD1]"
+                        className={inputClass}
                       />
                     </div>
 
                     {isPatient && (
                       <>
                         <div className="space-y-2">
-                          <Label htmlFor="studentNumber" className="flex items-center gap-2 text-[#01377D] font-semibold">
-                            <FileText className="w-4 h-4 text-[#009DD1]" />
-                            Student Number
+                          <Label htmlFor="age" className="flex items-center gap-2 text-[#01377D] font-semibold">
+                            <Calendar className="w-4 h-4 text-[#009DD1]" />
+                            Age
                           </Label>
                           <Input
-                            id="studentNumber"
+                            id="age"
                             type="text"
-                            value={studentNumber}
-                            onChange={(e) => setStudentNumber(e.target.value)}
-                            placeholder="Enter your student number"
-                            disabled={loading}
-                            className="border-[#97E7F5] focus:border-[#009DD1] focus:ring-[#009DD1]"
+                            value={age}
+                            disabled
+                            placeholder="Age auto-computed from date of birth"
+                            className="h-10 rounded-lg border border-[#97E7F5] bg-slate-50 text-slate-600 shadow-none"
                           />
                         </div>
 
                         <div className="space-y-2">
-                          <Label htmlFor="program" className="flex items-center gap-2 text-[#01377D] font-semibold">
+                          <Label className="flex items-center gap-2 text-[#01377D] font-semibold">
                             <Activity className="w-4 h-4 text-[#009DD1]" />
-                            Program/Course
+                            PWD / Senior Status
+                          </Label>
+                          <div className="space-y-2 rounded-lg border border-[#97E7F5] bg-[#97E7F5]/10 p-3">
+                            {[
+                              { value: 'none', label: 'No special status' },
+                              { value: 'pwd', label: 'PWD' },
+                              { value: 'senior', label: 'Senior Citizen' },
+                            ].map((option) => (
+                              <label key={option.value} className="flex cursor-pointer items-center gap-2">
+                                <Checkbox
+                                  className="border-[#97E7F5] data-[state=checked]:border-[#009DD1] data-[state=checked]:bg-[#009DD1]"
+                                  checked={patientCategory === option.value}
+                                  onCheckedChange={(checked) => {
+                                    if (checked) setPatientCategory(option.value);
+                                  }}
+                                  disabled={loading}
+                                />
+                                <span className="text-sm text-[#01377D]">{option.label}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="bloodType" className="flex items-center gap-2 text-[#01377D] font-semibold">
+                            <Activity className="w-4 h-4 text-[#009DD1]" />
+                            Blood Type
                           </Label>
                           <Input
-                            id="program"
+                            id="bloodType"
                             type="text"
-                            value={program}
-                            onChange={(e) => setProgram(e.target.value)}
-                            placeholder="Enter your program or course"
+                            value={bloodType}
+                            onChange={(e) => setBloodType(e.target.value.toUpperCase())}
+                            placeholder="Example: O+, A-, AB+"
                             disabled={loading}
-                            className="border-[#97E7F5] focus:border-[#009DD1] focus:ring-[#009DD1]"
+                            className={inputClass}
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="address" className="flex items-center gap-2 text-[#01377D] font-semibold">
+                            <MapPin className="w-4 h-4 text-[#009DD1]" />
+                            Address
+                          </Label>
+                          <Input
+                            id="address"
+                            type="text"
+                            value={address}
+                            onChange={(e) => setAddress(e.target.value)}
+                            placeholder="Enter your current address"
+                            disabled={loading}
+                            className={inputClass}
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="emergencyContactName" className="flex items-center gap-2 text-[#01377D] font-semibold">
+                            <User className="w-4 h-4 text-[#009DD1]" />
+                            Emergency Contact Name
+                          </Label>
+                          <Input
+                            id="emergencyContactName"
+                            type="text"
+                            value={emergencyContactName}
+                            onChange={(e) => setEmergencyContactName(e.target.value)}
+                            placeholder="Who should we contact in emergencies?"
+                            disabled={loading}
+                            className={inputClass}
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="emergencyContactPhone" className="flex items-center gap-2 text-[#01377D] font-semibold">
+                            <Phone className="w-4 h-4 text-[#009DD1]" />
+                            Emergency Contact Number
+                          </Label>
+                          <Input
+                            id="emergencyContactPhone"
+                            type="tel"
+                            value={emergencyContactPhone}
+                            onChange={(e) => setEmergencyContactPhone(e.target.value)}
+                            placeholder="Emergency contact phone number"
+                            disabled={loading}
+                            className={inputClass}
                           />
                         </div>
                       </>
                     )}
                   </div>
 
-                  <div className="flex justify-end pt-4">
+                  <div className="flex justify-end pt-2 sm:pt-4">
                     <Button 
                       type="submit" 
                       disabled={loading}
-                      className="bg-[#26B170] hover:bg-[#7ED348] text-white px-8 py-2 font-semibold transition-all duration-300 hover:scale-105"
+                      className="h-10 w-full bg-[#26B170] px-8 py-2 font-semibold text-white transition-all duration-300 hover:bg-[#7ED348] sm:w-auto sm:hover:scale-105"
                     >
                       {loading ? 'Saving Changes...' : 'Save Changes'}
                     </Button>
@@ -353,28 +457,35 @@ export const Profile = () => {
                   Change your account password
                 </CardDescription>
               </CardHeader>
-              <CardContent className="pt-6">
+              <CardContent className="pt-4 sm:pt-6">
                 {!changingPassword ? (
                   <div className="flex justify-end">
-                    <Button onClick={() => setChangingPassword(true)} className="bg-[#009DD1] text-white">Change Password</Button>
+                    <Button onClick={() => setChangingPassword(true)} className="h-10 w-full bg-[#009DD1] text-white hover:bg-[#0284c7] sm:w-auto">Change Password</Button>
                   </div>
                 ) : (
                   <form onSubmit={handleChangePassword} className="space-y-4">
                     <div>
                       <Label className="text-[#01377D]">Current Password</Label>
-                      <Input type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} disabled={loading} />
+                      <Input className={inputClass} type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} disabled={loading} />
                     </div>
                     <div>
                       <Label className="text-[#01377D]">New Password</Label>
-                      <Input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} disabled={loading} />
+                      <Input className={inputClass} type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} disabled={loading} />
                     </div>
                     <div>
                       <Label className="text-[#01377D]">Confirm New Password</Label>
-                      <Input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} disabled={loading} />
+                      <Input className={inputClass} type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} disabled={loading} />
                     </div>
-                    <div className="flex gap-2 justify-end">
-                      <Button type="button" variant="secondary" onClick={() => setChangingPassword(false)}>Cancel</Button>
-                      <Button type="submit" className="bg-[#26B170] text-white">{loading ? 'Updating...' : 'Update Password'}</Button>
+                    <div className="flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:justify-end">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setChangingPassword(false)}
+                        className="h-10 w-full border-[#97E7F5] text-[#01377D] hover:bg-[#97E7F5]/20 sm:w-auto"
+                      >
+                        Cancel
+                      </Button>
+                      <Button type="submit" className="h-10 w-full bg-[#26B170] text-white hover:bg-[#7ED348] sm:w-auto">{loading ? 'Updating...' : 'Update Password'}</Button>
                     </div>
                   </form>
                 )}

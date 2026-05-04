@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useBranding } from '../contexts/BrandingContext';
 import { Button } from './ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from './ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -35,6 +35,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronUp,
+  MessageCircle,
 } from 'lucide-react';
 
 export const Layout = ({ children }) => {
@@ -56,7 +57,7 @@ export const Layout = ({ children }) => {
   const isClinicianUser = isClinician || user?.role === 'clinician';
   const isPatientLayout = isPatientUser || isPatientRoute;
   const isClinicianLayout = isClinicianUser || isClinicianRoute;
-  const isTopNavigationLayout = isPatientLayout || isClinicianLayout;
+  const isTopNavigationLayout = false;
 
   const handleLogout = async () => {
     // Open modal confirmation instead of toast
@@ -94,6 +95,8 @@ export const Layout = ({ children }) => {
       return [
         { path: '/patient/dashboard', label: 'Dashboard', icon: LayoutDashboard },
         { path: '/patient/appointment', label: 'Appointments', icon: Calendar },
+        { path: '/patient/symptom-checker', label: 'Symptom Checker', icon: Activity },
+        { path: '/patient/medibot', label: 'MediBot', icon: MessageCircle },
         { path: '/patient/request-certificate', label: 'Request Certificate', icon: FileCheck },
         { path: '/patient/upload-document', label: 'Upload Document', icon: Upload },
         { path: '/patient/previous-laboratory', label: 'Previous Laboratory', icon: FileBadge },
@@ -338,16 +341,23 @@ export const Layout = ({ children }) => {
         </nav>
 
         <Dialog open={logoutDialogOpen} onOpenChange={setLogoutDialogOpen}>
-          <DialogContent className="max-w-md bg-white">
-            <DialogHeader>
-              <DialogTitle className="text-red-600">Confirm Logout</DialogTitle>
-              <DialogDescription>Are you sure you want to log out of your account?</DialogDescription>
+          <DialogContent className="w-[min(92vw,640px)] rounded-2xl border border-slate-200 bg-white p-0 shadow-[0_24px_65px_rgba(2,32,71,0.24)] [&>button]:hidden">
+            <DialogHeader className="border-b border-slate-100 px-4 py-4 sm:px-6">
+              <DialogTitle className="text-2xl font-semibold text-[#e11d48]">Confirm Logout</DialogTitle>
+              <DialogDescription className="pt-1 text-base text-slate-700">
+                Are you sure you want to log out of your account?
+              </DialogDescription>
             </DialogHeader>
-
-            <div className="mt-4 flex justify-end gap-2">
-              <Button variant="ghost" onClick={() => setLogoutDialogOpen(false)}>Cancel</Button>
+            <div className="flex items-center justify-end gap-2 px-4 py-4 sm:px-6">
               <Button
-                className="bg-red-600 text-white"
+                variant="ghost"
+                className="h-10 px-5 text-base text-slate-700 hover:bg-slate-100"
+                onClick={() => setLogoutDialogOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                className="h-10 rounded-lg bg-red-600 px-6 text-base font-medium text-white hover:bg-red-700"
                 onClick={async () => {
                   try {
                     await logout();
@@ -556,16 +566,23 @@ export const Layout = ({ children }) => {
 
         {/* Logout Confirmation Dialog */}
         <Dialog open={logoutDialogOpen} onOpenChange={setLogoutDialogOpen}>
-          <DialogContent className="max-w-md bg-white">
-            <DialogHeader>
-              <DialogTitle className="text-red-600">Confirm Logout</DialogTitle>
-              <DialogDescription>Are you sure you want to log out of your account?</DialogDescription>
+          <DialogContent className="w-[min(92vw,640px)] rounded-2xl border border-slate-200 bg-white p-0 shadow-[0_24px_65px_rgba(2,32,71,0.24)] [&>button]:hidden">
+            <DialogHeader className="border-b border-slate-100 px-4 py-4 sm:px-6">
+              <DialogTitle className="text-2xl font-semibold text-[#e11d48]">Confirm Logout</DialogTitle>
+              <DialogDescription className="pt-1 text-base text-slate-700">
+                Are you sure you want to log out of your account?
+              </DialogDescription>
             </DialogHeader>
-
-            <div className="mt-4 flex justify-end gap-2">
-              <Button variant="ghost" onClick={() => setLogoutDialogOpen(false)}>Cancel</Button>
+            <div className="flex items-center justify-end gap-2 px-4 py-4 sm:px-6">
               <Button
-                className="bg-red-600 text-white"
+                variant="ghost"
+                className="h-10 px-5 text-base text-slate-700 hover:bg-slate-100"
+                onClick={() => setLogoutDialogOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                className="h-10 rounded-lg bg-red-600 px-6 text-base font-medium text-white hover:bg-red-700"
                 onClick={async () => {
                   try {
                     await logout();
@@ -637,7 +654,7 @@ export const Layout = ({ children }) => {
         <footer className="border-t border-cyan-100/80 bg-gradient-to-r from-[#edf5ff] to-[#e6f0ff]">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 ">
             <p className="text-center text-sm text-slate-700 ">
-              © 2025 {displayBrand}. All rights reserved.
+              © 2026 Renato Umali Reyes. All rights reserved.
             </p>
           </div>
         </footer>

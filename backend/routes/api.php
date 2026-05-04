@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\V1\ClinicController;
 use App\Http\Controllers\Api\V1\AppointmentTypeController;
 use App\Http\Controllers\Api\V1\DocumentTypeController;
 use App\Http\Controllers\Api\V1\MedcertReasonController;
+use App\Http\Controllers\Api\V1\SymptomCheckerController;
 use App\Http\Controllers\Api\ActivityLogController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Http\Request;
@@ -64,6 +65,9 @@ Route::middleware(['web', 'auth:sanctum'])->group(function () {
     Route::post('/appointments/{appointment}/no_show', [AppointmentController::class, 'markNoShow']);
     Route::post('/appointments/{appointment}/start', [AppointmentController::class, 'startAppointment']);
     Route::post('/appointments/{appointment}/complete', [AppointmentController::class, 'completeAppointment']);
+    
+    // Symptom Checker
+    Route::post('/symptom-check', [SymptomCheckerController::class, 'checkSymptoms']);
     
     // Medical Certificates
     Route::apiResource('med-certs', MedCertController::class);

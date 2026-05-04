@@ -23,9 +23,7 @@ export const Signup = () => {
     password: "",
     password_confirmation: "",
     phone: "",
-    student_number: "",
     date_of_birth: "",
-    program: "",
   });
 
   const [loading, setLoading] = useState(false);
@@ -55,11 +53,6 @@ export const Signup = () => {
 
     if (formData.password.length < 8) {
       toast.error('Password must be at least 8 characters');
-      return;
-    }
-
-    if (!formData.student_number) {
-      toast.error('Student number is required');
       return;
     }
 
@@ -130,7 +123,7 @@ export const Signup = () => {
             <h1 className="text-xl sm:text-2xl font-semibold text-[#01377D]">{displayBrand}</h1>
           </div>
           <CardTitle className="text-[#01377D] font-semibold">Create Account</CardTitle>
-          <CardDescription className="text-[#009DD1]">Join University Clinic System</CardDescription>
+          <CardDescription className="text-[#009DD1]">Join RUR System</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -181,36 +174,6 @@ export const Signup = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="student_number" className="text-[#01377D]">Student Number *</Label>
-                <Input
-                  id="student_number"
-                  name="student_number"
-                  type="text"
-                  placeholder="STU2024001"
-                  value={formData.student_number}
-                  onChange={handleChange}
-                  required
-                  className="border-[#97E7F5] focus:border-[#009DD1] focus:ring-[#009DD1]"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="program" className="text-[#01377D]">Program *</Label>
-                <Input
-                  id="program"
-                  name="program"
-                  type="text"
-                  placeholder="e.g. BS Nursing"
-                  value={formData.program || ''}
-                  onChange={handleChange}
-                  required
-                  className="border-[#97E7F5] focus:border-[#009DD1] focus:ring-[#009DD1]"
-                />
-              </div>
-
-              <div className="space-y-2">
                 <Label htmlFor="date_of_birth" className="text-[#01377D]">Date of Birth *</Label>
                 <Input
                   id="date_of_birth"
@@ -222,7 +185,6 @@ export const Signup = () => {
                   className="border-[#97E7F5] focus:border-[#009DD1] focus:ring-[#009DD1]"
                 />
               </div>
-
             </div>
             
 
@@ -330,7 +292,7 @@ export const Signup = () => {
             </div>
           </div>
           <div className="border-t border-[#009DD1] mt-8 pt-8 text-center text-[#97E7F5]">
-            <p>© 2025 {displayBrand}. All rights reserved.</p>
+            <p>© 2026 Renato Umali Reyes. All rights reserved.</p>
           </div>
         </div>
       </footer>

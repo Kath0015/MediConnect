@@ -45,6 +45,8 @@ const Records = lazy(() => import("./pages/patient/Records"));
 const RequestCertificate = lazy(() => import("./pages/patient/RequestCertificate"));
 const UploadDocument = lazy(() => import("./pages/patient/UploadDocument"));
 const PatientPreviousLaboratory = lazy(() => import("./pages/patient/PreviousLaboratory"));
+const SymptomChecker = lazy(() => import("./pages/patient/SymptomChecker"));
+const MediBot = lazy(() => import("./pages/patient/MediBot"));
 
 // Create a wrapper component that conditionally applies Layout
 const RouteWrapper = ({ children, requireLayout = false }) => {
@@ -382,6 +384,30 @@ const App = () => {
                 <ProtectedRoute allowedRoles={['patient']}>
                   <LazyWrapper fallback={<PatientPageSkeleton variant="list" rows={4} />}>
                     <PatientPreviousLaboratory />
+                  </LazyWrapper>
+                </ProtectedRoute>
+              </RouteWrapper>
+            } 
+          />
+          <Route 
+            path="/patient/symptom-checker" 
+            element={
+              <RouteWrapper requireLayout={true}>
+                <ProtectedRoute allowedRoles={['patient']}>
+                  <LazyWrapper fallback={<PatientPageSkeleton variant="form" rows={4} />}>
+                    <SymptomChecker />
+                  </LazyWrapper>
+                </ProtectedRoute>
+              </RouteWrapper>
+            } 
+          />
+          <Route 
+            path="/patient/medibot" 
+            element={
+              <RouteWrapper requireLayout={true}>
+                <ProtectedRoute allowedRoles={['patient']}>
+                  <LazyWrapper fallback={<PatientPageSkeleton variant="form" rows={4} />}>
+                    <MediBot />
                   </LazyWrapper>
                 </ProtectedRoute>
               </RouteWrapper>

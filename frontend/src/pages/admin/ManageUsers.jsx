@@ -498,7 +498,7 @@ export const ManageUsers = () => {
 
         {/* Edit User Dialog */}
         <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-          <DialogContent className="bg-white">
+          <DialogContent className="w-[min(92vw,640px)] max-h-[86vh] overflow-y-auto rounded-2xl border border-cyan-100 bg-white p-4 sm:max-h-[90vh] sm:p-6">
             <DialogHeader>
               <DialogTitle className="text-[#01377D]">Edit User</DialogTitle>
               <DialogDescription className="text-[#009DD1]">
@@ -561,7 +561,7 @@ export const ManageUsers = () => {
 
         {/* Confirmation Dialog */}
         <Dialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
-          <DialogContent className="bg-white">
+          <DialogContent className="w-[min(92vw,560px)] max-h-[86vh] overflow-y-auto rounded-2xl border border-cyan-100 bg-white p-4 sm:max-h-[90vh] sm:p-6">
             <DialogHeader>
               <DialogTitle className="text-[#01377D]">
                 {userToToggle?.is_active ? 'Deactivate User' : 'Activate User'}
@@ -599,7 +599,7 @@ export const ManageUsers = () => {
         </Dialog>
         {/* View User Dialog */}
         <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
-          <DialogContent className="bg-white max-w-md">
+          <DialogContent className="w-[min(92vw,460px)] max-h-[86vh] overflow-y-auto rounded-2xl border border-cyan-100 bg-white p-4 sm:max-h-[90vh] sm:p-6">
             <DialogHeader>
               <DialogTitle className="text-[#01377D]">User Information</DialogTitle>
               <DialogDescription className="text-[#009DD1]">Read-only details for the selected user</DialogDescription>

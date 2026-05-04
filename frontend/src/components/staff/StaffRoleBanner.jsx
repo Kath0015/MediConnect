@@ -30,14 +30,21 @@ const StaffRoleBanner = ({
           <p className="max-w-2xl text-sm text-blue-100/95">{subtitle}</p>
         </div>
 
-        <div className="flex flex-wrap gap-2">
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap">
           {secondaryAction?.to && (
-            <Button asChild variant="outline" className="border-white/40 bg-transparent text-white hover:bg-white/15">
+            <Button
+              asChild
+              variant="outline"
+              className="w-full border-white/40 bg-transparent text-white hover:bg-white/15 sm:w-auto"
+            >
               <Link to={secondaryAction.to}>{secondaryAction.label}</Link>
             </Button>
           )}
           {primaryAction?.to && (
-            <Button asChild className="bg-[#0ea5e9] text-white shadow-[0_6px_18px_rgba(14,165,233,0.45)] hover:bg-[#0284c7] hover:text-white">
+            <Button
+              asChild
+              className="w-full bg-[#0ea5e9] text-white shadow-[0_6px_18px_rgba(14,165,233,0.45)] hover:bg-[#0284c7] hover:text-white sm:w-auto"
+            >
               <Link to={primaryAction.to} className="inline-flex items-center gap-2">
                 {primaryAction.label}
                 <ArrowRight className="h-4 w-4" />

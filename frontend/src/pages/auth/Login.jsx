@@ -257,7 +257,7 @@ export const Login = () => {
             </div>
           </div>
           <div className="border-t border-[#009DD1] mt-8 pt-8 text-center text-[#97E7F5]">
-            <p>© 2025 {displayBrand}. All rights reserved.</p>
+            <p>© 2026 Renato Umali Reyes. All rights reserved.</p>
           </div>
         </div>
       </footer>

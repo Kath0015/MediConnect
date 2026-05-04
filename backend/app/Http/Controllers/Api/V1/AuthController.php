@@ -256,6 +256,11 @@ public function login(LoginUserRequest $request): \Illuminate\Http\JsonResponse
                 'student_number' => 'sometimes|nullable|string',
                 'program' => 'sometimes|nullable|string',
                 'patient_date_of_birth' => 'sometimes|nullable|date',
+                'patient_category' => 'sometimes|nullable|in:none,pwd,senior',
+                'blood_type' => 'sometimes|nullable|string|in:A+,A-,B+,B-,AB+,AB-,O+,O-',
+                'address' => 'sometimes|nullable|string|max:500',
+                'emergency_contact_name' => 'sometimes|nullable|string|max:255',
+                'emergency_contact_phone' => 'sometimes|nullable|string|max:20',
             ];
 
             $validated = $request->validate($rules);
@@ -277,7 +282,17 @@ public function login(LoginUserRequest $request): \Illuminate\Http\JsonResponse
             $user->save();
 
             // Update or create patient record
-            if ($user->patient || $request->has('student_number') || $request->has('program') || $request->has('patient_date_of_birth')) {
+            if (
+                $user->patient ||
+                $request->has('student_number') ||
+                $request->has('program') ||
+                $request->has('patient_date_of_birth') ||
+                $request->has('patient_category') ||
+                $request->has('blood_type') ||
+                $request->has('address') ||
+                $request->has('emergency_contact_name') ||
+                $request->has('emergency_contact_phone')
+            ) {
                 $patient = $user->patient ?: $user->patient()->create([]);
 
                 // Validate unique student_number if provided
@@ -299,6 +314,22 @@ public function login(LoginUserRequest $request): \Illuminate\Http\JsonResponse
                 }
                 if ($request->has('patient_date_of_birth')) {
                     $patient->date_of_birth = $validated['patient_date_of_birth'];
+                }
+                if ($request->has('patient_category')) {
+                    $patient->patient_category = $validated['patient_category'] ?? 'none';
+                }
+                if ($request->has('blood_type')) {
+                    $patient->blood_type = $validated['blood_type'];
+                }
+                if ($request->has('address')) {
+                    $patient->address = $validated['address'];
+                }
+                if ($request->has('emergency_contact_name') || $request->has('emergency_contact_phone')) {
+                    $existingEmergency = is_array($patient->emergency_contact) ? $patient->emergency_contact : [];
+                    $patient->emergency_contact = array_merge($existingEmergency, [
+                        'name' => $validated['emergency_contact_name'] ?? ($existingEmergency['name'] ?? null),
+                        'phone' => $validated['emergency_contact_phone'] ?? ($existingEmergency['phone'] ?? null),
+                    ]);
                 }
 
                 // Prefer phone on user model; keep patient.phone in sync if provided

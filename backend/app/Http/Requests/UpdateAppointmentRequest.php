@@ -24,12 +24,10 @@ class UpdateAppointmentRequest extends FormRequest
             'description' => 'nullable|string|max:1000',
             'start_time' => 'sometimes|date',
             'end_time' => 'sometimes|date|after:start_time',
-            'status' => 'sometimes|in:scheduled,confirmed,in_progress,completed,cancelled,no_show',
             'appointment_type_id' => 'sometimes|exists:appointment_types,id,is_active,1',
             'type' => 'sometimes|string|max:191',
             'location' => 'nullable|string|max:255',
             'notes' => 'nullable|string|max:1000',
-            'cancellation_reason' => 'required_if:status,cancelled|string|max:500',
         ];
     }
 

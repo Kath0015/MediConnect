@@ -5,12 +5,13 @@ import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Textarea } from '../../components/ui/textarea';
 import { Badge } from '../../components/ui/badge';
+import { Popover, PopoverContent, PopoverTrigger } from '../../components/ui/popover';
+import { Calendar as DatePickerCalendar } from '../../components/ui/calendar';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../../components/ui/dialog';
-import { FileBadge, Search, CheckCircle, XCircle, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
-import { getMedCerts, getPendingMedCerts, approveMedCert, rejectMedCert, markMedCertCompleted } from '../../api/ClinicianDashboard';
+import { FileBadge, Search, CheckCircle, XCircle, Loader2, X, CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react';
+import { getMedCerts, approveMedCert, rejectMedCert, markMedCertCompleted } from '../../api/ClinicianDashboard';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
-import api from '../../api/axios';
 import StaffRoleBanner from '../../components/staff/StaffRoleBanner';
 import StaffPageSkeleton from '../../components/staff/StaffPageSkeleton';
 
@@ -20,16 +21,16 @@ export const RequestManagement = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10); // Items per page
-  const [totalPages, setTotalPages] = useState(1);
+  const pageSize = 10;
   const [selectedCert, setSelectedCert] = useState(null);
   const [actionDialog, setActionDialog] = useState({ open: false, type: null });
   const [reason, setReason] = useState('');
   const [pickupDate, setPickupDate] = useState('');
   const [processing, setProcessing] = useState(false);
   const [activeTab, setActiveTab] = useState('pending');
-  const [noShowId, setNoShowId] = useState(null);
   const [completedId, setCompletedId] = useState(null);
+  const [isPickupPickerOpen, setIsPickupPickerOpen] = useState(false);
+  const [pickupCalendarMonth, setPickupCalendarMonth] = useState(new Date());
 
   useEffect(() => {
     loadMedCerts();
@@ -45,10 +46,10 @@ export const RequestManagement = () => {
       // Load ALL medcerts without status filter to get accurate counts
       const response = await getMedCerts({ per_page: 999 });
       const allData = response.data.data || [];
-      
-      setAllMedCerts(allData);
-      setMedCerts(allData);
-      setTotalPages(1); // All data loaded, so only 1 page
+      const visibleData = allData.filter((cert) => cert.status !== 'no-show');
+
+      setAllMedCerts(visibleData);
+      setMedCerts(visibleData);
     } catch (err) {
       console.error('Failed to load medical certificates:', err);
       toast.error('Failed to load medical certificates');
@@ -100,22 +101,6 @@ export const RequestManagement = () => {
     }
   };
 
-  const handleMarkNoShow = async (certId) => {
-    if (!certId) return;
-
-    try {
-      setNoShowId(certId);
-      await api.post(`/api/med-certs/${certId}/no-show`);
-      toast.success('Certificate marked as no-show');
-      loadMedCerts();
-    } catch (err) {
-      console.error('Failed to mark as no-show:', err);
-      toast.error(err.response?.data?.message || 'Failed to mark as no-show');
-    } finally {
-      setNoShowId(null);
-    }
-  };
-
   const handleMarkCompleted = async (certId) => {
     if (!certId) return;
 
@@ -149,6 +134,37 @@ export const RequestManagement = () => {
     }
   };
 
+  const parseYmdToDate = (value) => {
+    if (!value) return null;
+    const parsed = new Date(`${value}T00:00:00`);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  };
+
+  const formatDateLabel = (value) => {
+    const parsed = parseYmdToDate(value);
+    return parsed ? format(parsed, 'PPP') : 'Select pickup date';
+  };
+
+  const pickerClassNames = {
+    months: 'flex flex-col',
+    month: 'relative flex flex-col gap-0',
+    caption: 'hidden',
+    month_caption: 'hidden',
+    nav: 'hidden',
+    caption_label: 'hidden',
+    month_grid: 'w-full border-collapse',
+    weekdays: 'flex',
+    weekday: 'flex-1 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-600',
+    week: 'mt-1.5 flex w-full',
+    day: 'flex-1 p-0 text-center text-sm',
+    day_button:
+      'h-9 w-full cursor-pointer rounded-full border border-transparent p-0 text-sm font-medium text-slate-700 transition-colors hover:bg-cyan-50 aria-selected:rounded-full aria-selected:border-cyan-400 aria-selected:bg-cyan-500 aria-selected:text-white data-[selected=true]:rounded-full data-[selected=true]:border-cyan-400 data-[selected=true]:bg-cyan-500 data-[selected=true]:text-white',
+    selected: 'rounded-full bg-cyan-500 text-white hover:bg-cyan-600',
+    today: 'rounded-full border border-cyan-200 bg-cyan-100 text-cyan-800',
+    outside: 'text-slate-300',
+    disabled: 'cursor-not-allowed text-slate-300 opacity-60 pointer-events-none',
+  };
+
   const filteredCerts = medCerts.filter(cert => {
     const matchesSearch = 
       cert.patient?.user?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -168,7 +184,7 @@ export const RequestManagement = () => {
     } else if (activeTab === 'no-show') {
       return matchesSearch && cert.status === 'no-show';
     }
-    
+
     return matchesSearch;
   });
 
@@ -183,7 +199,13 @@ export const RequestManagement = () => {
   const startIndex = (currentPage - 1) * pageSize;
   const endIndex = startIndex + pageSize;
   const paginatedCerts = filteredCerts.slice(startIndex, endIndex);
-  const tabTotalPages = Math.ceil(filteredCerts.length / pageSize);
+  const tabTotalPages = Math.max(1, Math.ceil(filteredCerts.length / pageSize));
+
+  useEffect(() => {
+    if (currentPage > tabTotalPages) {
+      setCurrentPage(tabTotalPages);
+    }
+  }, [currentPage, tabTotalPages]);
 
   const renderDataTable = () => {
     if (filteredCerts.length === 0) {
@@ -200,126 +222,184 @@ export const RequestManagement = () => {
     }
 
     return (
-      <Card className="border-[#97E7F5] shadow-sm bg-white">
-        <CardContent className="pt-6">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 border-b border-[#97E7F5]">
-                <tr>
-                  <th className="px-4 py-3 text-left font-semibold text-[#01377D]">Patient</th>
-                  <th className="px-4 py-3 text-left font-semibold text-[#01377D]">Type</th>
-                  <th className="px-4 py-3 text-left font-semibold text-[#01377D]">Period</th>
-                  <th className="px-4 py-3 text-left font-semibold text-[#01377D]">Purpose</th>
-                  {activeTab === 'rejected' && <th className="px-4 py-3 text-left font-semibold text-[#01377D]">Reason</th>}
-                  {activeTab === 'approved' && <th className="px-4 py-3 text-left font-semibold text-[#01377D]">Pickup Date</th>}
-                  <th className="px-4 py-3 text-left font-semibold text-[#01377D]">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#97E7F5]">
-                {paginatedCerts.map((cert) => (
-                  <tr key={cert.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3">
-                      <div>
-                        <p className="font-medium text-[#01377D]">{cert.patient?.user?.name || 'N/A'}</p>
-                        <p className="text-xs text-gray-500">{cert.patient?.user?.email}</p>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-[#01377D]">{cert.type || 'N/A'}</td>
-                    <td className="px-4 py-3 text-[#01377D] text-xs">
-                      {cert.start_date && cert.end_date
-                        ? `${format(new Date(cert.start_date), 'PP')} - ${format(new Date(cert.end_date), 'PP')}`
-                        : 'N/A'}
-                    </td>
-                    <td className="px-4 py-3 text-[#01377D] max-w-xs truncate">{cert.purpose || 'N/A'}</td>
-                    {activeTab === 'rejected' && <td className="px-4 py-3 text-red-600 text-xs">{cert.rejection_reason || 'N/A'}</td>}
-                    {activeTab === 'approved' && <td className="px-4 py-3 text-[#01377D]">{cert.pickup_date ? format(new Date(cert.pickup_date), 'PP') : 'Not set'}</td>}
-                    <td className="px-4 py-3">
-                      <div className="flex gap-2 flex-wrap">
-                        {activeTab === 'pending' && (
-                          <>
-                            <Button
-                              size="sm"
-                              onClick={() => {
-                                setSelectedCert(cert);
-                                setActionDialog({ open: true, type: 'approve' });
-                              }}
-                              className="bg-green-600 hover:bg-green-700 text-white text-xs"
-                            >
-                              Approve
-                            </Button>
-                            <Button
-                              size="sm"
-                              onClick={() => {
-                                setSelectedCert(cert);
-                                setActionDialog({ open: true, type: 'reject' });
-                              }}
-                              className="bg-red-600 hover:bg-red-700 text-white text-xs"
-                            >
-                              Reject
-                            </Button>
-                          </>
-                        )}
-                        {activeTab === 'approved' && (
-                          <>
-                            <Button
-                              size="sm"
-                              onClick={() => handleMarkCompleted(cert.id)}
-                              disabled={completedId === cert.id}
-                              className="bg-blue-600 hover:bg-blue-700 text-white text-xs"
-                            >
-                              {completedId === cert.id ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Completed'}
-                            </Button>
-                            <Button
-                              size="sm"
-                              onClick={() => handleMarkNoShow(cert.id)}
-                              disabled={noShowId === cert.id}
-                              className="bg-orange-600 hover:bg-orange-700 text-white text-xs"
-                            >
-                              {noShowId === cert.id ? <Loader2 className="w-3 h-3 animate-spin" /> : 'No Show'}
-                            </Button>
-                          </>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+      <>
+        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_6px_20px_rgba(15,23,42,0.06)]">
+          <div className="hidden bg-slate-50/80 px-4 py-2 md:grid md:grid-cols-[1.2fr_0.9fr_1fr_1.4fr_120px_120px] md:items-center md:gap-3">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Patient</p>
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Type</p>
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Period</p>
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Details</p>
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 text-center">Status</p>
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 text-right">Actions</p>
           </div>
 
-          {/* Pagination */}
-          {tabTotalPages > 1 && (
-            <div className="flex items-center justify-between mt-6 pt-4 border-t border-[#97E7F5]">
-              <p className="text-sm text-gray-500">
-                Showing {startIndex + 1} to {Math.min(endIndex, filteredCerts.length)} of {filteredCerts.length}
-              </p>
-              <div className="flex gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                  disabled={currentPage === 1}
-                  className="border-[#97E7F5]"
-                >
-                  Previous
-                </Button>
-                <div className="flex items-center gap-2 px-3 py-1 text-sm text-[#01377D]">
-                  Page {currentPage} of {tabTotalPages}
+          {paginatedCerts.map((cert, index) => {
+            const detailText =
+              activeTab === 'rejected'
+                ? cert.rejection_reason || 'No rejection reason provided.'
+                : activeTab === 'approved'
+                ? cert.pickup_date
+                  ? `Pickup: ${format(new Date(cert.pickup_date), 'PP')}`
+                  : 'Pickup date not set.'
+                : cert.purpose || 'No purpose provided.';
+
+            return (
+              <div key={cert.id} className={index === 0 ? '' : 'border-t border-slate-100'}>
+                <div className="hidden items-center gap-3 px-4 py-3 md:grid md:grid-cols-[1.2fr_0.9fr_1fr_1.4fr_120px_120px]">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-[#01377D]">{cert.patient?.user?.name || 'N/A'}</p>
+                    <p className="truncate text-[11px] text-[#009DD1]">{cert.patient?.user?.email || 'No email'}</p>
+                  </div>
+                  <p className="truncate text-xs text-[#5A6F8F]">{cert.type || 'N/A'}</p>
+                  <p className="text-xs text-[#5A6F8F]">
+                    {cert.start_date && cert.end_date
+                      ? `${format(new Date(cert.start_date), 'PP')} - ${format(new Date(cert.end_date), 'PP')}`
+                      : 'N/A'}
+                  </p>
+                  <p className="line-clamp-2 text-xs text-[#5A6F8F]">{detailText}</p>
+                  <div className="flex justify-center">
+                    <Badge variant="outline" className={getStatusBadgeVariant(cert.status)}>
+                      {cert.status}
+                    </Badge>
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    {activeTab === 'pending' && (
+                      <>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setSelectedCert(cert);
+                            setActionDialog({ open: true, type: 'approve' });
+                          }}
+                          className="h-8 w-8 border-green-200 bg-green-50 p-0 text-green-700 hover:bg-green-100"
+                          title="Approve request"
+                        >
+                          <CheckCircle className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setSelectedCert(cert);
+                            setActionDialog({ open: true, type: 'reject' });
+                          }}
+                          className="h-8 w-8 border-red-200 bg-red-50 p-0 text-red-700 hover:bg-red-100"
+                          title="Reject request"
+                        >
+                          <XCircle className="h-4 w-4" />
+                        </Button>
+                      </>
+                    )}
+                    {activeTab === 'approved' && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleMarkCompleted(cert.id)}
+                        disabled={completedId === cert.id}
+                        className="h-8 w-8 border-blue-200 bg-blue-50 p-0 text-blue-700 hover:bg-blue-100"
+                        title="Mark as completed"
+                      >
+                        {completedId === cert.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
+                      </Button>
+                    )}
+                  </div>
                 </div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setCurrentPage(prev => Math.min(tabTotalPages, prev + 1))}
-                  disabled={currentPage === tabTotalPages}
-                  className="border-[#97E7F5]"
-                >
-                  Next
-                </Button>
+
+                <div className="space-y-2 p-3 md:hidden">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="text-sm font-semibold text-[#01377D]">{cert.patient?.user?.name || 'N/A'}</p>
+                      <p className="text-[11px] text-[#009DD1]">{cert.patient?.user?.email || 'No email'}</p>
+                    </div>
+                    <Badge variant="outline" className={getStatusBadgeVariant(cert.status)}>
+                      {cert.status}
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-[#5A6F8F]">{cert.type || 'N/A'}</p>
+                  <p className="text-xs text-[#5A6F8F]">
+                    {cert.start_date && cert.end_date
+                      ? `${format(new Date(cert.start_date), 'PP')} - ${format(new Date(cert.end_date), 'PP')}`
+                      : 'N/A'}
+                  </p>
+                  <p className="text-xs text-[#5A6F8F]">{detailText}</p>
+                  <div className="flex flex-wrap gap-2">
+                    {activeTab === 'pending' && (
+                      <>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setSelectedCert(cert);
+                            setActionDialog({ open: true, type: 'approve' });
+                          }}
+                          className="h-8 w-8 border-green-200 bg-green-50 p-0 text-green-700 hover:bg-green-100"
+                          title="Approve request"
+                        >
+                          <CheckCircle className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setSelectedCert(cert);
+                            setActionDialog({ open: true, type: 'reject' });
+                          }}
+                          className="h-8 w-8 border-red-200 bg-red-50 p-0 text-red-700 hover:bg-red-100"
+                          title="Reject request"
+                        >
+                          <XCircle className="h-4 w-4" />
+                        </Button>
+                      </>
+                    )}
+                    {activeTab === 'approved' && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleMarkCompleted(cert.id)}
+                        disabled={completedId === cert.id}
+                        className="h-8 w-8 border-blue-200 bg-blue-50 p-0 text-blue-700 hover:bg-blue-100"
+                        title="Mark as completed"
+                      >
+                        {completedId === cert.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
+                      </Button>
+                    )}
+                  </div>
+                </div>
               </div>
+            );
+          })}
+        </div>
+
+        <div className="mt-4 flex flex-col gap-3 px-1 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-xs text-slate-500">
+            Showing {filteredCerts.length === 0 ? 0 : startIndex + 1}-{Math.min(endIndex, filteredCerts.length)} of {filteredCerts.length} requests
+          </p>
+          <div className="grid w-full max-w-sm grid-cols-3 items-center gap-2 sm:flex sm:w-auto sm:max-w-none sm:items-center sm:gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+              disabled={currentPage === 1}
+              className="h-8 min-w-[78px] justify-self-start border-slate-200 bg-white text-slate-700 hover:bg-slate-100 disabled:opacity-50"
+            >
+              Back
+            </Button>
+            <div className="min-w-[86px] justify-self-center text-center text-xs text-slate-500">
+              Page {currentPage} of {tabTotalPages}
             </div>
-          )}
-        </CardContent>
-      </Card>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setCurrentPage((prev) => Math.min(tabTotalPages, prev + 1))}
+              disabled={currentPage === tabTotalPages}
+              className="h-8 min-w-[78px] justify-self-end border-slate-200 bg-white text-slate-700 hover:bg-slate-100 disabled:opacity-50"
+            >
+              Next
+            </Button>
+          </div>
+        </div>
+      </>
     );
   };
 
@@ -335,15 +415,9 @@ export const RequestManagement = () => {
         primaryAction={{ label: 'Open Documents', to: '/clinician/documents' }}
       />
 
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-[#01377D]">Medical Certificate Requests</h1>
-          <p className="text-[#009DD1] mt-2">Review and approve medical certificate requests</p>
-        </div>
-        
-        {/* Search Bar */}
-        <div className="relative w-full max-w-xs">
-          <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="relative w-full sm:max-w-md">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           <Input
             type="text"
             placeholder="Search by name, email, type..."
@@ -352,81 +426,122 @@ export const RequestManagement = () => {
               setSearchTerm(e.target.value);
               setCurrentPage(1);
             }}
-            className="pr-10 border-[#97E7F5] focus:border-[#009DD1] focus:ring-[#009DD1]"
+            className="h-11 rounded-xl border-slate-200 bg-white pl-10 pr-10 transition-all duration-200 focus:border-cyan-500 focus:ring-cyan-500"
           />
+          {searchTerm && (
+            <button
+              type="button"
+              onClick={() => {
+                setSearchTerm('');
+                setCurrentPage(1);
+              }}
+              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+              aria-label="Clear search"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
         </div>
+        <p className="text-xs text-slate-500">
+          {filteredCerts.length} result{filteredCerts.length === 1 ? '' : 's'} in this status
+        </p>
       </div>
 
       {/* Status Cards - Clickable */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <button
           onClick={() => { setActiveTab('pending'); setCurrentPage(1); }}
-          className={`flex items-center gap-2 rounded-lg px-4 py-3 transition-all cursor-pointer ${
+          className={`text-left rounded-xl px-4 py-3 transition-all duration-200 shadow-sm hover:-translate-y-0.5 hover:shadow-md ${
             activeTab === 'pending'
-              ? 'bg-yellow-100 border-2 border-yellow-600'
-              : 'bg-yellow-50 border border-yellow-200 hover:border-yellow-400'
+              ? 'border-2 border-amber-500 bg-gradient-to-b from-white to-amber-50/70'
+              : 'border border-amber-200/60 bg-gradient-to-b from-white to-amber-50/40'
           }`}
         >
-          <FileBadge className="w-5 h-5 text-yellow-600" />
-          <div>
-            <p className="text-xs text-yellow-600">Pending</p>
-            <p className="text-lg font-bold text-yellow-800">{pendingCount}</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-amber-700">Pending</p>
+              <p className="mt-1 text-2xl font-semibold text-amber-700">{pendingCount}</p>
+              <p className="text-[11px] text-amber-700/80">Awaiting approval</p>
+            </div>
+            <div className="grid h-9 w-9 place-items-center rounded-lg bg-amber-100 text-amber-700">
+              <FileBadge className="h-4 w-4" />
+            </div>
           </div>
         </button>
         <button
           onClick={() => { setActiveTab('approved'); setCurrentPage(1); }}
-          className={`flex items-center gap-2 rounded-lg px-4 py-3 transition-all cursor-pointer ${
+          className={`text-left rounded-xl px-4 py-3 transition-all duration-200 shadow-sm hover:-translate-y-0.5 hover:shadow-md ${
             activeTab === 'approved'
-              ? 'bg-green-100 border-2 border-green-600'
-              : 'bg-green-50 border border-green-200 hover:border-green-400'
+              ? 'border-2 border-emerald-500 bg-gradient-to-b from-white to-emerald-50/70'
+              : 'border border-emerald-200/60 bg-gradient-to-b from-white to-emerald-50/40'
           }`}
         >
-          <FileBadge className="w-5 h-5 text-green-600" />
-          <div>
-            <p className="text-xs text-green-600">Approved</p>
-            <p className="text-lg font-bold text-green-800">{approvedCount}</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-emerald-700">Approved</p>
+              <p className="mt-1 text-2xl font-semibold text-emerald-700">{approvedCount}</p>
+              <p className="text-[11px] text-emerald-700/80">Ready for release</p>
+            </div>
+            <div className="grid h-9 w-9 place-items-center rounded-lg bg-emerald-100 text-emerald-700">
+              <FileBadge className="h-4 w-4" />
+            </div>
           </div>
         </button>
         <button
           onClick={() => { setActiveTab('rejected'); setCurrentPage(1); }}
-          className={`flex items-center gap-2 rounded-lg px-4 py-3 transition-all cursor-pointer ${
+          className={`text-left rounded-xl px-4 py-3 transition-all duration-200 shadow-sm hover:-translate-y-0.5 hover:shadow-md ${
             activeTab === 'rejected'
-              ? 'bg-red-100 border-2 border-red-600'
-              : 'bg-red-50 border border-red-200 hover:border-red-400'
+              ? 'border-2 border-rose-500 bg-gradient-to-b from-white to-rose-50/70'
+              : 'border border-rose-200/60 bg-gradient-to-b from-white to-rose-50/40'
           }`}
         >
-          <FileBadge className="w-5 h-5 text-red-600" />
-          <div>
-            <p className="text-xs text-red-600">Rejected</p>
-            <p className="text-lg font-bold text-red-800">{rejectedCount}</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-rose-700">Rejected</p>
+              <p className="mt-1 text-2xl font-semibold text-rose-700">{rejectedCount}</p>
+              <p className="text-[11px] text-rose-700/80">Need follow-up</p>
+            </div>
+            <div className="grid h-9 w-9 place-items-center rounded-lg bg-rose-100 text-rose-700">
+              <FileBadge className="h-4 w-4" />
+            </div>
           </div>
         </button>
         <button
           onClick={() => { setActiveTab('completed'); setCurrentPage(1); }}
-          className={`flex items-center gap-2 rounded-lg px-4 py-3 transition-all cursor-pointer ${
+          className={`text-left rounded-xl px-4 py-3 transition-all duration-200 shadow-sm hover:-translate-y-0.5 hover:shadow-md ${
             activeTab === 'completed'
-              ? 'bg-blue-100 border-2 border-blue-600'
-              : 'bg-blue-50 border border-blue-200 hover:border-blue-400'
+              ? 'border-2 border-blue-500 bg-gradient-to-b from-white to-blue-50/70'
+              : 'border border-blue-200/60 bg-gradient-to-b from-white to-blue-50/40'
           }`}
         >
-          <FileBadge className="w-5 h-5 text-blue-600" />
-          <div>
-            <p className="text-xs text-blue-600">Completed</p>
-            <p className="text-lg font-bold text-blue-800">{completedCount}</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-blue-700">Completed</p>
+              <p className="mt-1 text-2xl font-semibold text-blue-700">{completedCount}</p>
+              <p className="text-[11px] text-blue-700/80">Successfully issued</p>
+            </div>
+            <div className="grid h-9 w-9 place-items-center rounded-lg bg-blue-100 text-blue-700">
+              <FileBadge className="h-4 w-4" />
+            </div>
           </div>
         </button>
         <button
           onClick={() => { setActiveTab('no-show'); setCurrentPage(1); }}
-          className={`flex items-center gap-2 rounded-lg px-4 py-3 transition-all cursor-pointer ${
+          className={`text-left rounded-xl px-4 py-3 transition-all duration-200 shadow-sm hover:-translate-y-0.5 hover:shadow-md ${
             activeTab === 'no-show'
-              ? 'bg-gray-200 border-2 border-gray-600'
-              : 'bg-gray-50 border border-gray-200 hover:border-gray-400'
+              ? 'border-2 border-slate-500 bg-gradient-to-b from-white to-slate-50/70'
+              : 'border border-slate-200/80 bg-gradient-to-b from-white to-slate-50/40'
           }`}
         >
-          <FileBadge className="w-5 h-5 text-gray-600" />
-          <div>
-            <p className="text-xs text-gray-600">No Show</p>
-            <p className="text-lg font-bold text-gray-800">{noShowCount}</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-700">No Show</p>
+              <p className="mt-1 text-2xl font-semibold text-slate-700">{noShowCount}</p>
+              <p className="text-[11px] text-slate-700/80">Unclaimed requests</p>
+            </div>
+            <div className="grid h-9 w-9 place-items-center rounded-lg bg-slate-100 text-slate-700">
+              <FileBadge className="h-4 w-4" />
+            </div>
           </div>
         </button>
       </div>
@@ -441,14 +556,15 @@ export const RequestManagement = () => {
           setSelectedCert(null);
           setReason('');
           setPickupDate('');
+          setIsPickupPickerOpen(false);
         }
       }}>
-        <DialogContent className="bg-white">
-          <DialogHeader>
-            <DialogTitle className="text-[#01377D]">
+        <DialogContent className="w-[min(92vw,700px)] max-h-[88vh] overflow-y-auto rounded-2xl border border-cyan-100 bg-white p-0 shadow-[0_24px_65px_rgba(2,32,71,0.28)] [&>button]:hidden">
+          <DialogHeader className="sticky top-0 z-10 rounded-t-2xl border-b border-cyan-100 bg-gradient-to-r from-cyan-50 to-blue-50 px-4 py-3 sm:px-6 sm:py-4">
+            <DialogTitle className="text-xl text-[#01377D]">
               {actionDialog.type === 'approve' ? 'Approve Medical Certificate' : 'Reject Medical Certificate'}
             </DialogTitle>
-            <DialogDescription className="text-gray-600">
+            <DialogDescription className="text-[#4A6A8F]">
               {actionDialog.type === 'approve'
                 ? 'Review and approve this medical certificate request. Set a pickup date if needed.'
                 : 'Please provide a reason for rejecting this medical certificate request.'}
@@ -456,32 +572,83 @@ export const RequestManagement = () => {
           </DialogHeader>
 
           {selectedCert && (
-            <div className="py-4 space-y-4">
-              <p className="text-sm text-gray-700">
-                <span className="font-medium">Patient:</span> {selectedCert.patient?.user?.name}
-              </p>
-              <p className="text-sm text-gray-700">
-                <span className="font-medium">Type:</span> {selectedCert.type}
-              </p>
-              <p className="text-sm text-gray-700">
-                <span className="font-medium">Purpose:</span> {selectedCert.purpose}
-              </p>
-              <p className="text-sm text-gray-700">
-                <span className="font-medium">Period:</span> {selectedCert.start_date && selectedCert.end_date ? `${format(new Date(selectedCert.start_date), 'PP')} - ${format(new Date(selectedCert.end_date), 'PP')}` : 'N/A'}
-              </p>
+            <div className="space-y-4 px-4 py-4 sm:space-y-5 sm:px-6 sm:py-5">
+              <div className="space-y-2 rounded-xl border border-slate-200 bg-slate-50/50 p-3">
+                <p className="text-sm text-gray-700">
+                  <span className="font-medium">Patient:</span> {selectedCert.patient?.user?.name}
+                </p>
+                <p className="text-sm text-gray-700">
+                  <span className="font-medium">Type:</span> {selectedCert.type}
+                </p>
+                <p className="text-sm text-gray-700">
+                  <span className="font-medium">Purpose:</span> {selectedCert.purpose}
+                </p>
+                <p className="text-sm text-gray-700">
+                  <span className="font-medium">Period:</span> {selectedCert.start_date && selectedCert.end_date ? `${format(new Date(selectedCert.start_date), 'PP')} - ${format(new Date(selectedCert.end_date), 'PP')}` : 'N/A'}
+                </p>
+              </div>
 
               {actionDialog.type === 'approve' && (
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-[#01377D] block">
                     Pickup Date *
                   </label>
-                  <Input
-                    type="date"
-                    value={pickupDate}
-                    onChange={(e) => setPickupDate(e.target.value)}
-                    min={new Date().toISOString().split('T')[0]}
-                    className="bg-white border-[#97E7F5] focus:border-[#009DD1] focus:ring-[#009DD1]"
-                  />
+                  <Popover
+                    open={isPickupPickerOpen}
+                    onOpenChange={(open) => {
+                      setIsPickupPickerOpen(open);
+                      if (open) {
+                        setPickupCalendarMonth(parseYmdToDate(pickupDate) || new Date());
+                      }
+                    }}
+                  >
+                    <PopoverTrigger asChild>
+                      <button
+                        type="button"
+                        className="flex h-10 w-full cursor-pointer items-center justify-between rounded-lg border border-slate-200 bg-slate-50/60 px-3 text-left text-sm text-slate-700 hover:bg-white"
+                      >
+                        <span className={pickupDate ? 'text-slate-700' : 'text-slate-400'}>
+                          {formatDateLabel(pickupDate)}
+                        </span>
+                        <CalendarDays className="h-4 w-4 text-slate-500" />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent
+                      align="center"
+                      sideOffset={8}
+                      className="w-[min(92vw,340px)] rounded-2xl border border-cyan-100 bg-white p-0 shadow-[0_22px_54px_rgba(2,32,71,0.2)]"
+                    >
+                      <div className="border-b border-cyan-100 bg-gradient-to-r from-cyan-50 to-sky-50 px-4 py-3">
+                        <p className="text-sm font-semibold text-[#0f2d57]">Select Pickup Date</p>
+                      </div>
+                      <div className="p-3 sm:p-4">
+                        <div className="mb-2 flex items-center justify-between gap-2">
+                          <Button type="button" variant="outline" size="icon" className="h-8 w-8 rounded-lg border-cyan-200 text-cyan-700 hover:bg-cyan-50" onClick={() => setPickupCalendarMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}>
+                            <ChevronLeft className="h-4 w-4" />
+                          </Button>
+                          <p className="text-xs font-semibold text-[#0f2d57]">{format(pickupCalendarMonth, 'MMMM yyyy')}</p>
+                          <Button type="button" variant="outline" size="icon" className="h-8 w-8 rounded-lg border-cyan-200 text-cyan-700 hover:bg-cyan-50" onClick={() => setPickupCalendarMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}>
+                            <ChevronRight className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        <DatePickerCalendar
+                          mode="single"
+                          month={pickupCalendarMonth}
+                          onMonthChange={setPickupCalendarMonth}
+                          selected={parseYmdToDate(pickupDate) || undefined}
+                          onSelect={(date) => {
+                            if (!date) return;
+                            setPickupDate(format(date, 'yyyy-MM-dd'));
+                            setIsPickupPickerOpen(false);
+                          }}
+                          disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+                          className="rounded-xl bg-white p-0"
+                          classNames={pickerClassNames}
+                          initialFocus
+                        />
+                      </div>
+                    </PopoverContent>
+                  </Popover>
                   <p className="text-xs text-gray-500">
                     Set the date when the patient can pick up their certificate from the clinic.
                   </p>
@@ -497,57 +664,57 @@ export const RequestManagement = () => {
                     placeholder="Enter reason for rejection..."
                     value={reason}
                     onChange={(e) => setReason(e.target.value)}
-                    className="bg-white border-[#97E7F5] focus:border-[#009DD1] focus:ring-[#009DD1]"
+                    className="min-h-[100px] rounded-xl border-slate-200 bg-white focus:border-[#009DD1] focus:ring-[#009DD1]"
                     rows={4}
                   />
                 </div>
               )}
-            </div>
-          )}
 
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setActionDialog({ open: false, type: null });
-                setSelectedCert(null);
-                setReason('');
-                setPickupDate('');
-              }}
-              disabled={processing}
-              className="border-[#97E7F5]"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={actionDialog.type === 'approve' ? handleApprove : handleReject}
-              disabled={processing || (actionDialog.type === 'reject' && !reason.trim()) || (actionDialog.type === 'approve' && !pickupDate.trim())}
-              className={actionDialog.type === 'approve'
-                ? 'bg-green-600 hover:bg-green-700 text-white'
-                : 'bg-red-600 hover:bg-red-700 text-white'}
-            >
-              {processing ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Processing...
-                </>
-              ) : (
-                <>
-                  {actionDialog.type === 'approve' ? (
+              <DialogFooter className="gap-2 border-t border-slate-100 bg-slate-50/40 pt-4 sm:justify-end">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setActionDialog({ open: false, type: null });
+                    setSelectedCert(null);
+                    setReason('');
+                    setPickupDate('');
+                  }}
+                  disabled={processing}
+                  className="h-10 w-full rounded-lg border-slate-300 sm:w-auto"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={actionDialog.type === 'approve' ? handleApprove : handleReject}
+                  disabled={processing || (actionDialog.type === 'reject' && !reason.trim()) || (actionDialog.type === 'approve' && !pickupDate.trim())}
+                  className={actionDialog.type === 'approve'
+                    ? 'h-10 w-full rounded-lg bg-green-600 hover:bg-green-700 text-white sm:w-auto'
+                    : 'h-10 w-full rounded-lg bg-red-600 hover:bg-red-700 text-white sm:w-auto'}
+                >
+                  {processing ? (
                     <>
-                      <CheckCircle className="w-4 h-4 mr-2" />
-                      Approve
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Processing...
                     </>
                   ) : (
                     <>
-                      <XCircle className="w-4 h-4 mr-2" />
-                      Reject
+                      {actionDialog.type === 'approve' ? (
+                        <>
+                          <CheckCircle className="w-4 h-4 mr-2" />
+                          Approve
+                        </>
+                      ) : (
+                        <>
+                          <XCircle className="w-4 h-4 mr-2" />
+                          Reject
+                        </>
+                      )}
                     </>
                   )}
-                </>
-              )}
-            </Button>
-          </DialogFooter>
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
