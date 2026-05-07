@@ -29,11 +29,7 @@ class RegisterUserRequest extends FormRequest
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
             'phone' => 'required|string|max:20',
             'date_of_birth' => 'required|date|before:today',
-            
-            // Patient data
-            'student_number' => 'required|string|unique:patients,student_number',
-            'program' => 'required|string|max:255',
-            
+
             // (emergency contact removed from signup; collect later)
         ];
     }
@@ -62,11 +58,6 @@ class RegisterUserRequest extends FormRequest
             'date_of_birth.required' => 'Date of birth is required',
             'date_of_birth.date' => 'Please provide a valid date of birth',
             'date_of_birth.before' => 'Date of birth must be in the past',
-
-            'student_number.required' => 'Student number is required',
-            'student_number.unique' => 'This student number is already registered',
-            'program.required' => 'Program is required',
-            'program.max' => 'Program must not exceed 255 characters',
         ];
     }
 
@@ -83,8 +74,6 @@ class RegisterUserRequest extends FormRequest
             'password' => 'password',
             'phone' => 'phone number',
             'date_of_birth' => 'date of birth',
-            'student_number' => 'student number',
-            'program' => 'program',
         ];
     }
 

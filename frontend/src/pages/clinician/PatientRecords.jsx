@@ -305,10 +305,6 @@ export const PatientRecords = () => {
                   <p className="text-[#01377D] font-medium mt-2">{patient.age ?? computeAge(patient.date_of_birth)}</p>
                 </div>
                 <div className="border-l-4 border-[#009DD1] pl-4">
-                  <p className="text-xs text-gray-500 uppercase font-semibold">Blood Type</p>
-                  <p className="text-[#01377D] font-medium mt-2">{patient.blood_type || 'N/A'}</p>
-                </div>
-                <div className="border-l-4 border-[#009DD1] pl-4">
                   <p className="text-xs text-gray-500 uppercase font-semibold">PWD / Senior Status</p>
                   <p className="text-[#01377D] font-medium mt-2">
                     {patient.pwd_senior_status ||

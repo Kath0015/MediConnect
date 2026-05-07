@@ -39,8 +39,6 @@ class AdminController extends Controller
                         $patientDob = $user->patient->date_of_birth ?? null;
                         $patientObj = [
                             'phone' => $user->patient->phone ?? null,
-                            'program' => $user->patient->program ?? null,
-                            'student_number' => $user->patient->student_number ?? null,
                             'date_of_birth' => $patientDob ? $patientDob->toDateString() : null,
                         ];
                     }
@@ -178,8 +176,6 @@ class AdminController extends Controller
                 $patientDob = $user->patient->date_of_birth ?? null;
                 $patientObj = [
                     'phone' => $user->patient->phone ?? null,
-                    'program' => $user->patient->program ?? null,
-                    'student_number' => $user->patient->student_number ?? null,
                     'date_of_birth' => $patientDob ? $patientDob->toDateString() : null,
                 ];
             }

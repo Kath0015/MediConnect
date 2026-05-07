@@ -14,10 +14,7 @@ class UpdatePatientRequest extends FormRequest
 
     public function rules(): array
     {
-        $patientId = $this->route('patient')->id;
-        
         return [
-            'student_number' => "sometimes|string|unique:patients,student_number,{$patientId}",
             'date_of_birth' => 'sometimes|date|before:today',
             'phone' => 'sometimes|string|max:20',
             'address' => 'sometimes|string|max:500',

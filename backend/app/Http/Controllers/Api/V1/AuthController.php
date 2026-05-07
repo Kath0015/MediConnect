@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Traits\ApiResponses;
 use App\Models\User;
-use App\Models\Patient;
 use App\Http\Requests\LoginUserRequest;
 use App\Http\Requests\RegisterUserRequest;
 use Illuminate\Http\Request;
@@ -14,7 +13,6 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rules;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Auth\Events\Registered;
 
 /**
  * AuthController handles user authentication and profile management
@@ -46,8 +44,6 @@ class AuthController extends Controller
 
             // Create associated patient record with only fields collected on signup
             $user->patient()->create([
-                'student_number' => $validated['student_number'],
-                'program' => $validated['program'] ?? null,
                 'date_of_birth' => $validated['date_of_birth'],
                 'phone' => $validated['phone'],
                 // Ensure address and emergency_contact are provided (use safe defaults)
@@ -77,52 +73,6 @@ class AuthController extends Controller
         return $this->error('Registration failed: ' . $e->getMessage(), 500);
     }
 }
-    // public function register(RegisterUserRequest $request) 
-    // {
-    //     try {
-    //         $validated = $request->validated();
-
-    //         $user = DB::transaction(function () use ($validated) {
-    //             $user = User::create([
-    //                 'name' => $validated['name'],
-    //                 'email' => $validated['email'],
-    //                 'password' => Hash::make($validated['password']),
-    //                 'phone' => $validated['phone'],
-    //                 'date_of_birth' => $validated['date_of_birth'],
-    //                 'address' => $validated['address'],
-    //             ]);
-
-    //             $user->assignRole('patient');
-
-    //             $user->patient()->create([
-    //                 'student_number' => $validated['student_number'],
-    //                 'date_of_birth' => $validated['date_of_birth'],
-    //                 'phone' => $validated['phone'],
-    //                 'address' => $validated['address'],
-    //                 'emergency_contact_name' => $validated['emergency_contact']['name'],
-    //                 'emergency_contact_relationship' => $validated['emergency_contact']['relationship'],
-    //                 'emergency_contact_phone' => $validated['emergency_contact']['phone'],
-    //             ]);
-
-    //             event(new Registered($user));
-
-    //             return $user;
-    //         });
-
-    //         // Login the user after registration
-    //         Auth::login($user);
-
-    //         return $this->ok(
-    //             'Registration successful. Please check your email for verification.',
-    //             [
-    //                 'user' => $user->load(['patient', 'roles'])
-    //             ]
-    //         );
-
-    //     } catch (\Exception $e) {
-    //         return $this->error('Registration failed: ' . $e->getMessage(), 500);
-    //     }
-    // }
 
 public function login(LoginUserRequest $request): \Illuminate\Http\JsonResponse
 {
@@ -253,8 +203,6 @@ public function login(LoginUserRequest $request): \Illuminate\Http\JsonResponse
                 'phone' => 'sometimes|nullable|string|max:20',
                 'date_of_birth' => 'sometimes|nullable|date',
                 // patient fields
-                'student_number' => 'sometimes|nullable|string',
-                'program' => 'sometimes|nullable|string',
                 'patient_date_of_birth' => 'sometimes|nullable|date',
                 'patient_category' => 'sometimes|nullable|in:none,pwd,senior',
                 'blood_type' => 'sometimes|nullable|string|in:A+,A-,B+,B-,AB+,AB-,O+,O-',
@@ -284,8 +232,6 @@ public function login(LoginUserRequest $request): \Illuminate\Http\JsonResponse
             // Update or create patient record
             if (
                 $user->patient ||
-                $request->has('student_number') ||
-                $request->has('program') ||
                 $request->has('patient_date_of_birth') ||
                 $request->has('patient_category') ||
                 $request->has('blood_type') ||
@@ -295,23 +241,6 @@ public function login(LoginUserRequest $request): \Illuminate\Http\JsonResponse
             ) {
                 $patient = $user->patient ?: $user->patient()->create([]);
 
-                // Validate unique student_number if provided
-                if ($request->has('student_number') && $validated['student_number']) {
-                    $exists = \App\Models\Patient::where('student_number', $validated['student_number'])
-                        ->where('id', '!=', $patient->id)
-                        ->exists();
-
-                    if ($exists) {
-                        return $this->error('Student number already in use', 422);
-                    }
-                }
-
-                if ($request->has('student_number')) {
-                    $patient->student_number = $validated['student_number'];
-                }
-                if ($request->has('program')) {
-                    $patient->program = $validated['program'];
-                }
                 if ($request->has('patient_date_of_birth')) {
                     $patient->date_of_birth = $validated['patient_date_of_birth'];
                 }

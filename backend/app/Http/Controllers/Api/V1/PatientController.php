@@ -29,7 +29,6 @@ class PatientController extends Controller {
     public function store(Request $request) {
         $validated = $request->validate([
             'user_id' => 'required|exists:users,id',
-            'student_number' => 'required|string|unique:patients,student_number',
             'date_of_birth' => 'required|date',
             'phone' => 'required|string|max:20',
             'address' => 'required|string|max:500',
@@ -41,7 +40,6 @@ class PatientController extends Controller {
 
     public function update(Request $request, Patient $patient) {
         $validated = $request->validate([
-            'student_number' => 'sometimes|string|unique:patients,student_number,' . $patient->id,
             'phone' => 'sometimes|string|max:20',
             'address' => 'sometimes|string|max:500',
         ]);

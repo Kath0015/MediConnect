@@ -17,7 +17,7 @@ const mockDocuments = [
     file_name: 'cbc-result-march-2026.pdf',
     mime_type: 'application/pdf',
     documentType: { name: 'Lab Result' },
-    patient: { user: { name: 'Sample Patient One' }, student_number: null },
+    patient: { user: { name: 'Sample Patient One' } },
     created_at: '2026-03-01T09:20:00.000Z',
   },
   {
@@ -26,7 +26,7 @@ const mockDocuments = [
     file_name: 'xray-chest.png',
     mime_type: 'image/png',
     documentType: { name: 'Image' },
-    patient: { user: { name: 'Sample Patient Two' }, student_number: null },
+    patient: { user: { name: 'Sample Patient Two' } },
     created_at: '2026-03-03T14:05:00.000Z',
   },
   {
@@ -35,7 +35,7 @@ const mockDocuments = [
     file_name: 'prescription-followup.txt',
     mime_type: 'text/plain',
     documentType: { name: 'Prescription' },
-    patient: { user: { name: 'Sample Patient Three' }, student_number: null },
+    patient: { user: { name: 'Sample Patient Three' } },
     created_at: '2026-03-06T08:50:00.000Z',
   },
 ];

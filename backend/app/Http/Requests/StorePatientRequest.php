@@ -15,7 +15,6 @@ class StorePatientRequest extends FormRequest
     {
         return [
             'user_id' => 'required|exists:users,id',
-            'student_number' => 'required|string|unique:patients,student_number',
             'date_of_birth' => 'required|date|before:today',
             'phone' => 'required|string|max:20',
             'address' => 'required|string|max:500',

@@ -12,9 +12,6 @@ class Patient extends Model
 
     protected $fillable = [
         'user_id',
-        'student_number',
-        'program',
-        'program_end_year',
         'date_of_birth',
         'phone',
         'address',
@@ -32,7 +29,6 @@ class Patient extends Model
         'date_of_birth' => 'date',
         'emergency_contact' => 'array',
         'allergies' => 'array',
-        'program_end_year' => 'integer',
         'is_active' => 'boolean',
     ];
 

@@ -20,6 +20,8 @@ export const Login = () => {
   const displayBrand = branding.brandName;
   const displayShortBrand = branding.brandShortName;
   const displaySystemSubtitle = branding.systemSubtitle;
+  const displayBrandLabel = displayBrand ? `RUR ${displayBrand}` : 'RUR';
+  const displayShortBrandLabel = displayShortBrand ? `RUR ${displayShortBrand}` : 'RUR';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -113,8 +115,8 @@ export const Login = () => {
               ) : (
                 <Activity className="w-8 h-8 text-[#d2ffb6]" />
               )}
-              <span className="hidden sm:inline text-xl font-bold text-white">{displayBrand}</span>
-              <span className="sm:hidden text-sm font-semibold text-white">{displayShortBrand}</span>
+              <span className="hidden sm:inline text-xl font-bold text-white">{displayBrandLabel}</span>
+              <span className="sm:hidden text-sm font-semibold text-white">{displayShortBrandLabel}</span>
             </Link>
 
             {/* Auth Buttons */}
@@ -146,7 +148,7 @@ export const Login = () => {
             ) : (
               <Activity className="w-9 h-9 sm:w-10 sm:h-10 text-[#26B170]" />
             )}
-            <h1 className="text-xl sm:text-2xl font-semibold text-[#01377D]">{displayBrand}</h1>
+            <h1 className="text-xl sm:text-2xl font-semibold text-[#01377D]">{displayBrandLabel}</h1>
           </div>
           <CardTitle className="text-[#01377D] font-semibold">Login</CardTitle>
           <CardDescription className="text-[#009DD1]">Access your {displayBrand} account</CardDescription>
@@ -241,7 +243,7 @@ export const Login = () => {
                 ) : (
                   <Activity className="w-8 h-8 text-[#d2ffb6]" />
                 )}
-                <span className="text-xl font-bold">{displayBrand}</span>
+                <span className="text-xl font-bold">{displayBrandLabel}</span>
               </div>
               <p className="text-[#97E7F5]">
                 {branding.footerDescription}

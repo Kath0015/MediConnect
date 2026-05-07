@@ -17,7 +17,6 @@ export const Profile = () => {
   const [phone, setPhone] = useState('');
   const [dob, setDob] = useState('');
   const [address, setAddress] = useState('');
-  const [bloodType, setBloodType] = useState('');
   const [emergencyContactName, setEmergencyContactName] = useState('');
   const [emergencyContactPhone, setEmergencyContactPhone] = useState('');
   const [patientCategory, setPatientCategory] = useState('none');
@@ -34,7 +33,6 @@ export const Profile = () => {
       setEmail(user.email || '');
       setPhone(user.phone || user.patient?.phone || '');
       setAddress(user.patient?.address || '');
-      setBloodType(user.patient?.blood_type || '');
       setEmergencyContactName(user.patient?.emergency_contact?.name || '');
       setEmergencyContactPhone(user.patient?.emergency_contact?.phone || '');
       setPatientCategory(user.patient?.patient_category || 'none');
@@ -91,7 +89,6 @@ export const Profile = () => {
       if (isPatient) {
         payload.patient_date_of_birth = dob || null;
         payload.patient_category = patientCategory || 'none';
-        payload.blood_type = bloodType || null;
         payload.address = address || null;
         payload.emergency_contact_name = emergencyContactName || null;
         payload.emergency_contact_phone = emergencyContactPhone || null;
@@ -364,22 +361,6 @@ export const Profile = () => {
                               </label>
                             ))}
                           </div>
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor="bloodType" className="flex items-center gap-2 text-[#01377D] font-semibold">
-                            <Activity className="w-4 h-4 text-[#009DD1]" />
-                            Blood Type
-                          </Label>
-                          <Input
-                            id="bloodType"
-                            type="text"
-                            value={bloodType}
-                            onChange={(e) => setBloodType(e.target.value.toUpperCase())}
-                            placeholder="Example: O+, A-, AB+"
-                            disabled={loading}
-                            className={inputClass}
-                          />
                         </div>
 
                         <div className="space-y-2">

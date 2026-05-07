@@ -111,6 +111,7 @@ export const Layout = ({ children }) => {
   const isSidebarCollapsed = sidebarCollapsed;
   const roleLabel = isAdmin ? 'Admin' : isClinician ? 'Clinician' : isPatientLayout ? 'Patient' : 'User';
   const displayBrand = branding.brandName;
+  const displayBrandLabel = displayBrand ? `RUR ${displayBrand}` : 'RUR';
 
   const handlePatientMainScroll = (event) => {
     const currentTop = event.currentTarget.scrollTop;
@@ -193,7 +194,7 @@ export const Layout = ({ children }) => {
               ) : (
                 <Activity className="w-6 h-6 text-[#009DD1]" />
               )}
-              <span className="hidden sm:inline text-base font-semibold text-[#01377D]">{displayBrand}</span>
+              <span className="hidden sm:inline text-base font-semibold text-[#01377D]">{displayBrandLabel}</span>
             </div>
 
             {user && (
@@ -411,7 +412,7 @@ export const Layout = ({ children }) => {
                   isSidebarCollapsed ? 'max-w-0 opacity-0 -translate-x-1' : 'max-w-[220px] opacity-100 translate-x-0'
                 }`}
               >
-                {displayBrand}
+                {displayBrandLabel}
               </span>
             </div>
             <div className="flex items-center gap-1">
@@ -623,7 +624,7 @@ export const Layout = ({ children }) => {
               ) : (
                 <Activity className="w-6 h-6 text-green-600" />
               )}
-              <span className="text-lg font-semibold text-gray-900">{displayBrand}</span>
+              <span className="text-lg font-semibold text-gray-900">{displayBrandLabel}</span>
             </div>
 
             {/* Mobile User Actions */}

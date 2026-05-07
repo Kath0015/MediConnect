@@ -618,14 +618,6 @@ export const ManageUsers = () => {
                 <div className="text-[#01377D]">{viewUser?.phone || viewUser?.patient?.phone || '-'}</div>
               </div>
               <div>
-                <Label className="text-sm text-[#01377D]">Program</Label>
-                <div className="text-[#01377D]">{viewUser?.patient?.program || '-'}</div>
-              </div>
-              <div>
-                <Label className="text-sm text-[#01377D]">Student Number</Label>
-                <div className="text-[#01377D]">{viewUser?.patient?.student_number || '-'}</div>
-              </div>
-              <div>
                 <Label className="text-sm text-[#01377D]">Date of Birth</Label>
                 <div className="text-[#01377D]">{viewUser?.patient?.date_of_birth ? new Date(viewUser.patient.date_of_birth).toLocaleDateString() : '-'}</div>
               </div>

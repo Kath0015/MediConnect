@@ -22,6 +22,7 @@ import {
   X,
 } from 'lucide-react';
 import { useBranding } from '../contexts/BrandingContext';
+import { MEDIBOT_FALLBACK, MEDIBOT_KNOWLEDGE_BASE } from '../data/medibotKnowledgeBase';
 
 const navItems = [
   { id: 'home', label: 'Home' },
@@ -73,31 +74,86 @@ const serviceCards = [
 
 const chatbotFeatures = [
   {
-    id: 'questions',
-    title: 'Common questions',
-    description: 'Clinic hours, what to bring, and basic requirements.',
-    icon: MessageCircle,
+    id: 'appointments',
+    title: 'Appointments and consultations',
+    description: 'Booking help and online consult guidance.',
+    icon: Calendar,
   },
   {
-    id: 'lab-prep',
-    title: 'Lab prep guidance',
-    description: 'Fasting, urine, stool, and imaging prep tips.',
+    id: 'medicines',
+    title: 'Medicines and delivery',
+    description: 'Availability checks and delivery timelines.',
     icon: FlaskConical,
   },
   {
-    id: 'booking',
-    title: 'Appointment support',
-    description: 'Pick a department, choose a time, and get reminders.',
-    icon: Calendar,
+    id: 'accounts',
+    title: 'Payments and account help',
+    description: 'GCash, password reset, and support access.',
+    icon: MessageCircle,
   },
 ];
 
 const chatbotQuickPrompts = [
-  { id: 'fasting', label: 'Fasting blood test prep', value: 'How do I prepare for a fasting blood test?' },
-  { id: 'cbc', label: 'CBC preparation', value: 'Do I need to fast for a CBC?' },
-  { id: 'book', label: 'Book an appointment', value: 'I want to book an appointment.' },
-  { id: 'hours', label: 'Clinic hours', value: 'What are your clinic hours?' },
+  { id: 'book', label: 'Book appointment', value: 'How can I book an appointment?' },
+  { id: 'medicine', label: 'Medicine availability', value: 'Is paracetamol available?' },
+  { id: 'consult', label: 'Online consultation', value: 'Do you offer online consultation?' },
+  { id: 'delivery', label: 'Delivery time', value: 'How long is the delivery?' },
+  { id: 'payment', label: 'Payment methods', value: 'Do you accept GCash?' },
+  { id: 'password', label: 'Forgot password', value: 'I forgot my password.' },
 ];
+
+const medibotTopics = ['Appointments', 'Medicines', 'Consultations', 'Delivery', 'Payments', 'Account help'];
+
+const FALLBACK_SUGGESTIONS = [
+  'How can I book an appointment?',
+  'Do you accept GCash?',
+  'I forgot my password.',
+];
+
+const EMERGENCY_PATTERN = /chest pain|shortness of breath|difficulty breathing|severe bleeding|stroke|fainting/;
+
+const normalizeForMatch = (value) =>
+  value
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const keywordMatches = (normalizedMessage, keyword) => {
+  const normalizedKeyword = normalizeForMatch(keyword);
+  if (!normalizedKeyword) return false;
+  if (normalizedKeyword.includes(' ')) {
+    return normalizedMessage.includes(normalizedKeyword);
+  }
+  const matcher = new RegExp(`\\b${escapeRegExp(normalizedKeyword)}\\b`, 'i');
+  return matcher.test(normalizedMessage);
+};
+
+const scoreIntent = (intent, normalizedMessage) => {
+  if (!intent?.keywords?.length) return 0;
+  return intent.keywords.reduce((score, keyword) => {
+    if (!keywordMatches(normalizedMessage, keyword)) return score;
+    const normalizedKeyword = normalizeForMatch(keyword);
+    return score + (normalizedKeyword.includes(' ') ? 2 : 1);
+  }, 0);
+};
+
+const findBestIntent = (normalizedMessage, knowledgeBase) => {
+  let bestIntent = null;
+  let bestScore = 0;
+
+  knowledgeBase.forEach((intent) => {
+    const score = scoreIntent(intent, normalizedMessage);
+    if (score > bestScore || (score === bestScore && (intent.priority || 0) > (bestIntent?.priority || 0))) {
+      bestScore = score;
+      bestIntent = intent;
+    }
+  });
+
+  return bestIntent;
+};
 
 const symptomFeatures = [
   {
@@ -140,16 +196,17 @@ const Home = () => {
     {
       id: 'assistant-intro',
       role: 'assistant',
-      text: 'Hi, I am MediBot, your 24/7 medical assistant. Ask me about appointments, lab prep, or common questions.',
+      text: 'Hi, I am MediBot, your MediConnect assistant. Ask me about appointments, medicines, consultations, delivery, payments, or account support.',
     },
     {
       id: 'assistant-hint',
       role: 'assistant',
-      text: 'Try: "fasting blood test", "clinic hours", or "book appointment".',
+      text: 'Try: "Do you accept GCash?", "How long is delivery?", or "I forgot my password."',
     },
   ]);
   const [chatInput, setChatInput] = useState('');
   const [chatIsTyping, setChatIsTyping] = useState(false);
+  const [smartSuggestions, setSmartSuggestions] = useState([]);
   const chatEndRef = useRef(null);
 
   useEffect(() => {
@@ -183,6 +240,8 @@ const Home = () => {
   const focusedService = serviceCards.find((item) => item.id === selectedService) || serviceCards[0];
   const displayBrand = branding.brandName;
   const displayShortBrand = branding.brandShortName;
+  const displayBrandLabel = displayBrand ? `RUR ${displayBrand}` : 'RUR';
+  const displayShortBrandLabel = displayShortBrand ? `RUR ${displayShortBrand}` : 'RUR';
   const displaySystemTitle = branding.systemTitle;
   const displaySystemSubtitle = branding.systemSubtitle;
   const assistantName = displayShortBrand ? `${displayShortBrand} MediBot` : 'MediBot';
@@ -200,71 +259,32 @@ const Home = () => {
   });
 
   const getBotResponse = (message) => {
-    const text = message.toLowerCase();
+    const normalized = normalizeForMatch(message);
 
-    if (/chest pain|shortness of breath|difficulty breathing|severe bleeding|stroke|fainting/.test(text)) {
-      return 'If you are experiencing severe symptoms, call emergency services or go to the nearest ER right away.';
+    if (EMERGENCY_PATTERN.test(normalized)) {
+      return {
+        reply: 'If you are experiencing severe symptoms, call emergency services or go to the nearest ER right away.',
+        suggestions: ['Contact support', 'Clinic hours'],
+      };
     }
 
-    if (/appointment|book|schedule|reschedule|cancel/.test(text)) {
-      return 'I can help start your appointment. Share the department, preferred date and time, and whether this is a new or follow-up visit. You can log in to finish booking.';
+    const intent = findBestIntent(normalized, MEDIBOT_KNOWLEDGE_BASE);
+    if (intent) {
+      if (intent.id === 'contact-support') {
+        const phone = branding.contactPhone?.trim();
+        const email = branding.contactEmail?.trim();
+        const lines = [];
+        if (phone) lines.push(`Phone: ${phone}`);
+        if (email) lines.push(`Email: ${email}`);
+        if (lines.length) {
+          return { reply: `You can reach us at:\n${lines.join('\n')}`, suggestions: intent.suggestions || [] };
+        }
+      }
+
+      return { reply: intent.response, suggestions: intent.suggestions || [] };
     }
 
-    if (/fasting|fast|lipid|cholesterol|glucose|blood sugar|fbs/.test(text)) {
-      return 'For fasting blood tests (lipid panel, fasting glucose):\n- Avoid food for 8 to 12 hours\n- Water is ok\n- Avoid alcohol for 24 hours\n- Take meds unless your clinician said otherwise\nIf you are diabetic or pregnant, confirm the plan with your clinician.';
-    }
-
-    if (/cbc|complete blood count/.test(text)) {
-      return 'CBC tests usually do not require fasting. You can eat and drink normally unless your clinician advised otherwise.';
-    }
-
-    if (/urinalysis|urine/.test(text)) {
-      return 'For urinalysis:\n- Use a clean, midstream sample\n- Avoid heavy exercise for 24 hours before\n- Tell us if you are on antibiotics or menstruating\nFollow any kit instructions provided.';
-    }
-
-    if (/stool|fecal/.test(text)) {
-      return 'For stool tests:\n- Use the sterile container\n- Avoid bismuth or antibiotics unless instructed\n- Keep the sample cool if dropping off later\nLet us know about recent travel or new medications.';
-    }
-
-    if (/thyroid|tsh/.test(text)) {
-      return 'Thyroid labs usually do not require fasting. If you take thyroid medication, take it after the blood draw unless told otherwise.';
-    }
-
-    if (/pregnancy|hcg/.test(text)) {
-      return 'Pregnancy testing does not require fasting. In clinic, any time is ok. For home tests, first morning urine is usually best.';
-    }
-
-    if (/x-ray|xray|ultrasound|imaging/.test(text)) {
-      return 'Imaging prep depends on the study. Wear comfortable clothing and avoid jewelry. Tell me the study name and I will check the prep steps.';
-    }
-
-    if (/clinic hours|opening hours|open|closing|close|hours/.test(text)) {
-      return 'Clinic hours are Mon-Fri 8AM-5PM and Sat 9AM-12PM.';
-    }
-
-    if (/bring|documents|requirements|what should i bring|what to bring/.test(text)) {
-      return 'Bring a valid ID, your appointment confirmation, a list of medications, and any prior records. If insured, bring your card.';
-    }
-
-    if (/contact|phone|email|call/.test(text)) {
-      const phone = branding.contactPhone?.trim();
-      const email = branding.contactEmail?.trim();
-      const lines = [];
-      if (phone) lines.push(`Phone: ${phone}`);
-      if (email) lines.push(`Email: ${email}`);
-      if (lines.length) return `You can reach us at:\n${lines.join('\n')}`;
-      return 'Please contact the front desk for assistance.';
-    }
-
-    if (/result|results|report|lab result/.test(text)) {
-      return 'Lab results usually appear in the patient portal within 1 to 2 business days. If you have not received results, contact the front desk.';
-    }
-
-    if (/insurance|billing|payment|cost|fee|price/.test(text)) {
-      return 'Coverage and fees depend on your plan and services. I can connect you to billing or you can call the front desk.';
-    }
-
-    return 'I can help with appointment booking, lab prep, and common questions. Try: "fasting blood test", "book appointment", or "clinic hours".';
+    return { reply: MEDIBOT_FALLBACK, suggestions: FALLBACK_SUGGESTIONS };
   };
 
   const sendChatMessage = (message) => {
@@ -273,7 +293,8 @@ const Home = () => {
     setChatInput('');
     setChatMessages((prev) => [...prev, createChatMessage('user', trimmed)]);
     setChatIsTyping(true);
-    const reply = getBotResponse(trimmed);
+    const { reply, suggestions } = getBotResponse(trimmed);
+    setSmartSuggestions(suggestions || []);
     window.setTimeout(() => {
       setChatMessages((prev) => [...prev, createChatMessage('assistant', reply)]);
       setChatIsTyping(false);
@@ -289,6 +310,10 @@ const Home = () => {
     sendChatMessage(promptValue);
   };
 
+  const promptChips = smartSuggestions.length
+    ? smartSuggestions.map((value, index) => ({ id: `smart-${index}`, label: value, value }))
+    : chatbotQuickPrompts;
+
   return (
     <div className="min-h-screen bg-white">
       <header className="fixed top-0 left-0 right-0 bg-[#01377D] shadow-md z-50">
@@ -300,8 +325,8 @@ const Home = () => {
               ) : (
                 <Activity className="w-8 h-8 text-[#d2ffb6]" />
               )}
-              <span className="hidden sm:inline text-xl font-bold text-white">{displayBrand}</span>
-              <span className="sm:hidden text-sm font-semibold text-white">{displayShortBrand}</span>
+              <span className="hidden sm:inline text-xl font-bold text-white">{displayBrandLabel}</span>
+              <span className="sm:hidden text-sm font-semibold text-white">{displayShortBrandLabel}</span>
             </button>
             <nav className="hidden md:flex items-center gap-8">
               {navItems.map(({ id, label }) => (
@@ -476,11 +501,24 @@ const Home = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 chatbot-body">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
             <div className="chatbot-fade-up">
-              <p className="chatbot-kicker">24/7 AI Medical Chatbot</p>
-              <h2 className="chatbot-heading text-4xl sm:text-5xl mb-4">Meet {assistantName}</h2>
-              <p className="text-lg text-[#35507A] max-w-xl">
-                Get instant answers to common questions, step-by-step lab prep guidance, and a quick path to booking appointments.
+              <p className="chatbot-kicker">MediConnect AI Assistant</p>
+              <div className="flex flex-wrap items-center gap-3">
+                <h2 className="chatbot-heading text-4xl sm:text-5xl">Meet {assistantName}</h2>
+                <span className="chatbot-pill">Always on</span>
+              </div>
+              <p className="mt-4 text-lg text-[#35507A] max-w-xl">
+                Get fast answers for MediConnect services with smart suggestions, clear next steps, and friendly support.
               </p>
+              <div className="mt-6">
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#0f3d73]">MediConnect focus</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {medibotTopics.map((topic) => (
+                    <span key={topic} className="chatbot-topic-chip">
+                      {topic}
+                    </span>
+                  ))}
+                </div>
+              </div>
               <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {chatbotFeatures.map((feature, index) => {
                   const Icon = feature.icon;
@@ -495,19 +533,46 @@ const Home = () => {
                   );
                 })}
               </div>
+              <div className="mt-6 chatbot-guardrail">
+                <div className="chatbot-guardrail-icon">
+                  <Shield className="w-4 h-4" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-[#01377D]">MediConnect-only answers</p>
+                  <p className="text-sm text-[#35507A]">{MEDIBOT_FALLBACK}</p>
+                </div>
+              </div>
               <div className="mt-8 chatbot-appointment-card">
-                <h3 className="text-lg font-semibold text-[#01377D] mb-3">Appointment help in three steps</h3>
-                <ol className="space-y-2 text-sm text-[#35507A]">
-                  <li>1. Share the clinic or service you need.</li>
-                  <li>2. Choose a preferred date and time.</li>
-                  <li>3. Confirm your details and contact info.</li>
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <h3 className="text-lg font-semibold text-[#01377D]">Smart support flow</h3>
+                    <p className="text-sm text-[#35507A]">
+                      Keyword recognition routes questions to the FAQ database, and admins can keep responses up to date.
+                    </p>
+                  </div>
+                  <span className="chatbot-pill chatbot-pill-accent">Auto reply</span>
+                </div>
+                <ol className="mt-4 space-y-2 text-sm text-[#35507A]">
+                  <li className="flex items-start gap-2"><span className="chatbot-step">1</span>Ask a MediConnect question.</li>
+                  <li className="flex items-start gap-2"><span className="chatbot-step">2</span>Get a clear answer with next steps.</li>
+                  <li className="flex items-start gap-2"><span className="chatbot-step">3</span>Use quick actions to book or reach support.</li>
                 </ol>
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  <div className="chatbot-mini-card">
+                    <p className="chatbot-mini-kicker">Smart suggestions</p>
+                    <p className="text-sm text-[#35507A]">Follow-up options appear based on each answer.</p>
+                  </div>
+                  <div className="chatbot-mini-card">
+                    <p className="chatbot-mini-kicker">Chat history</p>
+                    <p className="text-sm text-[#35507A]">Conversations stay visible for quick reference.</p>
+                  </div>
+                </div>
                 <div className="mt-4 flex flex-col sm:flex-row gap-3">
                   <Link
                     to="/auth/login"
                     className="bg-[#26B170] text-white px-5 py-3 rounded-lg font-semibold hover:bg-[#7ED348] transition-all duration-300 text-center"
                   >
-                    Book appointment
+                    Chat with MediBot
                   </Link>
                   <button
                     onClick={() => scrollToSection('access')}
@@ -553,7 +618,7 @@ const Home = () => {
                 <div ref={chatEndRef} />
               </div>
               <div className="mt-4 flex flex-wrap gap-2">
-                {chatbotQuickPrompts.map((prompt) => (
+                {promptChips.map((prompt) => (
                   <button key={prompt.id} type="button" className="chatbot-chip" onClick={() => handleQuickPrompt(prompt.value)}>
                     {prompt.label}
                   </button>
@@ -564,7 +629,7 @@ const Home = () => {
                   type="text"
                   value={chatInput}
                   onChange={(event) => setChatInput(event.target.value)}
-                  placeholder="Ask about lab prep, appointments, or clinic info..."
+                  placeholder="Ask about appointments, medicines, delivery, payments, or account support..."
                   className="flex-1 rounded-lg border border-[#D8EBFA] bg-white px-4 py-3 text-sm text-[#01377D] focus:border-[#009DD1] focus:outline-none focus:ring-2 focus:ring-[#97E7F5]"
                   aria-label="Chat message"
                 />
@@ -707,7 +772,7 @@ const Home = () => {
                 ) : (
                   <Activity className="w-8 h-8 text-[#7ED348]" />
                 )}
-                <span className="text-xl font-bold">{displayBrand}</span>
+                <span className="text-xl font-bold">{displayBrandLabel}</span>
               </div>
               <p className="text-[#97E7F5]">{branding.footerDescription}</p>
             </div>

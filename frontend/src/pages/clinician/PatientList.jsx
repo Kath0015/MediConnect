@@ -235,10 +235,6 @@ export const PatientList = () => {
                                     </p>
                                   </div>
                                   <div>
-                                    <p className="text-xs text-gray-500 uppercase font-semibold">Blood Type</p>
-                                    <p className="text-[#01377D] mt-1">{selectedPatient.blood_type || 'N/A'}</p>
-                                  </div>
-                                  <div>
                                     <p className="text-xs text-gray-500 uppercase font-semibold">PWD / Senior Status</p>
                                     <p className="text-[#01377D] mt-1">
                                       {selectedPatient.pwd_senior_status ||
@@ -389,10 +385,6 @@ export const PatientList = () => {
                                               )
                                             : 'N/A')}
                                         </p>
-                                      </div>
-                                      <div>
-                                        <p className="text-xs text-gray-500 uppercase font-semibold">Blood Type</p>
-                                        <p className="text-[#01377D] mt-1">{selectedPatient.blood_type || 'N/A'}</p>
                                       </div>
                                       <div>
                                         <p className="text-xs text-gray-500 uppercase font-semibold">PWD / Senior Status</p>

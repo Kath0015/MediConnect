@@ -46,7 +46,6 @@ class TestAccountsSeeder extends Seeder
         if (!$patientUser->patient) {
             Patient::create([
                 'user_id' => $patientUser->id,
-                'student_number' => 'TEST-STU-'.str_pad($patientUser->id, 4, '0', STR_PAD_LEFT),
                 'date_of_birth' => now()->subYears(20)->toDateString(),
                 'phone' => '09171234567',
                 'address' => 'Sample Address',
@@ -69,7 +68,6 @@ class TestAccountsSeeder extends Seeder
         if (!$deactivatedUser->patient) {
             Patient::create([
                 'user_id' => $deactivatedUser->id,
-                'student_number' => 'DEACTIVATED-001',
                 'date_of_birth' => now()->subYears(25)->toDateString(),
                 'phone' => '09170000000',
                 'address' => 'Deactivated User Address',

@@ -8,7 +8,7 @@ import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
 import { useAuth } from '../../contexts/AuthContext';
 import { fetchPatientDashboardOverview } from '../../api/PatientPortal';
-import { Calendar, FileText, FileCheck, Clock, ArrowRight, MessageCircle, Activity } from 'lucide-react';
+import { Calendar, FileText, FileCheck, Clock, ArrowRight, MessageCircle } from 'lucide-react';
 import PatientRoleBanner from '../../components/patient/PatientRoleBanner';
 import PatientPageSkeleton from '../../components/patient/PatientPageSkeleton';
 
@@ -241,11 +241,6 @@ export const PatientDashboard = () => {
             : 'Welcome to your patient dashboard'
         }
         subtitle="Track appointments, certificates, and documents with quick access tools."
-        floatingAction={{
-          to: '/patient/symptom-checker',
-          label: 'AI Symptom Checker',
-          icon: Activity,
-        }}
       />
 
       {loadError && (
