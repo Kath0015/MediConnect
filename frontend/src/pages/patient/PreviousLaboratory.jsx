@@ -120,6 +120,10 @@ const PreviousLaboratory = () => {
   }, [currentPage, totalPages]);
 
   const handleDownload = async (doc) => {
+    if (String(doc.id).startsWith('mock-')) {
+      toast.success(`Downloaded copy of ${doc.name || 'Laboratory Report'}`);
+      return;
+    }
     try {
       setDownloadingId(doc.id);
       const response = await downloadDocument(doc.id);
@@ -132,6 +136,7 @@ const PreviousLaboratory = () => {
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
+      toast.success(`Downloaded ${doc.name || 'Laboratory Document'}`);
     } catch (error) {
       console.error('Failed to download laboratory file:', error);
       toast.error('Unable to download laboratory file');
@@ -212,7 +217,7 @@ const PreviousLaboratory = () => {
       {!patientId && (
         <Card className="border-amber-200 bg-amber-50 shadow-sm">
           <CardContent className="py-4 text-sm text-amber-900">
-            Wala pang linked patient record sa account mo. Paki-contact ang clinic para ma-link ang profile mo.
+            No linked patient record on your account yet. Please contact the clinic to link your profile.
           </CardContent>
         </Card>
       )}

@@ -215,6 +215,10 @@ export const Records = () => {
   }, [visitsPage, visitsTotalPages]);
 
   const handleDownload = async (doc) => {
+    if (String(doc.id).startsWith('mock-')) {
+      toast.success(`Downloaded copy of ${doc.name || 'Medical Document'}`);
+      return;
+    }
     try {
       setDownloadingId(doc.id);
       const response = await downloadDocument(doc.id);
@@ -227,6 +231,7 @@ export const Records = () => {
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
+      toast.success(`Downloaded ${doc.name || 'Medical Document'}`);
     } catch (error) {
       console.error('Failed to download document', error);
       toast.error('Unable to download document');
@@ -296,7 +301,7 @@ export const Records = () => {
       {!patientId && (
         <Card className={cardClass}>
           <CardContent className="py-4 text-sm text-amber-700">
-            Wala pang linked patient record sa account mo, kaya limited ang records na makikita.
+            No linked patient record on your account yet, so the visible records are limited.
           </CardContent>
         </Card>
       )}

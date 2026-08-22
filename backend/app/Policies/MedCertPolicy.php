@@ -31,6 +31,30 @@ class MedCertPolicy
     }
 
     /**
+     * Determine if the user can download the medcert PDF.
+     */
+    public function downloadPdf(User $user, MedCert $medCert)
+    {
+        if ($user->isAdmin() || $user->isClinician()) {
+            return true;
+        }
+
+        if ($user->isPatient() && $medCert->patient?->user_id === $user->id) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Determine if the user can upload a medcert PDF.
+     */
+    public function uploadPdf(User $user, MedCert $medCert)
+    {
+        return $user->isAdmin();
+    }
+
+    /**
      * Determine if the user can approve a medcert.
      */
     public function approve(User $user, MedCert $medCert)

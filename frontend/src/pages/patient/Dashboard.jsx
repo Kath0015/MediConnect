@@ -8,7 +8,7 @@ import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
 import { useAuth } from '../../contexts/AuthContext';
 import { fetchPatientDashboardOverview } from '../../api/PatientPortal';
-import { Calendar, FileText, FileCheck, Clock, ArrowRight, MessageCircle } from 'lucide-react';
+import { Activity, Calendar, FileText, FileCheck, Clock, ArrowRight, MessageCircle } from 'lucide-react';
 import PatientRoleBanner from '../../components/patient/PatientRoleBanner';
 import PatientPageSkeleton from '../../components/patient/PatientPageSkeleton';
 

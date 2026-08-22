@@ -1101,13 +1101,7 @@ export const Settings = () => {
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              {smtpEmail ? (
-                <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-4">
-                  <div className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Configured Account</div>
-                  <div className="mt-1 text-sm font-medium text-[#01377D]">{smtpEmail}</div>
-                  <div className="mt-1 text-xs text-[#01377D]">{smtpHost}:{smtpPort} • {smtpEncryption?.toUpperCase()}</div>
-                </div>
-              ) : (
+              {!smtpEmail && (
                 <div className="space-y-3">
                   <div className="rounded-xl border border-slate-200 bg-[#f8fafc] p-4">
                     <div className="text-sm text-[#01377D]">No SMTP account configured. Click Add to configure.</div>

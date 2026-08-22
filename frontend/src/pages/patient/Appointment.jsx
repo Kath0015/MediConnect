@@ -1192,11 +1192,11 @@ export const Appointment = () => {
                               <div className="mt-2 space-y-2 text-xs text-[#4A6A8F]">
                                 <div className="flex items-center gap-2">
                                   <span className="h-3 w-3 rounded-full border border-amber-300 bg-amber-200" />
-                                  May appointment
+                                  With appointment
                                 </div>
                                 <div className="flex items-center gap-2">
                                   <span className="h-3 w-3 rounded-full border border-rose-300 bg-rose-200" />
-                                  Puno na
+                                  Fully booked
                                 </div>
                               </div>
                             </div>

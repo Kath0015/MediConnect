@@ -21,7 +21,6 @@ import {
   ClipboardList,
   UserCircle,
   LogOut,
-  Home,
   Activity,
   Upload,
   FileCheck,
@@ -36,10 +35,23 @@ import {
   ChevronRight,
   ChevronUp,
   MessageCircle,
+  Stethoscope,
+  HeartPulse,
+  FlaskConical,
+  CreditCard,
+  BarChart3,
+  ClipboardCheck,
+  UserCog,
+  HelpCircle,
+  ScrollText,
+  Pill,
+  UserCheck,
+  Syringe,
+  BookOpen,
 } from 'lucide-react';
 
 export const Layout = ({ children }) => {
-  const { user, logout, loading, isAdmin, isClinician, isPatient } = useAuth();
+  const { user, logout, loading, isAdmin, isClinician, isPatient, isDoctor } = useAuth();
   const { branding } = useBranding();
   const navigate = useNavigate();
   const location = useLocation();
@@ -53,20 +65,22 @@ export const Layout = ({ children }) => {
   const patientMainRef = useRef(null);
   const isPatientRoute = location.pathname.startsWith('/patient');
   const isClinicianRoute = location.pathname.startsWith('/clinician') || location.pathname.startsWith('/staff');
+  const isDoctorRoute = location.pathname.startsWith('/doctor');
   const isPatientUser = isPatient || user?.role === 'patient';
   const isClinicianUser = isClinician || user?.role === 'clinician';
+  const isDoctorUser = isDoctor || user?.role === 'doctor';
   const isPatientLayout = isPatientUser || isPatientRoute;
   const isClinicianLayout = isClinicianUser || isClinicianRoute;
+  const isDoctorLayout = isDoctorUser || isDoctorRoute;
   const isTopNavigationLayout = false;
 
   const handleLogout = async () => {
-    // Open modal confirmation instead of toast
     setLogoutDialogOpen(true);
   };
 
   const handleProfileClick = () => {
     navigate('/auth/profile');
-    setSidebarOpen(false); // Close sidebar on mobile after navigation
+    setSidebarOpen(false);
   };
 
   const getNavItems = () => {
@@ -76,31 +90,64 @@ export const Layout = ({ children }) => {
       return [
         { path: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
         { path: '/admin/appointments', label: 'Appointments', icon: Calendar },
-        { path: '/admin/medcerts', label: 'MedCerts', icon: FileBadge },
-        { path: '/admin/manage-users', label: 'Manage Users', icon: Users },
-        { path: '/admin/audit-logs', label: 'Audit Logs', icon: Shield },
-        { path: '/admin/reports', label: 'Reports', icon: FileText },
-        { path: '/admin/settings', label: 'Settings', icon: Settings },
+        { path: '/admin/patients', label: 'Patients', icon: Users },
+        { path: '/admin/doctors', label: 'Doctors', icon: Stethoscope },
+        { path: '/admin/clinicians', label: 'Clinicians', icon: HeartPulse },
+        { path: '/admin/medical-records', label: 'Medical Records', icon: FileText },
+        { path: '/admin/laboratory', label: 'Laboratory', icon: FlaskConical },
+        { path: '/admin/prescriptions', label: 'Prescriptions', icon: Pill },
+        { path: '/admin/medcerts', label: 'Medical Certificates', icon: FileBadge },
+        { path: '/admin/billing', label: 'Billing & Payments', icon: CreditCard },
+        { path: '/admin/reports', label: 'Reports', icon: BarChart3 },
+        { path: '/admin/notifications', label: 'Notifications', icon: Bell },
+        { path: '/admin/messages', label: 'Messages', icon: MessageCircle },
+        { path: '/admin/manage-users', label: 'User Management', icon: UserCog },
+        { path: '/admin/settings', label: 'System Settings', icon: Settings },
+        { path: '/admin/audit-logs', label: 'Audit Logs', icon: ScrollText },
+        { path: '/admin/help', label: 'Help & Support', icon: HelpCircle },
+      ];
+    } else if (isDoctorLayout) {
+      return [
+        { path: '/doctor/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+        { path: '/doctor/appointments', label: 'My Appointments', icon: Calendar },
+        { path: '/doctor/patients', label: 'My Patients', icon: Users },
+        { path: '/doctor/medical-records', label: 'Medical Records', icon: FileText },
+        { path: '/doctor/laboratory', label: 'Laboratory Requests', icon: FlaskConical },
+        { path: '/doctor/prescriptions', label: 'Prescriptions', icon: Pill },
+        { path: '/doctor/medcerts', label: 'Medical Certificates', icon: FileBadge },
+        { path: '/doctor/notifications', label: 'Notifications', icon: Bell },
+        { path: '/doctor/messages', label: 'Messages', icon: MessageCircle },
+        { path: '/auth/profile', label: 'My Profile', icon: UserCircle },
+        { path: '/doctor/settings', label: 'Settings', icon: Settings },
+        { path: '/doctor/help', label: 'Help & Support', icon: HelpCircle },
       ];
     } else if (isClinicianLayout) {
       return [
         { path: '/clinician/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-        { path: '/clinician/patients', label: 'Patient List', icon: Users },
-        { path: '/clinician/schedule', label: 'Schedule', icon: Calendar },
-        { path: '/clinician/requests', label: 'Request Management', icon: ClipboardList },
+        { path: '/clinician/schedule', label: 'Appointments', icon: Calendar },
+        { path: '/clinician/patients', label: 'Patients', icon: Users },
+        { path: '/clinician/checkin', label: 'Patient Check-In', icon: UserCheck },
+        { path: '/clinician/vitals', label: 'Vital Signs', icon: Syringe },
+        { path: '/clinician/previous-laboratory', label: 'Laboratory', icon: FlaskConical },
         { path: '/clinician/documents', label: 'Documents', icon: FileText },
-        { path: '/clinician/previous-laboratory', label: 'Previous Laboratory', icon: FileBadge },
+        { path: '/clinician/notifications', label: 'Notifications', icon: Bell },
+        { path: '/clinician/messages', label: 'Messages', icon: MessageCircle },
+        { path: '/auth/profile', label: 'My Profile', icon: UserCircle },
+        { path: '/clinician/settings', label: 'Settings', icon: Settings },
+        { path: '/clinician/help', label: 'Help & Support', icon: HelpCircle },
       ];
     } else if (isPatientLayout) {
       return [
         { path: '/patient/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-        { path: '/patient/appointment', label: 'Appointments', icon: Calendar },
-        { path: '/patient/symptom-checker', label: 'Symptom Checker', icon: Activity },
+        { path: '/patient/appointment', label: 'My Appointments', icon: Calendar },
+        { path: '/patient/records', label: 'Medical Records', icon: FileText },
+        { path: '/patient/previous-laboratory', label: 'Laboratory Results', icon: FlaskConical },
+        { path: '/patient/prescriptions', label: 'Prescriptions', icon: Pill },
+        { path: '/patient/audit-logs', label: 'Audit Logs', icon: ScrollText },
+        { path: '/patient/notifications', label: 'Notifications', icon: Bell },
         { path: '/patient/medibot', label: 'MediBot', icon: MessageCircle },
-        { path: '/patient/request-certificate', label: 'Request Certificate', icon: FileCheck },
-        { path: '/patient/upload-document', label: 'Upload Document', icon: Upload },
-        { path: '/patient/previous-laboratory', label: 'Previous Laboratory', icon: FileBadge },
-        { path: '/patient/records', label: 'Records', icon: FileText },
+        { path: '/auth/profile', label: 'Profile Settings', icon: UserCircle },
+        { path: '/patient/help', label: 'Help & Support', icon: HelpCircle },
       ];
     } else {
       return [];
@@ -109,11 +156,20 @@ export const Layout = ({ children }) => {
 
   const navItems = getNavItems();
   const isSidebarCollapsed = sidebarCollapsed;
-  const roleLabel = isAdmin ? 'Admin' : isClinician ? 'Clinician' : isPatientLayout ? 'Patient' : 'User';
-  const displayBrand = branding.brandName;
-  const displayBrandLabel = displayBrand ? `RUR ${displayBrand}` : 'RUR';
-
-  const handlePatientMainScroll = (event) => {
+  const roleLabel = isAdmin
+    ? 'Administrator'
+    : isDoctor || isDoctorLayout
+    ? 'Doctor'
+    : isClinician || isClinicianLayout
+    ? 'Clinic Staff'
+    : isPatientLayout
+    ? 'Patient'
+    : 'User';
+    const displayBrand = branding?.brandName;
+    const displayShortBrand = branding?.shortBrandName || branding?.shortBrand;
+    const displayBrandLabel = displayBrand || 'Pareñas Medical Clinic';
+    const displayShortBrandLabel = displayShortBrand || 'Pareñas Medical Clinic'; 
+    const handlePatientMainScroll = (event) => {
     const currentTop = event.currentTarget.scrollTop;
     const previousTop = lastPatientScrollTopRef.current;
     const isScrollingDown = currentTop > previousTop + 6;
@@ -142,8 +198,6 @@ export const Layout = ({ children }) => {
   useEffect(() => {
     if (!isTopNavigationLayout) return;
     if (!patientMainRef.current) return;
-
-    // Keep hero/banner visible immediately after refresh or route change.
     patientMainRef.current.scrollTo({ top: 0, behavior: 'auto' });
     lastPatientScrollTopRef.current = 0;
     setShowPatientScrollTop(false);
@@ -151,244 +205,65 @@ export const Layout = ({ children }) => {
   }, [location.pathname, isTopNavigationLayout]);
 
   useEffect(() => {
-    // Prevent stale open drawer state when switching routes on mobile.
     setSidebarOpen(false);
   }, [location.pathname]);
 
-  if (isTopNavigationLayout) {
-    const topMainNav = isClinicianLayout
-      ? [
-          { path: '/clinician/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-          { path: '/clinician/schedule', label: 'Schedule', icon: Calendar },
-          { path: '/clinician/requests', label: 'Requests', icon: ClipboardList },
-        ]
-      : [
-          { path: '/patient/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-          { path: '/patient/appointment', label: 'Appointments', icon: Calendar },
-          { path: '/patient/request-certificate', label: 'Request Certificate', icon: FileCheck },
-        ];
+  // Role-based accent color for sidebar header gradient
+  const sidebarAccent = isAdmin
+    ? 'from-[#01377D] to-[#012060]'
+    : isDoctorLayout
+    ? 'from-[#7C3AED] to-[#5B21B6]'
+    : isClinicianLayout
+    ? 'from-[#26B170] to-[#1a8a55]'
+    : 'from-[#009DD1] to-[#0077A8]';
 
-    const topProfileNav = isClinicianLayout
-      ? [
-          { path: '/auth/profile', label: 'Profile', icon: UserCircle },
-          { path: '/clinician/patients', label: 'Patient List', icon: Users },
-          { path: '/clinician/documents', label: 'Documents', icon: FileText },
-          { path: '/clinician/previous-laboratory', label: 'Previous Laboratory', icon: FileBadge },
-          { path: '/clinician/settings', label: 'Settings', icon: Settings },
-        ]
-      : [
-          { path: '/auth/profile', label: 'Profile', icon: UserCircle },
-          { path: '/patient/upload-document', label: 'Upload Document', icon: Upload },
-          { path: '/patient/previous-laboratory', label: 'Previous Laboratory', icon: FileBadge },
-          { path: '/patient/records', label: 'Records', icon: FileText },
-        ];
-    const hasPatientNotifications = true;
-
-    return (
-      <div className="h-screen min-h-screen overflow-x-hidden bg-gradient-to-b from-[#F7FBFF] via-[#F2F8FF] to-[#ECF4FF] flex flex-col">
-        <header className="fixed inset-x-0 top-0 z-50 border-b border-[#dbeafe]/80 bg-white/75 backdrop-blur-xl">
-          <div className="h-16 px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              {branding.logoUrl ? (
-                <img src={branding.logoUrl} alt={`${displayBrand} logo`} className="h-7 w-7 rounded-md object-cover" />
-              ) : (
-                <Activity className="w-6 h-6 text-[#009DD1]" />
-              )}
-              <span className="hidden sm:inline text-base font-semibold text-[#01377D]">{displayBrandLabel}</span>
-            </div>
-
-            {user && (
-              <nav className="hidden flex-1 overflow-x-auto md:block">
-                <div className="mx-auto flex min-w-max items-center justify-center gap-1 rounded-full border border-[#DCEBFB] bg-white/70 px-1.5 py-1 shadow-[0_4px_18px_rgba(14,165,233,0.08)] sm:gap-2">
-                  {topMainNav.map((item) => {
-                    const Icon = item.icon;
-                    const isActive = location.pathname === item.path;
-                    return (
-                      <Link
-                        key={item.path}
-                        to={item.path}
-                        className={`group relative flex h-9 shrink-0 items-center gap-2 rounded-full px-2.5 text-xs transition-all duration-300 sm:px-3 sm:text-sm ${
-                          isActive
-                            ? 'bg-[#EEF6FF] text-[#0F2D57]'
-                            : 'text-[#5A6F8F] hover:bg-white hover:text-[#0F2D57]'
-                        }`}
-                      >
-                        <span
-                          className="absolute inset-x-3 -bottom-0.5 h-[1.5px] rounded-full bg-[#009DD1] opacity-0 transition-all duration-300 group-hover:opacity-60"
-                        />
-                        <span className="inline-flex items-center justify-center">
-                          <Icon className="w-4 h-4" />
-                        </span>
-                        <span className="hidden font-normal tracking-[0.01em] transition-all duration-300 group-hover:tracking-[0.015em] sm:inline">
-                          {item.label}
-                        </span>
-                      </Link>
-                    );
-                  })}
-                </div>
-              </nav>
-            )}
-
-            <div className="flex items-center gap-1">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="relative rounded-full text-[#4B6386] transition-all duration-300 hover:bg-[#F3F8FF] hover:text-[#01377D]"
-                title="Notifications"
-              >
-                <Bell className="w-5 h-5" />
-                {hasPatientNotifications && (
-                  <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-[#ef4444] ring-2 ring-white" />
-                )}
-              </Button>
-              <DropdownMenu open={patientMenuOpen} onOpenChange={setPatientMenuOpen}>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className={`rounded-full text-[#4B6386] transition-all duration-300 hover:bg-[#F3F8FF] hover:text-[#01377D] ${
-                      patientMenuOpen ? 'bg-[#F3F8FF] text-[#01377D] shadow-sm' : ''
-                    }`}
-                    title="Open menu"
-                  >
-                    <UserCircle className={`w-5 h-5 transition-transform duration-300 ${patientMenuOpen ? 'scale-105' : 'scale-100'}`} />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent
-                  align="end"
-                  className="w-56 border-[#dbeafe] bg-white/95 backdrop-blur data-[state=open]:duration-200 data-[state=closed]:duration-150"
-                >
-                  <DropdownMenuLabel className="text-[#01377D]">{user?.name || 'Patient Menu'}</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  {topProfileNav.map((item) => {
-                    const Icon = item.icon;
-                    const isActive = location.pathname === item.path;
-                    return (
-                      <DropdownMenuItem key={item.path} asChild className="cursor-pointer">
-                        <Link
-                          to={item.path}
-                          className={`flex items-center gap-2 rounded-md px-2 py-2 transition-colors ${
-                            isActive ? 'bg-[#F3F8FF] text-[#01377D]' : 'text-[#35507A] hover:text-[#01377D]'
-                          }`}
-                        >
-                          <Icon className="w-4 h-4" />
-                          <span>{item.label}</span>
-                        </Link>
-                      </DropdownMenuItem>
-                    );
-                  })}
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={handleLogout}
-                    className="cursor-pointer text-red-600 focus:text-red-700"
-                  >
-                    <LogOut className="w-4 h-4" />
-                    <span>Logout</span>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          </div>
-        </header>
-
-        <main
-          ref={patientMainRef}
-          className="relative min-w-0 flex-1 overflow-y-auto overflow-x-hidden bg-gradient-to-b from-[#FAFDFF] via-[#F3F8FF] to-[#ECF4FF] pt-16"
-          onScroll={handlePatientMainScroll}
-        >
-          <div className="pointer-events-none absolute inset-0">
-            <div className="absolute -top-28 -left-28 h-72 w-72 rounded-full bg-[#009DD1]/10 blur-3xl" />
-            <div className="absolute -bottom-28 -right-24 h-72 w-72 rounded-full bg-[#01377D]/10 blur-3xl" />
-          </div>
-          <div className="relative z-10 p-3 pb-24 sm:p-5 md:pb-5 lg:p-6">{children}</div>
-        </main>
-
-        {isTopNavigationLayout && showPatientScrollTop && (
+  const LogoutDialog = () => (
+    <Dialog open={logoutDialogOpen} onOpenChange={setLogoutDialogOpen}>
+      <DialogContent className="w-[min(92vw,640px)] rounded-2xl border border-slate-200 bg-white p-0 shadow-[0_24px_65px_rgba(2,32,71,0.24)] [&>button]:hidden">
+        <DialogHeader className="border-b border-slate-100 px-4 py-4 sm:px-6">
+          <DialogTitle className="text-2xl font-semibold text-[#e11d48]">Confirm Logout</DialogTitle>
+          <DialogDescription className="pt-1 text-base text-slate-700">
+            Are you sure you want to log out of your account?
+          </DialogDescription>
+        </DialogHeader>
+        <div className="flex items-center justify-end gap-2 px-4 py-4 sm:px-6">
           <Button
-            onClick={handlePatientScrollToTop}
-            size="icon"
-            className="fixed bottom-24 right-4 z-40 h-11 w-11 rounded-full bg-[#01377D] text-white shadow-lg transition-all hover:bg-[#0a4a99] md:bottom-6"
-            title="Back to top"
+            variant="ghost"
+            className="h-10 px-5 text-base text-slate-700 hover:bg-slate-100"
+            onClick={() => setLogoutDialogOpen(false)}
           >
-            <ChevronUp className="h-5 w-5" />
+            Cancel
           </Button>
-        )}
-
-        <nav
-          className={`fixed bottom-3 left-1/2 z-40 w-[calc(100%-1.5rem)] max-w-md -translate-x-1/2 rounded-2xl border border-[#DCEBFB] bg-white/90 p-2 shadow-[0_8px_30px_rgba(15,23,42,0.12)] backdrop-blur transition-all duration-300 md:hidden ${
-            mobilePatientNavHidden ? 'translate-y-24 opacity-0' : 'translate-y-0 opacity-100'
-          }`}
-        >
-          <div className="flex items-center justify-around gap-1">
-            {topMainNav.map((item) => {
-              const Icon = item.icon;
-              const isActive = location.pathname === item.path;
-              return (
-                <Link
-                  key={`mobile-${item.path}`}
-                  to={item.path}
-                  title={item.label}
-                  className={`flex h-11 w-11 items-center justify-center rounded-xl transition-all duration-200 ${
-                    isActive
-                      ? 'bg-[#EAF5FF] text-[#0F2D57]'
-                      : 'text-[#5A6F8F] hover:bg-[#F8FBFF] hover:text-[#0F2D57]'
-                  }`}
-                >
-                  <Icon className="h-5 w-5" />
-                </Link>
-              );
-            })}
-          </div>
-        </nav>
-
-        <Dialog open={logoutDialogOpen} onOpenChange={setLogoutDialogOpen}>
-          <DialogContent className="w-[min(92vw,640px)] rounded-2xl border border-slate-200 bg-white p-0 shadow-[0_24px_65px_rgba(2,32,71,0.24)] [&>button]:hidden">
-            <DialogHeader className="border-b border-slate-100 px-4 py-4 sm:px-6">
-              <DialogTitle className="text-2xl font-semibold text-[#e11d48]">Confirm Logout</DialogTitle>
-              <DialogDescription className="pt-1 text-base text-slate-700">
-                Are you sure you want to log out of your account?
-              </DialogDescription>
-            </DialogHeader>
-            <div className="flex items-center justify-end gap-2 px-4 py-4 sm:px-6">
-              <Button
-                variant="ghost"
-                className="h-10 px-5 text-base text-slate-700 hover:bg-slate-100"
-                onClick={() => setLogoutDialogOpen(false)}
-              >
-                Cancel
-              </Button>
-              <Button
-                className="h-10 rounded-lg bg-red-600 px-6 text-base font-medium text-white hover:bg-red-700"
-                onClick={async () => {
-                  try {
-                    await logout();
-                    setLogoutDialogOpen(false);
-                    navigate('/auth/login');
-                  } catch (e) {
-                    setLogoutDialogOpen(false);
-                  }
-                }}
-              >
-                Logout
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-      </div>
-    );
-  }
+          <Button
+            className="h-10 rounded-lg bg-red-600 px-6 text-base font-medium text-white hover:bg-red-700"
+            onClick={async () => {
+              try {
+                await logout();
+                setLogoutDialogOpen(false);
+                navigate('/auth/login');
+              } catch (e) {
+                setLogoutDialogOpen(false);
+              }
+            }}
+          >
+            Logout
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 flex">
       {/* Mobile Sidebar Backdrop */}
       {sidebarOpen && (
-        <div 
-          className="fixed inset-0 bg-transparent bg-opacity-50 z-40 lg:hidden"
+        <div
+          className="fixed inset-0 bg-black/30 backdrop-blur-sm z-40 lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
 
-      {/* Sidebar - FIXED: Changed lg:static to lg:fixed */}
+      {/* Sidebar */}
       <div className={`
         fixed inset-y-0 left-0 z-50 w-72 max-w-[85vw] border-r border-cyan-100/80 bg-gradient-to-b from-[#f8fcff] via-[#f2f8ff] to-[#edf5ff] shadow-[0_16px_35px_rgba(15,23,42,0.08)] backdrop-blur
         transform transition-all duration-300 ease-in-out
@@ -398,17 +273,17 @@ export const Layout = ({ children }) => {
       `}>
         <div className="flex flex-col h-full">
           {/* Sidebar Header */}
-          <div className="flex h-16 flex-shrink-0 items-center justify-between border-b border-cyan-100/80 px-4">
+          <div className={`flex h-16 flex-shrink-0 items-center justify-between border-b border-cyan-100/80 px-4 bg-gradient-to-r ${sidebarAccent}`}>
             <div className={`flex items-center ${isSidebarCollapsed ? 'flex-1 justify-center' : 'gap-2'}`}>
               {branding.logoUrl ? (
-                <img src={branding.logoUrl} alt={`${displayBrand} logo`} className="h-9 w-9 rounded-xl border border-cyan-100 object-cover shadow-sm" />
+                <img src={branding.logoUrl} alt={`${displayBrand} logo`} className="h-9 w-9 rounded-xl border border-white/20 object-cover shadow-sm" />
               ) : (
-                <div className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-cyan-500 to-blue-700 text-white shadow-sm">
+                <div className="grid h-9 w-9 place-items-center rounded-xl bg-white/20 text-white shadow-sm">
                   <Activity className="h-5 w-5" />
                 </div>
               )}
               <span
-                className={`overflow-hidden whitespace-nowrap text-sm font-semibold text-slate-800 transition-all duration-200 ${
+                className={`overflow-hidden whitespace-nowrap text-sm font-semibold text-white transition-all duration-200 ${
                   isSidebarCollapsed ? 'max-w-0 opacity-0 -translate-x-1' : 'max-w-[220px] opacity-100 translate-x-0'
                 }`}
               >
@@ -420,14 +295,14 @@ export const Layout = ({ children }) => {
                 variant="ghost"
                 size="sm"
                 onClick={() => setSidebarOpen(false)}
-                className="lg:hidden"
+                className="lg:hidden text-white hover:bg-white/20"
               >
                 <X className="w-5 h-5" />
               </Button>
             </div>
           </div>
 
-          {/* User Info - MADE CLICKABLE */}
+          {/* User Info */}
           {loading ? (
             <div className="flex-shrink-0 p-4 border-b border-gray-200">
               <div className="flex items-center gap-3 animate-pulse">
@@ -478,9 +353,9 @@ export const Layout = ({ children }) => {
                     <Button
                       variant="ghost"
                       title={isSidebarCollapsed ? item.label : undefined}
-                      className={`group mb-1.5 gap-3 rounded-xl text-sm transition-all duration-200 ${
+                      className={`group mb-1 gap-3 rounded-xl text-sm transition-all duration-200 ${
                         isActive
-                          ? 'bg-gradient-to-r from-[#01377D] to-[#0a5fb6] text-white shadow-sm'
+                          ? `bg-gradient-to-r ${sidebarAccent} text-white shadow-sm`
                           : 'text-slate-700 hover:bg-cyan-100/70 hover:text-[#01377D]'
                       } ${
                         isSidebarCollapsed
@@ -489,13 +364,13 @@ export const Layout = ({ children }) => {
                       }`}
                     >
                       <span
-                        className={`grid h-8 w-8 place-items-center rounded-lg transition-all duration-200 ${
+                        className={`grid h-7 w-7 place-items-center rounded-lg transition-all duration-200 ${
                           isActive
                             ? 'bg-white/15 text-white'
-                            : 'bg-white text-slate-700 group-hover:scale-105 group-hover:bg-cyan-50 group-hover:text-[#01377D] group-hover:shadow-sm'
+                            : 'bg-white text-slate-600 group-hover:scale-105 group-hover:bg-cyan-50 group-hover:text-[#01377D] group-hover:shadow-sm'
                         }`}
                       >
-                        <Icon className="h-4.5 w-4.5 shrink-0" />
+                        <Icon className="h-4 w-4 shrink-0" />
                       </span>
                       <span
                         className={`overflow-hidden whitespace-nowrap text-left transition-all duration-200 ${
@@ -552,6 +427,7 @@ export const Layout = ({ children }) => {
           </div>
         </div>
 
+        {/* Collapse toggle */}
         {!isTopNavigationLayout && (
           <Button
             variant="outline"
@@ -565,49 +441,16 @@ export const Layout = ({ children }) => {
         )}
       </div>
 
-        {/* Logout Confirmation Dialog */}
-        <Dialog open={logoutDialogOpen} onOpenChange={setLogoutDialogOpen}>
-          <DialogContent className="w-[min(92vw,640px)] rounded-2xl border border-slate-200 bg-white p-0 shadow-[0_24px_65px_rgba(2,32,71,0.24)] [&>button]:hidden">
-            <DialogHeader className="border-b border-slate-100 px-4 py-4 sm:px-6">
-              <DialogTitle className="text-2xl font-semibold text-[#e11d48]">Confirm Logout</DialogTitle>
-              <DialogDescription className="pt-1 text-base text-slate-700">
-                Are you sure you want to log out of your account?
-              </DialogDescription>
-            </DialogHeader>
-            <div className="flex items-center justify-end gap-2 px-4 py-4 sm:px-6">
-              <Button
-                variant="ghost"
-                className="h-10 px-5 text-base text-slate-700 hover:bg-slate-100"
-                onClick={() => setLogoutDialogOpen(false)}
-              >
-                Cancel
-              </Button>
-              <Button
-                className="h-10 rounded-lg bg-red-600 px-6 text-base font-medium text-white hover:bg-red-700"
-                onClick={async () => {
-                  try {
-                    await logout();
-                    setLogoutDialogOpen(false);
-                    navigate('/auth/login');
-                  } catch (e) {
-                    // Let logout handle errors; close dialog anyway
-                    setLogoutDialogOpen(false);
-                  }
-                }}
-              >
-                Logout
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+      {/* Logout Confirmation Dialog */}
+      <LogoutDialog />
 
-      {/* Main Content Area - FIXED: Added lg:ml-64 for fixed sidebar */}
+      {/* Main Content Area */}
       <div
         className={`flex min-w-0 flex-1 flex-col transition-[margin-left] duration-500 ease-in-out ${
           isSidebarCollapsed ? 'lg:ml-20' : 'lg:ml-72'
         }`}
       >
-        {/* Mobile Header Only */}
+        {/* Mobile Header */}
         <header className="bg-white border-b border-gray-200 sticky top-0 z-30 lg:hidden">
           <div className="flex items-center justify-between h-16 px-4">
             <Button
@@ -617,17 +460,16 @@ export const Layout = ({ children }) => {
             >
               <Menu className="w-5 h-5" />
             </Button>
-            
+
             <div className="flex items-center gap-2">
               {branding.logoUrl ? (
                 <img src={branding.logoUrl} alt={`${displayBrand} logo`} className="h-7 w-7 rounded-md object-cover" />
               ) : (
-                <Activity className="w-6 h-6 text-green-600" />
+                <Activity className="w-6 h-6 text-cyan-600" />
               )}
               <span className="text-lg font-semibold text-gray-900">{displayBrandLabel}</span>
             </div>
 
-            {/* Mobile User Actions */}
             {user && (
               <div className="flex items-center gap-2">
                 <Link to="/auth/profile">
@@ -653,9 +495,9 @@ export const Layout = ({ children }) => {
 
         {/* Footer */}
         <footer className="border-t border-cyan-100/80 bg-gradient-to-r from-[#edf5ff] to-[#e6f0ff]">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 ">
-            <p className="text-center text-sm text-slate-700 ">
-              © 2026 Renato Umali Reyes. All rights reserved.
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <p className="text-center text-sm text-slate-700">
+              © 2026 Pareñas Medical Clinic. All rights reserved.
             </p>
           </div>
         </footer>

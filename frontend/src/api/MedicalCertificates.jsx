@@ -32,3 +32,11 @@ export const rejectMedCert = async (id, reason) => {
 export const downloadMedCert = async (id) => {
     return api.get(`/api/med-certs/${id}/download`, { responseType: 'blob' });
 };
+
+export const uploadMedCertPdf = async (id, data) => {
+    return api.post(`/api/med-certs/${id}/upload`, data, {
+        headers: {
+            'Content-Type': 'multipart/form-data',
+        },
+    });
+};

@@ -1,5 +1,5 @@
 // Schedule.jsx - Appointment Calendar with Real Data
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
@@ -8,10 +8,53 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Textarea } from '../../components/ui/textarea';
 import { Label } from '../../components/ui/label';
 import { getClinicianAppointments, updateAppointmentStatus, cancelAppointment, rejectAppointment, confirmAppointment } from '../../api/ClinicianDashboard';
+import { getClinicMeta } from '../../api/Clinic';
 import { toast } from 'sonner';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, startOfWeek, endOfWeek } from 'date-fns';
 import StaffRoleBanner from '../../components/staff/StaffRoleBanner';
 import StaffPageSkeleton from '../../components/staff/StaffPageSkeleton';
+
+const DEFAULT_OPEN = '08:00';
+const DEFAULT_CLOSE = '17:00';
+const DEFAULT_INTERVAL = 30;
+
+const generateTimeSlots = (openTime, closeTime, intervalMinutes) => {
+  try {
+    const slots = [];
+    const start = new Date(`1970-01-01T${openTime}:00`);
+    const end = new Date(`1970-01-01T${closeTime}:00`);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end <= start) {
+      return [];
+    }
+    let pointer = new Date(start);
+    while (pointer < end) {
+      slots.push(pointer.toTimeString().slice(0, 5));
+      pointer = new Date(pointer.getTime() + intervalMinutes * 60000);
+    }
+    return slots;
+  } catch (error) {
+    return [];
+  }
+};
+
+const normalizeDate = (value) => {
+  if (!value) return '';
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return value;
+  }
+  try {
+    const date = new Date(value);
+    if (!Number.isNaN(date.getTime())) {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+  } catch {
+    // Ignore parse errors.
+  }
+  return String(value).slice(0, 10);
+};
 
 export const Schedule = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -19,6 +62,8 @@ export const Schedule = () => {
   const [appointments, setAppointments] = useState([]);
   const [initialLoading, setInitialLoading] = useState(true);
   const [monthLoading, setMonthLoading] = useState(false);
+  const [clinicSettings, setClinicSettings] = useState(null);
+  const [closures, setClosures] = useState([]);
   const [confirmingId, setConfirmingId] = useState(null);
   const [rejectingId, setRejectingId] = useState(null);
   const [showRejectDialog, setShowRejectDialog] = useState(false);
@@ -31,6 +76,10 @@ export const Schedule = () => {
   useEffect(() => {
     loadAppointments(currentDate);
   }, [currentDate]);
+
+  useEffect(() => {
+    loadClinicMeta();
+  }, []);
 
   const getMonthKey = (date) => format(date, 'yyyy-MM');
 
@@ -94,6 +143,19 @@ export const Schedule = () => {
         setInitialLoading(false);
         setMonthLoading(false);
       }
+    }
+  };
+
+  const loadClinicMeta = async () => {
+    try {
+      const response = await getClinicMeta();
+      const data = response?.data?.data || {};
+      setClinicSettings(data.settings || null);
+      setClosures(Array.isArray(data.closures) ? data.closures : []);
+    } catch (err) {
+      console.error('Failed to load clinic settings:', err);
+      setClinicSettings(null);
+      setClosures([]);
     }
   };
 
@@ -243,12 +305,116 @@ export const Schedule = () => {
   const cardClass =
     'border-[#D8EBFA] bg-white shadow-[0_4px_20px_rgba(15,23,42,0.05)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_10px_26px_rgba(2,132,199,0.12)]';
 
+  const clinicOpen = clinicSettings?.open_time || DEFAULT_OPEN;
+  const clinicClose = clinicSettings?.close_time || DEFAULT_CLOSE;
+  const clinicInterval = clinicSettings?.appointment_interval || DEFAULT_INTERVAL;
+
+  const baseTimeSlots = useMemo(() => {
+    const generated = generateTimeSlots(clinicOpen, clinicClose, clinicInterval);
+    if (generated.length === 0) {
+      return generateTimeSlots(DEFAULT_OPEN, DEFAULT_CLOSE, DEFAULT_INTERVAL);
+    }
+    return generated;
+  }, [clinicOpen, clinicClose, clinicInterval]);
+
+  const workingDaysSet = useMemo(() => {
+    const days = clinicSettings?.working_days;
+    return new Set(Array.isArray(days) ? days : []);
+  }, [clinicSettings]);
+
+  const closuresByDate = useMemo(() => {
+    const map = new Map();
+    closures.forEach((closure) => {
+      const key = normalizeDate(closure.date);
+      if (!key) return;
+      const list = map.get(key) || [];
+      list.push(closure);
+      map.set(key, list);
+    });
+    return map;
+  }, [closures]);
+
+  const getClosuresForDate = (dateValue) => {
+    const target = normalizeDate(dateValue);
+    if (!target) return [];
+    return closuresByDate.get(target) || [];
+  };
+
+  const hasFullDayClosure = (dateValue) =>
+    getClosuresForDate(dateValue).some((closure) => !closure.start_time && !closure.end_time);
+
+  const isWorkingDay = (dateValue) => {
+    if (!dateValue || workingDaysSet.size === 0) return true;
+    try {
+      const dayKey = format(new Date(dateValue), 'eee').slice(0, 3).toLowerCase();
+      return workingDaysSet.has(dayKey);
+    } catch (error) {
+      return false;
+    }
+  };
+
+  const isDateSelectable = (dateValue) => isWorkingDay(dateValue) && !hasFullDayClosure(dateValue);
+
   // Generate calendar days
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
   const calendarStart = startOfWeek(monthStart);
   const calendarEnd = endOfWeek(monthEnd);
   const calendarDays = eachDayOfInterval({ start: calendarStart, end: calendarEnd });
+
+  const getAvailableSlotsForDate = (dateValue) => {
+    if (!dateValue) return [];
+    if (!isDateSelectable(dateValue)) return [];
+
+    const closuresForDay = getClosuresForDate(dateValue)
+      .filter((closure) => closure.start_time && closure.end_time)
+      .map((closure) => {
+        const startTime = closure.start_time.length === 5 ? `${closure.start_time}:00` : closure.start_time;
+        const endTime = closure.end_time.length === 5 ? `${closure.end_time}:00` : closure.end_time;
+        return {
+          start: new Date(`${dateValue}T${startTime}`),
+          end: new Date(`${dateValue}T${endTime}`),
+        };
+      });
+
+    const appointmentsOnDay = appointments
+      .filter((apt) => {
+        if (!apt.start_time) return false;
+        const aptDate = normalizeDate(apt.start_time);
+        const status = (apt.status || '').toLowerCase();
+        return aptDate === normalizeDate(dateValue) && (status === 'confirmed' || status === 'in_progress' || status === 'completed');
+      })
+      .map((apt) => {
+        const aptStart = new Date(apt.start_time);
+        const rawEnd = apt.end_time ? new Date(apt.end_time) : new Date(aptStart.getTime() + clinicInterval * 60000);
+        const aptEndWithBuffer = new Date(rawEnd.getTime() + clinicInterval * 60000);
+        return { start: aptStart, end: aptEndWithBuffer };
+      });
+
+    return baseTimeSlots.filter((slot) => {
+      const slotStart = new Date(`${dateValue}T${slot}:00`);
+      const slotEnd = new Date(slotStart.getTime() + clinicInterval * 60000);
+      const closeBoundary = new Date(`${dateValue}T${clinicClose}:00`);
+
+      if (Number.isNaN(slotStart.getTime()) || slotEnd > closeBoundary) return false;
+
+      const noClosureConflict = closuresForDay.every((window) => slotEnd <= window.start || slotStart >= window.end);
+      const noAppointmentConflict = appointmentsOnDay.every((apt) => slotEnd <= apt.start || slotStart >= apt.end);
+
+      return noClosureConflict && noAppointmentConflict;
+    });
+  };
+
+  const fullDateSet = useMemo(() => {
+    const set = new Set();
+    calendarDays.forEach((day) => {
+      const key = normalizeDate(day);
+      if (!isDateSelectable(key)) return;
+      const slots = getAvailableSlotsForDate(key);
+      if (slots.length === 0) set.add(key);
+    });
+    return set;
+  }, [appointments, baseTimeSlots, calendarDays, clinicClose, clinicInterval, closures, isDateSelectable]);
 
   const hasAppointmentOnDay = (day) => {
     return appointments.some(apt => {
@@ -341,6 +507,16 @@ export const Schedule = () => {
                     Updating month data...
                   </div>
                 )}
+                <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-slate-600">
+                  <div className="inline-flex items-center gap-2">
+                    <span className="h-3 w-3 rounded-sm border-2 border-[#009DD1] bg-blue-100" />
+                    Has appointment
+                  </div>
+                  <div className="inline-flex items-center gap-2">
+                    <span className="h-3 w-3 rounded-sm border-2 border-rose-400 bg-rose-100" />
+                    Fully booked
+                  </div>
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-7 gap-2 mb-2">
@@ -355,7 +531,8 @@ export const Schedule = () => {
                     const isCurrentMonth = day.getMonth() === currentDate.getMonth();
                     const isTodayDate = isToday(day);
                     const isSelectedDate = isSameDay(day, selectedDate);
-                    const hasAppointments = hasAppointmentOnDay(day);
+                    const isFullDate = fullDateSet.has(normalizeDate(day));
+                    const hasAppointments = hasAppointmentOnDay(day) && !isFullDate;
                     
                     return (
                       <button
@@ -367,7 +544,8 @@ export const Schedule = () => {
                           aspect-square flex items-center justify-center rounded-lg text-sm font-medium
                           transition-all duration-200
                           ${!isCurrentMonth ? 'bg-gray-50 text-gray-300 cursor-not-allowed' : ''}
-                          ${isCurrentMonth && !isTodayDate && !hasAppointments ? 'bg-white hover:bg-blue-50 border border-gray-200 text-gray-700' : ''}
+                          ${isCurrentMonth && !isTodayDate && !hasAppointments && !isFullDate ? 'bg-white hover:bg-blue-50 border border-gray-200 text-gray-700' : ''}
+                          ${isCurrentMonth && isFullDate && !isTodayDate && !isSelectedDate ? 'bg-rose-100 border-2 border-rose-400 text-rose-700 hover:bg-rose-200' : ''}
                           ${isCurrentMonth && hasAppointments && !isTodayDate && !isSelectedDate ? 'bg-blue-100 border-2 border-[#009DD1] text-[#01377D] hover:bg-blue-200' : ''}
                           ${isTodayDate && !isSelectedDate ? 'bg-[#009DD1] text-white hover:bg-[#01377D] font-bold border-2 border-[#009DD1]' : ''}
                           ${isSelectedDate && !isTodayDate ? 'bg-[#01377D] text-white font-bold border-2 border-[#01377D] ring-2 ring-offset-2 ring-[#009DD1]' : ''}

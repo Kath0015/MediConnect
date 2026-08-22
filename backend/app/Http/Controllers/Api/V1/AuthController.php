@@ -11,6 +11,8 @@ use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\Rules;
 use Illuminate\Support\Facades\DB;
 
@@ -162,6 +164,123 @@ public function login(LoginUserRequest $request): \Illuminate\Http\JsonResponse
             return $this->error('Validation failed', 422);
         } catch (\Exception $e) {
             return $this->error('Failed to send reset link: ' . $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Generate and send a 6-digit OTP to the given email.
+     * OTP is stored in Laravel Cache for 10 minutes.
+     * In dev/testing mode the OTP is also returned in the response.
+     */
+    public function sendOtp(Request $request)
+    {
+        try {
+            $request->validate(['email' => 'required|email|exists:users,email']);
+
+            $email = $request->input('email');
+            $otp   = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+            $key   = 'otp_' . md5($email);
+
+            // Store OTP in cache for 10 minutes
+            Cache::put($key, $otp, now()->addMinutes(10));
+
+            // Attempt to send email (via dynamic MailSetting if configured, or default mailer)
+            $emailSent = false;
+            try {
+                $mailSettings = \App\Models\MailSetting::first();
+                if ($mailSettings && !empty($mailSettings->encrypted_password)) {
+                    $password = null;
+                    try {
+                        $password = \Illuminate\Support\Facades\Crypt::decryptString($mailSettings->encrypted_password);
+                    } catch (\Exception $de) {
+                        try {
+                            $password = decrypt($mailSettings->encrypted_password);
+                        } catch (\Exception $de2) {
+                            $password = null;
+                        }
+                    }
+
+                    if ($password) {
+                        config([
+                            'mail.default' => 'smtp',
+                            'mail.mailers.smtp.host' => $mailSettings->host ?? 'smtp.gmail.com',
+                            'mail.mailers.smtp.port' => $mailSettings->port ?? 587,
+                            'mail.mailers.smtp.username' => $mailSettings->email,
+                            'mail.mailers.smtp.password' => $password,
+                            'mail.mailers.smtp.encryption' => $mailSettings->encryption ?? 'tls',
+                            'mail.from.address' => $mailSettings->email,
+                            'mail.from.name' => 'MediConnect',
+                        ]);
+                    }
+                }
+
+                Mail::raw(
+                    "Hello,\n\nYour MediConnect email verification code is: {$otp}\n\nThis code is valid for 10 minutes.\n\nThank you,\nMediConnect Team",
+                    function ($message) use ($email) {
+                        $message->to($email)->subject('MediConnect – Email Verification Code');
+                    }
+                );
+                $emailSent = true;
+            } catch (\Exception $mailEx) {
+                Log::warning('OTP mail failed (check SMTP settings): ' . $mailEx->getMessage());
+            }
+
+            $responseData = ['email_sent' => $emailSent];
+
+            // In local/testing mode, return OTP as a fallback helper
+            if (app()->environment(['local', 'development', 'testing'])) {
+                $responseData['otp'] = $otp;
+            }
+
+            return $this->ok('OTP sent successfully', $responseData);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return $this->error('Validation failed', 422, $e->errors());
+        } catch (\Exception $e) {
+            Log::error('sendOtp failed: ' . $e->getMessage());
+            return $this->error('Failed to send OTP: ' . $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Verify the submitted 6-digit OTP for the given email.
+     * On success, marks the user's email as verified.
+     */
+    public function verifyOtp(Request $request)
+    {
+        try {
+            $request->validate([
+                'email' => 'required|email|exists:users,email',
+                'otp'   => 'required|string|size:6',
+            ]);
+
+            $email = $request->input('email');
+            $otp   = $request->input('otp');
+            $key   = 'otp_' . md5($email);
+
+            $stored = Cache::get($key);
+
+            if (!$stored) {
+                return $this->error('OTP has expired. Please request a new one.', 422);
+            }
+
+            if ($stored !== $otp) {
+                return $this->error('Invalid OTP. Please check and try again.', 422);
+            }
+
+            // OTP verified — mark email as verified
+            User::where('email', $email)->update(['email_verified_at' => now()]);
+
+            // Remove OTP from cache after successful verification
+            Cache::forget($key);
+
+            return $this->ok('Email verified successfully. You can now login.');
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return $this->error('Validation failed', 422, $e->errors());
+        } catch (\Exception $e) {
+            Log::error('verifyOtp failed: ' . $e->getMessage());
+            return $this->error('Verification failed: ' . $e->getMessage(), 500);
         }
     }
 

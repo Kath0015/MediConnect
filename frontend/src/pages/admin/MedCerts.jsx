@@ -20,11 +20,16 @@ import {
   Clock3,
   CheckCircle2,
   XCircle,
+  Upload,
+  Download,
 } from 'lucide-react';
 import { getAllMedCerts } from '../../api/AdminDashboard';
+import { downloadMedCert, uploadMedCertPdf } from '../../api/MedicalCertificates';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import AdminPageSkeleton from '../../components/admin/AdminPageSkeleton';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../../components/ui/dialog';
+import { Label } from '../../components/ui/label';
 
 export const MedCerts = () => {
   const MEDCERTS_PER_PAGE = 10;
@@ -45,6 +50,11 @@ export const MedCerts = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [pageSize, setPageSize] = useState(MEDCERTS_PER_PAGE);
+  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+  const [selectedCert, setSelectedCert] = useState(null);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [downloadingId, setDownloadingId] = useState(null);
   const filterMenuRef = useRef(null);
 
   useEffect(() => {
@@ -123,6 +133,84 @@ export const MedCerts = () => {
         return 'bg-yellow-100 text-yellow-800 border-yellow-300';
       default:
         return 'bg-gray-100 text-gray-800 border-gray-300';
+    }
+  };
+
+  const canUploadPdf = (cert) => {
+    const status = (cert?.status || '').toLowerCase();
+    return ['approved', 'completed', 'no-show'].includes(status);
+  };
+
+  const handleUploadDialogChange = (open) => {
+    setUploadDialogOpen(open);
+    if (!open) {
+      setSelectedCert(null);
+      setSelectedFile(null);
+    }
+  };
+
+  const handleOpenUpload = (cert) => {
+    if (!canUploadPdf(cert)) {
+      toast.error('Only approved certificates can be uploaded');
+      return;
+    }
+    setSelectedCert(cert);
+    setSelectedFile(null);
+    setUploadDialogOpen(true);
+  };
+
+  const handleFileChange = (event) => {
+    const file = event.target.files?.[0] || null;
+    setSelectedFile(file);
+  };
+
+  const handleUpload = async () => {
+    if (!selectedCert) return;
+    if (!selectedFile) {
+      toast.error('Please select a PDF file');
+      return;
+    }
+
+    const isPdf = selectedFile.type === 'application/pdf' || selectedFile.name?.toLowerCase().endsWith('.pdf');
+    if (!isPdf) {
+      toast.error('Only PDF files are allowed');
+      return;
+    }
+
+    try {
+      setUploading(true);
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+      await uploadMedCertPdf(selectedCert.id, formData);
+      toast.success('Medical certificate uploaded');
+      handleUploadDialogChange(false);
+      await loadMedCerts();
+    } catch (err) {
+      console.error('Failed to upload medical certificate:', err);
+      toast.error(err.response?.data?.message || 'Failed to upload medical certificate');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleDownload = async (cert) => {
+    try {
+      setDownloadingId(cert.id);
+      const response = await downloadMedCert(cert.id);
+      const blob = new Blob([response.data], { type: response.headers['content-type'] });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `med-cert-${cert.certificate_number || cert.id}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Failed to download certificate', error);
+      toast.error('Unable to download certificate');
+    } finally {
+      setDownloadingId(null);
     }
   };
 
@@ -339,20 +427,21 @@ export const MedCerts = () => {
           ) : (
             <>
               <div className="mt-2 overflow-hidden rounded-2xl border border-slate-200/80 bg-gradient-to-b from-white to-slate-50/40 p-3">
-                <div className="mb-2 hidden grid-cols-[minmax(0,1.45fr)_minmax(0,1.1fr)_minmax(0,1.1fr)_130px_minmax(0,1fr)_110px] gap-3 px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400 md:grid">
+                <div className="mb-2 hidden grid-cols-[minmax(0,1.45fr)_minmax(0,1.1fr)_minmax(0,1.1fr)_130px_minmax(0,1fr)_110px_minmax(0,0.95fr)] gap-3 px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400 md:grid">
                   <span>Patient</span>
                   <span>Type</span>
                   <span>Duration</span>
                   <span className="text-center">Status</span>
                   <span>Reviewed By</span>
                   <span>Requested</span>
+                  <span className="text-right">Certificate</span>
                 </div>
 
                 <ul className="space-y-2">
                   {filteredMedCerts.map((cert) => (
                     <li
                       key={cert.id}
-                      className="rounded-xl border border-slate-200/80 bg-white p-3 transition-all hover:border-cyan-200 hover:shadow-sm md:grid md:grid-cols-[minmax(0,1.45fr)_minmax(0,1.1fr)_minmax(0,1.1fr)_130px_minmax(0,1fr)_110px] md:items-center md:gap-3"
+                      className="rounded-xl border border-slate-200/80 bg-white p-3 transition-all hover:border-cyan-200 hover:shadow-sm md:grid md:grid-cols-[minmax(0,1.45fr)_minmax(0,1.1fr)_minmax(0,1.1fr)_130px_minmax(0,1fr)_110px_minmax(0,0.95fr)] md:items-center md:gap-3"
                     >
                       <div>
                         <p className="text-sm font-medium text-[#01377D]">
@@ -403,6 +492,35 @@ export const MedCerts = () => {
                       <div className="mt-2 text-xs text-slate-500 md:mt-0">
                         {cert.created_at ? format(new Date(cert.created_at), 'PP') : 'N/A'}
                       </div>
+
+                      <div className="mt-3 flex flex-wrap items-center justify-end gap-2 md:mt-0">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDownload(cert)}
+                          disabled={!cert.pdf_path || downloadingId === cert.id}
+                          className="h-8 border-slate-200 bg-white text-slate-700 hover:bg-slate-100 disabled:opacity-50"
+                        >
+                          {downloadingId === cert.id ? (
+                            <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Download className="mr-1 h-3.5 w-3.5" />
+                          )}
+                          Download
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleOpenUpload(cert)}
+                          disabled={!canUploadPdf(cert)}
+                          className="h-8 border-cyan-200 bg-cyan-50 text-cyan-700 hover:bg-cyan-100 disabled:opacity-50"
+                        >
+                          <Upload className="mr-1 h-3.5 w-3.5" />
+                          Upload
+                        </Button>
+                      </div>
                     </li>
                   ))}
                 </ul>
@@ -443,6 +561,67 @@ export const MedCerts = () => {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={uploadDialogOpen} onOpenChange={handleUploadDialogChange}>
+        <DialogContent className="max-w-lg bg-white text-slate-900">
+          <DialogHeader>
+            <DialogTitle>Upload medical certificate</DialogTitle>
+            <DialogDescription>
+              Attach the finalized PDF file for this patient request.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+              {selectedCert ? (
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span>
+                    {selectedCert.patient?.user?.name || 'Unknown patient'}
+                  </span>
+                  <span>#{selectedCert.certificate_number || selectedCert.id}</span>
+                </div>
+              ) : (
+                'Select a request to upload its certificate.'
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="medcert-upload">PDF File</Label>
+              <div className="rounded-xl border-2 border-dashed border-cyan-100 bg-cyan-50/40 p-5 text-center">
+                <Input
+                  id="medcert-upload"
+                  type="file"
+                  onChange={handleFileChange}
+                  className="hidden"
+                  accept=".pdf"
+                />
+                <label htmlFor="medcert-upload" className="cursor-pointer text-sm text-slate-600">
+                  <span className="inline-flex items-center justify-center rounded-full bg-white p-2 text-cyan-600 shadow-sm">
+                    <Upload className="h-5 w-5" />
+                  </span>
+                  <span className="mt-2 block text-sm font-medium">
+                    {selectedFile ? selectedFile.name : 'Click to upload a PDF'}
+                  </span>
+                  <span className="mt-1 block text-xs text-slate-500">PDF up to 10MB</span>
+                </label>
+              </div>
+            </div>
+          </div>
+          <DialogFooter className="mt-4 gap-2">
+            <Button type="button" variant="outline" onClick={() => handleUploadDialogChange(false)}>
+              Cancel
+            </Button>
+            <Button type="button" onClick={handleUpload} disabled={uploading || !selectedFile}>
+              {uploading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Uploading...
+                </>
+              ) : (
+                'Upload PDF'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

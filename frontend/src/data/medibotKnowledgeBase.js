@@ -1,5 +1,5 @@
 export const MEDIBOT_FALLBACK =
-  "I'm sorry, I can only assist with MediConnect-related services such as appointments, medicines, consultations, delivery, and account concerns.";
+  "I'm sorry, I can only assist with MediConnect-related services such as appointments, consultations, and account concerns.";
 
 export const MEDIBOT_KNOWLEDGE_BASE = [
   {
@@ -11,25 +11,11 @@ export const MEDIBOT_KNOWLEDGE_BASE = [
     suggestions: ['Book an appointment', 'Reschedule appointment', 'Clinic hours'],
   },
   {
-    id: 'medicine-availability',
-    label: 'Medicine Availability',
-    keywords: ['medicine', 'medicines', 'pharmacy', 'drug', 'meds', 'paracetamol', 'availability', 'stock'],
-    response: 'You can check medicine availability in the Pharmacy section of MediConnect.',
-    suggestions: ['Is paracetamol available?', 'How long is delivery?'],
-  },
-  {
     id: 'online-consultation',
     label: 'Online Consultation',
     keywords: ['online consultation', 'teleconsult', 'telemedicine', 'virtual consult', 'online consult'],
     response: 'Yes, MediConnect supports online consultations with partnered healthcare providers.',
     suggestions: ['How do I start an online consultation?', 'Book an appointment'],
-  },
-  {
-    id: 'delivery-service',
-    label: 'Delivery Service',
-    keywords: ['delivery', 'deliver', 'shipping', 'courier', 'how long is delivery', 'delivery time'],
-    response: 'Delivery usually takes 1-3 days depending on your location.',
-    suggestions: ['How long is delivery?', 'Do you deliver medicines?'],
   },
   {
     id: 'payment-methods',
@@ -131,5 +117,54 @@ export const MEDIBOT_KNOWLEDGE_BASE = [
     keywords: ['insurance', 'billing', 'cost', 'fee', 'price', 'coverage'],
     response: 'Coverage and fees depend on your plan and services. I can connect you to billing or you can call the front desk.',
     suggestions: ['What payment methods are supported?', 'Contact support'],
+  },
+  {
+    id: 'medical-certificate',
+    label: 'Medical Certificate Request',
+    keywords: ['medical certificate', 'med cert', 'certificate', 'clearance'],
+    response: 'You can request a medical certificate through your patient portal after a completed consultation, or by visiting the clinic in person.',
+    suggestions: ['How to request a medical certificate?', 'Book an appointment'],
+  },
+  {
+    id: 'visiting-hours',
+    label: 'Visiting Hours',
+    keywords: ['visiting hours', 'visit patient', 'visitor policy', 'ward visiting'],
+    response: 'General visiting hours are from 9:00 AM to 8:00 PM daily. Please note that ICU and specific wards may have restricted visiting hours.',
+    suggestions: ['What are your clinic hours?', 'Contact support'],
+  },
+  {
+    id: 'doctor-schedule',
+    label: 'Doctor Schedule',
+    keywords: ['doctor schedule', 'who is on duty', 'doctor available', 'find a doctor'],
+    response: 'You can view the real-time schedule and availability of our doctors in the Appointments section of your patient dashboard.',
+    suggestions: ['Book an appointment', 'Online consultation'],
+  },
+  {
+    id: 'pediatric-services',
+    label: 'Pediatric Services',
+    keywords: ['pediatric', 'child care', 'vaccination for child', 'baby', 'pediatrician'],
+    response: 'Yes, we offer comprehensive pediatric services including routine check-ups, child vaccinations, and illness management.',
+    suggestions: ['Book an appointment for my child', 'Clinic hours'],
+  },
+  {
+    id: 'philhealth',
+    label: 'PhilHealth Accreditation',
+    keywords: ['philhealth', 'accept philhealth', 'government insurance'],
+    response: 'Yes, we accept PhilHealth. Please ensure your contributions are updated and bring your PhilHealth ID or MDR during your visit.',
+    suggestions: ['Insurance and billing', 'What should I bring?'],
+  },
+  {
+    id: 'discounts',
+    label: 'Senior Citizen & PWD Discounts',
+    keywords: ['discount', 'senior citizen', 'pwd', 'senior discount'],
+    response: 'We honor the standard 20% discount for Senior Citizens and Persons with Disabilities (PWD). Please present your valid ID upon billing.',
+    suggestions: ['Payment methods', 'Insurance and billing'],
+  },
+  {
+    id: 'health-packages',
+    label: 'Health & Wellness Packages',
+    keywords: ['package', 'executive checkup', 'wellness', 'annual physical exam', 'ape'],
+    response: 'We offer various health packages including Annual Physical Exams (APE) and Executive Check-ups. Please contact the front desk for current rates.',
+    suggestions: ['Contact support', 'Clinic hours'],
   },
 ];

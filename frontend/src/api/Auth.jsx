@@ -42,3 +42,13 @@ export const changePassword = async (data) => {
     await ensureCsrfCookie();
     return api.post('/api/auth/user/change-password', data);
 }
+
+export const sendOtp = async (email) => {
+    await ensureCsrfCookie();
+    return api.post('/api/auth/send-otp', { email });
+}
+
+export const verifyOtp = async (email, otp) => {
+    await ensureCsrfCookie();
+    return api.post('/api/auth/verify-otp', { email, otp });
+}

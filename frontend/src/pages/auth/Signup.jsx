@@ -11,7 +11,7 @@ import {
   CardHeader,
   CardTitle,
 } from "../../components/ui/card";
-import { Activity, Eye, EyeOff } from "lucide-react";
+import { Activity, Eye, EyeOff, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { useBranding } from "../../contexts/BrandingContext";
 
@@ -31,11 +31,11 @@ export const Signup = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const { signup } = useAuth();
   const navigate = useNavigate();
-  const displayBrand = branding.brandName;
-  const displayShortBrand = branding.brandShortName;
-  const displaySystemSubtitle = branding.systemSubtitle;
-  const displayBrandLabel = displayBrand ? `RUR ${displayBrand}` : 'RUR';
-  const displayShortBrandLabel = displayShortBrand ? `RUR ${displayShortBrand}` : 'RUR';
+
+  const displayBrand = branding?.brandName;
+  const displayShortBrand = branding?.shortBrandName || branding?.shortBrand;
+  const displayBrandLabel = displayBrand || 'Pareñas Medical Clinic';
+  const displayShortBrandLabel = displayShortBrand || 'Pareñas Medical Clinic';
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -62,10 +62,10 @@ export const Signup = () => {
 
     try {
       const result = await signup(formData);
-      
+
       if (result.success) {
         toast.success('Account created successfully! Please login to continue.');
-        navigate('/auth/login');
+        navigate('/auth/login', { state: { email: formData.email } });
       } else {
         toast.error('Registration failed. Please try again.');
       }
@@ -77,12 +77,11 @@ export const Signup = () => {
   };
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white flex flex-col justify-between">
       {/* Header */}
       <header className="sticky top-0 z-40 bg-[#01377D] shadow-md">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16 gap-2">
-            {/* Logo */}
             <Link to="/" className="flex items-center gap-2">
               {branding.logoUrl ? (
                 <img src={branding.logoUrl} alt={`${displayBrand} logo`} className="h-8 w-8 rounded-md object-cover" />
@@ -93,7 +92,6 @@ export const Signup = () => {
               <span className="sm:hidden text-sm font-semibold text-white">{displayShortBrandLabel}</span>
             </Link>
 
-            {/* Auth Buttons */}
             <div className="flex items-center gap-2 sm:gap-3">
               <Link
                 to="/auth/login"
@@ -113,189 +111,164 @@ export const Signup = () => {
       </header>
 
       {/* Main Content */}
-      <div className="min-h-[80vh] flex items-center justify-center p-4 py-8 sm:py-12">
-        <Card className="w-full max-w-2xl border-[#97E7F5] shadow-sm bg-white rounded-2xl">
-        <CardHeader className="text-center">
-          <div className="mb-4 flex items-center justify-center gap-2">
-            {branding.logoUrl ? (
-              <img src={branding.logoUrl} alt={`${displayBrand} logo`} className="h-9 w-9 rounded-md object-cover sm:h-10 sm:w-10" />
-            ) : (
-              <Activity className="w-9 h-9 sm:w-10 sm:h-10 text-[#26B170]" />
-            )}
-            <h1 className="text-xl sm:text-2xl font-semibold text-[#01377D]">{displayBrandLabel}</h1>
-          </div>
-          <CardTitle className="text-[#01377D] font-semibold">Create Account</CardTitle>
-          <CardDescription className="text-[#009DD1]">Join RUR System</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Personal Information */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="name" className="text-[#01377D]">Full Name *</Label>
-                <Input
-                  id="name"
-                  name="name"
-                  type="text"
-                  placeholder="John Doe"
-                  value={formData.name}
-                  onChange={handleChange}
-                  required
-                  className="border-[#97E7F5] focus:border-[#009DD1] focus:ring-[#009DD1]"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="email" className="text-[#01377D]">Email *</Label>
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  placeholder="you@example.com"
-                  value={formData.email}
-                  onChange={handleChange}
-                  required
-                  className="border-[#97E7F5] focus:border-[#009DD1] focus:ring-[#009DD1]"
-                />
-              </div>
+      <div className="flex-1 flex items-center justify-center p-4 py-8 sm:py-12">
+        <Card className="w-full max-w-2xl border-[#97E7F5] shadow-lg bg-white rounded-2xl">
+          <CardHeader className="text-center pb-2">
+            <div className="mb-3 flex items-center justify-center gap-2">
+              {branding.logoUrl ? (
+                <img src={branding.logoUrl} alt={`${displayBrand} logo`} className="h-9 w-9 rounded-md object-cover sm:h-10 sm:w-10" />
+              ) : (
+                <Activity className="w-9 h-9 sm:w-10 sm:h-10 text-[#26B170]" />
+              )}
+              <h1 className="text-xl sm:text-2xl font-semibold text-[#01377D]">{displayBrandLabel}</h1>
             </div>
+            <CardTitle className="text-[#01377D] font-semibold text-xl">Create Patient Account</CardTitle>
+            <CardDescription className="text-[#009DD1]">Join Pareñas Medical Clinic Online Patient Portal</CardDescription>
+          </CardHeader>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="phone" className="text-[#01377D]">Phone Number *</Label>
-                <Input
-                  id="phone"
-                  name="phone"
-                  type="tel"
-                  placeholder="+1234567890"
-                  value={formData.phone}
-                  onChange={handleChange}
-                  required
-                  className="border-[#97E7F5] focus:border-[#009DD1] focus:ring-[#009DD1]"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="date_of_birth" className="text-[#01377D]">Date of Birth *</Label>
-                <Input
-                  id="date_of_birth"
-                  name="date_of_birth"
-                  type="date"
-                  value={formData.date_of_birth}
-                  onChange={handleChange}
-                  required
-                  className="border-[#97E7F5] focus:border-[#009DD1] focus:ring-[#009DD1]"
-                />
-              </div>
-            </div>
-            
-
-            {/* Password Section */}
-            <div className="border-t pt-6">
-              <h3 className="text-lg font-semibold mb-4 text-[#01377D]">Account Security</h3>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-5">
+              {/* Personal Information */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="password" className="text-[#01377D]">Password *</Label>
-                  <div className="relative">
-                    <Input
-                      id="password"
-                      name="password"
-                      type={showPassword ? "text" : "password"}
-                      placeholder="••••••••"
-                      value={formData.password}
-                      onChange={handleChange}
-                      required
-                      className="border-[#97E7F5] focus:border-[#009DD1] focus:ring-[#009DD1] pr-10"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-[#009DD1]"
-                    >
-                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-                  <p className="text-xs text-gray-500">Minimum 8 characters</p>
+                <div className="space-y-1.5">
+                  <Label htmlFor="name" className="text-[#01377D] text-sm">Full Name *</Label>
+                  <Input
+                    id="name"
+                    name="name"
+                    type="text"
+                    placeholder="Juan dela Cruz"
+                    value={formData.name}
+                    onChange={handleChange}
+                    required
+                    className="border-[#97E7F5] focus:border-[#009DD1] focus:ring-[#009DD1] rounded-xl"
+                  />
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="password_confirmation" className="text-[#01377D]">
-                    Confirm Password *
-                  </Label>
-                  <div className="relative">
-                    <Input
-                      id="password_confirmation"
-                      name="password_confirmation"
-                      type={showConfirmPassword ? "text" : "password"}
-                      placeholder="••••••••"
-                      value={formData.password_confirmation}
-                      onChange={handleChange}
-                      required
-                      className="border-[#97E7F5] focus:border-[#009DD1] focus:ring-[#009DD1] pr-10"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-[#009DD1]"
-                    >
-                      {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
+                <div className="space-y-1.5">
+                  <Label htmlFor="email" className="text-[#01377D] text-sm">Email Address *</Label>
+                  <Input
+                    id="email"
+                    name="email"
+                    type="email"
+                    placeholder="you@example.com"
+                    value={formData.email}
+                    onChange={handleChange}
+                    required
+                    className="border-[#97E7F5] focus:border-[#009DD1] focus:ring-[#009DD1] rounded-xl"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="phone" className="text-[#01377D] text-sm">Phone Number *</Label>
+                  <Input
+                    id="phone"
+                    name="phone"
+                    type="tel"
+                    placeholder="09171234567"
+                    value={formData.phone}
+                    onChange={handleChange}
+                    required
+                    className="border-[#97E7F5] focus:border-[#009DD1] focus:ring-[#009DD1] rounded-xl"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="date_of_birth" className="text-[#01377D] text-sm">Date of Birth *</Label>
+                  <Input
+                    id="date_of_birth"
+                    name="date_of_birth"
+                    type="date"
+                    value={formData.date_of_birth}
+                    onChange={handleChange}
+                    required
+                    className="border-[#97E7F5] focus:border-[#009DD1] focus:ring-[#009DD1] rounded-xl"
+                  />
+                </div>
+              </div>
+
+              {/* Password Section */}
+              <div className="border-t border-slate-100 pt-5">
+                <h3 className="text-sm font-semibold mb-3 text-[#01377D]">Account Security</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="password" className="text-[#01377D] text-sm">Password *</Label>
+                    <div className="relative">
+                      <Input
+                        id="password"
+                        name="password"
+                        type={showPassword ? "text" : "password"}
+                        placeholder="••••••••"
+                        value={formData.password}
+                        onChange={handleChange}
+                        required
+                        className="border-[#97E7F5] focus:border-[#009DD1] focus:ring-[#009DD1] pr-10 rounded-xl"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[#009DD1]"
+                      >
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                    <p className="text-[11px] text-slate-400">At least 8 characters</p>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="password_confirmation" className="text-[#01377D] text-sm">
+                      Confirm Password *
+                    </Label>
+                    <div className="relative">
+                      <Input
+                        id="password_confirmation"
+                        name="password_confirmation"
+                        type={showConfirmPassword ? "text" : "password"}
+                        placeholder="••••••••"
+                        value={formData.password_confirmation}
+                        onChange={handleChange}
+                        required
+                        className="border-[#97E7F5] focus:border-[#009DD1] focus:ring-[#009DD1] pr-10 rounded-xl"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[#009DD1]"
+                      >
+                        {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
 
-            <div className="text-center pt-4">
-              <Button
-                type="submit"
-                className="w-full sm:w-auto text-amber-50 bg-green-600 transition-transform duration-300 hover:scale-[1.01] hover:bg-green-700"
-                size="lg"
-                disabled={loading}
-              >
-                {loading ? 'Creating Account...' : 'Create Account'}
-              </Button>
-            </div>
+              <div className="text-center pt-2">
+                <Button
+                  type="submit"
+                  className="w-full bg-[#26B170] text-white py-3 rounded-xl font-semibold hover:bg-[#1a8a55] transition-all shadow-md flex items-center justify-center gap-2"
+                  disabled={loading}
+                >
+                  <UserPlus className="w-4 h-4" />
+                  {loading ? 'Creating Account...' : 'Register Account'}
+                </Button>
+              </div>
 
-            <div className="text-center text-sm">
-              <span className="text-gray-600">Already have an account? </span>
-              <Link to="/auth/login" className="text-green-600 hover:underline">
-                Login here
-              </Link>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+              <div className="text-center text-sm pt-1">
+                <span className="text-slate-500">Already have an account? </span>
+                <Link to="/auth/login" className="text-[#009DD1] font-semibold hover:underline">
+                  Login here
+                </Link>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Footer */}
-      <footer className="bg-[#01377D] text-white py-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div>
-              <div className="flex items-center gap-2 mb-4">
-                {branding.logoUrl ? (
-                  <img src={branding.logoUrl} alt={`${displayBrand} logo`} className="h-8 w-8 rounded-md object-cover" />
-                ) : (
-                  <Activity className="w-8 h-8 text-[#d2ffb6]" />
-                )}
-                <span className="text-xl font-bold">{displayBrandLabel}</span>
-              </div>
-              <p className="text-[#97E7F5]">
-                {branding.footerDescription}
-              </p>
-            </div>
-            <div>
-              <h3 className="font-semibold mb-4">Contact</h3>
-              <ul className="space-y-2 text-[#97E7F5]">
-                <li>{displaySystemSubtitle}</li>
-                <li>{branding.contactEmail}</li>
-                <li>{branding.contactPhone}</li>
-              </ul>
-            </div>
-          </div>
-          <div className="border-t border-[#009DD1] mt-8 pt-8 text-center text-[#97E7F5]">
-            <p>© 2026 Renato Umali Reyes. All rights reserved.</p>
-          </div>
+      <footer className="bg-[#01377D] text-white py-8">
+        <div className="max-w-7xl mx-auto px-4 text-center text-[#97E7F5] text-xs">
+          <p>© 2026 Pareñas Medical Clinic. All rights reserved.</p>
         </div>
       </footer>
     </div>

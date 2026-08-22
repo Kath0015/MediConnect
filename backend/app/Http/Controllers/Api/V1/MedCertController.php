@@ -255,6 +255,43 @@ class MedCertController extends Controller
         return response()->json($medCert->load(['patient.user', 'requester', 'approver']));
     }
 
+    public function uploadPdf(Request $request, MedCert $medCert)
+    {
+        $this->authorize('uploadPdf', $medCert);
+
+        $request->validate([
+            'file' => 'required|file|mimes:pdf|max:10240',
+        ]);
+
+        $allowedStatuses = ['approved', 'completed', 'no-show'];
+        if (!in_array((string) $medCert->status, $allowedStatuses, true)) {
+            return response()->json([
+                'message' => 'Medical certificate must be approved before uploading'
+            ], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        $file = $request->file('file');
+
+        if ($medCert->pdf_path && Storage::exists($medCert->pdf_path)) {
+            Storage::delete($medCert->pdf_path);
+        }
+
+        $filename = "medcert-{$medCert->certificate_number}.pdf";
+        $path = $file->storeAs("med-certs/{$medCert->id}", $filename);
+
+        $medCert->update([
+            'pdf_path' => $path,
+        ]);
+
+        activity()
+            ->causedBy($request->user())
+            ->performedOn($medCert)
+            ->withProperties(['ip' => $request->ip()])
+            ->log('medcert_pdf_uploaded');
+
+        return response()->json($medCert->load(['patient.user', 'requester', 'approver']));
+    }
+
     public function downloadPdf(MedCert $medCert)
     {
         $this->authorize('downloadPdf', $medCert);

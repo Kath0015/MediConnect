@@ -9,21 +9,21 @@ class ClinicSettingSeeder extends Seeder
 {
     public function run(): void
     {
-        ClinicSetting::firstOrCreate(
+        ClinicSetting::updateOrCreate(
             ['id' => 1],
             [
                 'open_time' => '08:00:00',
                 'close_time' => '17:00:00',
                 'working_days' => ['mon', 'tue', 'wed', 'thu', 'fri'],
                 'appointment_interval' => 30,
-                'brand_name' => 'Clinic and Laboratory',
-                'brand_short_name' => 'Clinic Lab',
-                'system_title' => 'Clinic and Laboratory System',
-                'system_subtitle' => 'University Health Services',
+                'brand_name' => 'Pareñas Medical Clinic',
+                'brand_short_name' => 'Pareñas Clinic',
+                'system_title' => 'Pareñas Medical Clinic System',
+                'system_subtitle' => 'Lomboy St., Brgy. Paclasan, Roxas, Oriental Mindoro',
                 'brand_logo_path' => null,
-                'footer_description' => 'Modern healthcare management for better care and operations.',
-                'contact_email' => 'clinic@university.edu',
-                'contact_phone' => '(123) 456-7890',
+                'footer_description' => 'Modern healthcare management for better patient care and operations.',
+                'contact_email' => 'contact@parenasclinic.ph',
+                'contact_phone' => '0975 804 4023',
             ]
         );
 

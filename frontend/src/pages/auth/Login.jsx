@@ -17,18 +17,17 @@ export const Login = () => {
   const [errorMessage, setErrorMessage] = useState('');
   const { login, isAdmin, isClinician, isPatient } = useAuth();
   const navigate = useNavigate();
-  const displayBrand = branding.brandName;
-  const displayShortBrand = branding.brandShortName;
-  const displaySystemSubtitle = branding.systemSubtitle;
-  const displayBrandLabel = displayBrand ? `RUR ${displayBrand}` : 'RUR';
-  const displayShortBrandLabel = displayShortBrand ? `RUR ${displayShortBrand}` : 'RUR';
-
+  const displayBrand = branding?.brandName;
+  const displayShortBrand = branding?.shortBrandName || branding?.shortBrand;
+  const displaySystemSubtitle = branding?.systemSubtitle;
+  const displayBrandLabel = displayBrand || 'Pareñas Medical Clinic';
+  const displayShortBrandLabel = displayShortBrand || 'Pareñas Medical Clinic';
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     // Clear any previous error messages
     setErrorMessage('');
-    
+
     if (!email || !password) {
       setErrorMessage('Please fill in all fields');
       return;
@@ -75,15 +74,16 @@ export const Login = () => {
       const roleNames = [];
       if (Array.isArray(returnedUser.roles)) {
         returnedUser.roles.forEach(r => {
-          if (r && r.name) roleNames.push(r.name);
+          if (r && r.name) roleNames.push(r.name.toLowerCase());
         });
       }
       if (returnedUser.role && typeof returnedUser.role === 'string') {
-        roleNames.push(returnedUser.role);
+        roleNames.push(returnedUser.role.toLowerCase());
       }
 
       isAdminLocal = roleNames.includes('admin');
-      isClinicianLocal = roleNames.includes('clinician');
+      // Updated: Checks for 'doctor' OR 'clinician'
+      isClinicianLocal = roleNames.includes('doctor') || roleNames.includes('clinician');
       isPatientLocal = roleNames.includes('patient');
     } else {
       isAdminLocal = !!isAdmin;
@@ -141,95 +141,95 @@ export const Login = () => {
       {/* Main Content */}
       <div className="min-h-[80vh] flex items-center justify-center p-4 py-8 sm:py-12">
         <Card className="w-full max-w-md border-[#97E7F5] shadow-sm bg-white rounded-2xl">
-        <CardHeader className="text-center">
-          <div className="mb-4 flex items-center justify-center gap-2">
-            {branding.logoUrl ? (
-              <img src={branding.logoUrl} alt={`${displayBrand} logo`} className="h-9 w-9 rounded-md object-cover sm:h-10 sm:w-10" />
-            ) : (
-              <Activity className="w-9 h-9 sm:w-10 sm:h-10 text-[#26B170]" />
-            )}
-            <h1 className="text-xl sm:text-2xl font-semibold text-[#01377D]">{displayBrandLabel}</h1>
-          </div>
-          <CardTitle className="text-[#01377D] font-semibold">Login</CardTitle>
-          <CardDescription className="text-[#009DD1]">Access your {displayBrand} account</CardDescription>
-        </CardHeader>
-        
-        {errorMessage && (
-          <div className="px-6 py-3 bg-red-50 border border-red-200 rounded-md mx-6 mb-4">
-            <p className="text-sm text-red-600 font-light">{errorMessage}</p>
-          </div>
-        )}
-        
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email" className="text-[#01377D]">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="you@example.com"
-                value={email}
-                onChange={(e) => {
-                  setEmail(e.target.value);
-                  if (errorMessage) setErrorMessage('');
-                }}
-                required
-                disabled={loading}
-                className="border-[#97E7F5] focus:border-[#009DD1] focus:ring-[#009DD1]"
-              />
+          <CardHeader className="text-center">
+            <div className="mb-4 flex items-center justify-center gap-2">
+              {branding.logoUrl ? (
+                <img src={branding.logoUrl} alt={`${displayBrand} logo`} className="h-9 w-9 rounded-md object-cover sm:h-10 sm:w-10" />
+              ) : (
+                <Activity className="w-9 h-9 sm:w-10 sm:h-10 text-[#26B170]" />
+              )}
+              <h1 className="text-xl sm:text-2xl font-semibold text-[#01377D]">{displayBrandLabel}</h1>
             </div>
+            <CardTitle className="text-[#01377D] font-semibold">Login</CardTitle>
+            <CardDescription className="text-[#009DD1]">Access your {displayBrand} account</CardDescription>
+          </CardHeader>
 
-            <div className="space-y-2">
-              <Label htmlFor="password" className="text-[#01377D]">Password</Label>
-              <div className="relative">
+          {errorMessage && (
+            <div className="px-6 py-3 bg-red-50 border border-red-200 rounded-md mx-6 mb-4">
+              <p className="text-sm text-red-600 font-light">{errorMessage}</p>
+            </div>
+          )}
+
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email" className="text-[#01377D]">Email</Label>
                 <Input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  placeholder="••••••••"
-                  value={password}
+                  id="email"
+                  type="email"
+                  placeholder="you@example.com"
+                  value={email}
                   onChange={(e) => {
-                    setPassword(e.target.value);
+                    setEmail(e.target.value);
                     if (errorMessage) setErrorMessage('');
                   }}
                   required
                   disabled={loading}
-                  className="border-[#97E7F5] focus:border-[#009DD1] focus:ring-[#009DD1] pr-10"
+                  className="border-[#97E7F5] focus:border-[#009DD1] focus:ring-[#009DD1]"
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-[#009DD1]"
-                >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
               </div>
-            </div>
 
-            <div className="text-right">
-              <Link to="/auth/forgot-password" className="text-sm text-[#009DD1] hover:underline">
-                Forgot password?
-              </Link>
-            </div>
+              <div className="space-y-2">
+                <Label htmlFor="password" className="text-[#01377D]">Password</Label>
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      if (errorMessage) setErrorMessage('');
+                    }}
+                    required
+                    disabled={loading}
+                    className="border-[#97E7F5] focus:border-[#009DD1] focus:ring-[#009DD1] pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-[#009DD1]"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
 
-            <div className="text-center">
-              <Button 
-                type="submit" 
-                className="w-full bg-[#26B170] text-white transition-transform duration-300 hover:scale-[1.01] hover:bg-[#7ED348]" 
-                disabled={loading}
-              >
-                {loading ? 'Logging in...' : 'Login'}
-              </Button>
-            </div>
-            
-            <div className="text-center text-sm">
-              <span className="text-gray-600">Don't have an account? </span>
-              <Link to="/auth/signup" className="text-[#009DD1] hover:underline">
-                Register
-              </Link>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+              <div className="text-right">
+                <Link to="/auth/forgot-password" className="text-sm text-[#009DD1] hover:underline">
+                  Forgot password?
+                </Link>
+              </div>
+
+              <div className="text-center">
+                <Button
+                  type="submit"
+                  className="w-full bg-[#26B170] text-white transition-transform duration-300 hover:scale-[1.01] hover:bg-[#7ED348]"
+                  disabled={loading}
+                >
+                  {loading ? 'Logging in...' : 'Login'}
+                </Button>
+              </div>
+
+              <div className="text-center text-sm">
+                <span className="text-gray-600">Don't have an account? </span>
+                <Link to="/auth/signup" className="text-[#009DD1] hover:underline">
+                  Register
+                </Link>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Footer */}
@@ -259,7 +259,7 @@ export const Login = () => {
             </div>
           </div>
           <div className="border-t border-[#009DD1] mt-8 pt-8 text-center text-[#97E7F5]">
-            <p>© 2026 Renato Umali Reyes. All rights reserved.</p>
+            <p>© 2026 Pareñas Medical Clinic. All rights reserved.</p>
           </div>
         </div>
       </footer>

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Calendar, FlaskConical, MessageCircle, Sparkles, ArrowRight } from 'lucide-react';
+import { Calendar, MessageCircle, Sparkles, ArrowRight, Trash2 } from 'lucide-react';
 import { useBranding } from '../../contexts/BrandingContext';
 import PatientRoleBanner from '../../components/patient/PatientRoleBanner';
 import { MEDIBOT_FALLBACK, MEDIBOT_KNOWLEDGE_BASE } from '../../data/medibotKnowledgeBase';
@@ -12,7 +12,7 @@ const DEFAULT_MESSAGES = [
   {
     id: 'assistant-intro',
     role: 'assistant',
-    text: 'Hi, I am MediBot, your MediConnect assistant. Ask me about appointments, medicines, consultations, delivery, payments, or account support.',
+    text: 'Hi, I am MediBot, your MediConnect assistant. Ask me about appointments, consultations, payments, or account support.',
   },
   {
     id: 'assistant-hint',
@@ -36,12 +36,7 @@ const chatbotFeatures = [
     description: 'Booking help and online consult support.',
     icon: Calendar,
   },
-  {
-    id: 'medicines',
-    title: 'Medicines and delivery',
-    description: 'Availability checks and delivery guidance.',
-    icon: FlaskConical,
-  },
+
   {
     id: 'accounts',
     title: 'Payments and account help',
@@ -52,9 +47,7 @@ const chatbotFeatures = [
 
 const chatbotQuickPrompts = [
   { id: 'book', label: 'Book appointment', value: 'How can I book an appointment?' },
-  { id: 'medicine', label: 'Medicine availability', value: 'Is paracetamol available?' },
   { id: 'consult', label: 'Online consultation', value: 'Do you offer online consultation?' },
-  { id: 'delivery', label: 'Delivery time', value: 'How long is the delivery?' },
   { id: 'payment', label: 'Payment methods', value: 'Do you accept GCash?' },
   { id: 'password', label: 'Forgot password', value: 'I forgot my password.' },
 ];
@@ -127,7 +120,10 @@ const MediBot = () => {
 
   useEffect(() => {
     if (!chatEndRef.current) return;
-    chatEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    // Only scroll if user has interacted (messages > default) or bot is typing
+    if (chatMessages.length > DEFAULT_MESSAGES.length || chatIsTyping) {
+      chatEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
   }, [chatMessages, chatIsTyping]);
 
   useEffect(() => {
@@ -194,6 +190,14 @@ const MediBot = () => {
     sendChatMessage(promptValue);
   };
 
+  const handleClearChat = () => {
+    setChatMessages(DEFAULT_MESSAGES);
+    setSmartSuggestions([]);
+    if (typeof window !== 'undefined') {
+      window.localStorage.removeItem(CHAT_STORAGE_KEY);
+    }
+  };
+
   const promptChips = smartSuggestions.length
     ? smartSuggestions.map((value, index) => ({ id: `smart-${index}`, label: value, value }))
     : chatbotQuickPrompts;
@@ -202,7 +206,7 @@ const MediBot = () => {
     <div className="space-y-6">
       <PatientRoleBanner
         title="MediBot AI Assistant"
-        subtitle="Chat 24/7 for appointments, medicines, consultations, delivery, and account support."
+        subtitle="Chat 24/7 for appointments, consultations, payments, and account support."
         primaryAction={{ to: '/patient/appointment', label: 'Book appointment' }}
         secondaryAction={{ to: '/patient/symptom-checker', label: 'Check symptoms' }}
       />
@@ -216,7 +220,7 @@ const MediBot = () => {
               <p className="chatbot-kicker">24/7 AI Medical Chatbot</p>
               <h2 className="chatbot-heading text-3xl sm:text-4xl mb-3">Meet {assistantName}</h2>
               <p className="text-base text-[#35507A] max-w-xl">
-                Get instant answers about appointments, medicines, consultations, delivery timelines, payments, and account support.
+                Get instant answers about appointments, consultations, payments, and account support.
               </p>
               <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {chatbotFeatures.map((feature, index) => {
@@ -266,7 +270,18 @@ const MediBot = () => {
                     <p className="text-xs text-[#35507A]">Online now</p>
                   </div>
                 </div>
-                <span className="chatbot-status">24/7</span>
+                <div className="flex items-center gap-2">
+                  <span className="chatbot-status">24/7</span>
+                  <button
+                    type="button"
+                    onClick={handleClearChat}
+                    title="Clear chat history"
+                    className="flex items-center gap-1 rounded-lg border border-[#D8EBFA] bg-white px-3 py-1.5 text-xs font-medium text-[#35507A] transition-all duration-200 hover:border-red-300 hover:bg-red-50 hover:text-red-500"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    Clear
+                  </button>
+                </div>
               </div>
               <div className="chatbot-messages" role="log" aria-live="polite">
                 {chatMessages.map((message) => (
@@ -301,7 +316,7 @@ const MediBot = () => {
                   type="text"
                   value={chatInput}
                   onChange={(event) => setChatInput(event.target.value)}
-                  placeholder="Ask about appointments, medicines, delivery, payments, or account support..."
+                  placeholder="Ask about appointments, consultations, payments, or account support..."
                   className="flex-1 rounded-lg border border-[#D8EBFA] bg-white px-4 py-3 text-sm text-[#01377D] focus:border-[#009DD1] focus:outline-none focus:ring-2 focus:ring-[#97E7F5]"
                   aria-label="Chat message"
                 />

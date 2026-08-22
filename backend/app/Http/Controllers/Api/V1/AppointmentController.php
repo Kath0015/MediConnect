@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use App\Models\AppointmentType;
 use App\Models\User;
+use App\Events\AppointmentRescheduled;
 
 class AppointmentController extends Controller
 {
@@ -126,6 +127,9 @@ class AppointmentController extends Controller
             return $this->forbiddenResponse();
         }
 
+        $originalStart = $appointment->start_time ? $appointment->start_time->copy() : null;
+        $originalEnd = $appointment->end_time ? $appointment->end_time->copy() : null;
+
         $validated = $request->validated();
         // Keep status transitions on dedicated endpoints only.
         unset($validated['status']);
@@ -155,6 +159,40 @@ class AppointmentController extends Controller
         }
 
         $appointment->update($validated);
+
+        $startChanged = false;
+        if (array_key_exists('start_time', $validated)) {
+            if ($originalStart && $appointment->start_time) {
+                $startChanged = $originalStart->ne($appointment->start_time);
+            } elseif ($originalStart || $appointment->start_time) {
+                $startChanged = true;
+            }
+        }
+
+        $endChanged = false;
+        if (array_key_exists('end_time', $validated)) {
+            if ($originalEnd && $appointment->end_time) {
+                $endChanged = $originalEnd->ne($appointment->end_time);
+            } elseif ($originalEnd || $appointment->end_time) {
+                $endChanged = true;
+            }
+        }
+
+        if ($startChanged || $endChanged) {
+            activity()
+                ->causedBy($request->user())
+                ->performedOn($appointment)
+                ->withProperties([
+                    'ip' => $request->ip(),
+                    'previous_start_time' => $originalStart?->toDateTimeString(),
+                    'previous_end_time' => $originalEnd?->toDateTimeString(),
+                    'new_start_time' => $appointment->start_time?->toDateTimeString(),
+                    'new_end_time' => $appointment->end_time?->toDateTimeString(),
+                ])
+                ->log('appointment_rescheduled');
+
+            AppointmentRescheduled::dispatch($appointment, $originalStart, $originalEnd);
+        }
 
         // Audit log
         activity()

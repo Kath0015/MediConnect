@@ -63,9 +63,9 @@ const renderPrintableCoupon = ({
       <img src="${logoMunicipal}" alt="Municipal Logo" class="lr-logo" />
       <div class="lr-center">
         <p>REPUBLIC OF THE PHILIPPINES</p>
-        <h1>RENATO UMALI REYES HOSPITAL OF BONGABONG</h1>
-        <p>Labasan, Bongabong, Oriental Mindoro</p>
-        <p>Contact No. 0975 804 4023</p>
+        <h1>Pareñas Medical Clinic</h1>
+        <p>Lomboy St., Brgy, Paclasan, Roxas, Oriental Mindoro</p>
+        <p>Contact No. 0999 501 4626</p>
       </div>
       <img src="${logoHospital}" alt="Hospital Logo" class="lr-logo" />
     </div>
@@ -296,13 +296,13 @@ const LaboratoryRequestTemplate = ({
           />
           <div>
             <p className="text-[11px] text-gray-500">Republic of the Philippines</p>
-            <p className="text-sm font-semibold text-[#01377D]">RENATO UMALI REYES HOSPITAL OF BONGABONG</p>
-            <p className="text-[11px] text-gray-500">Labasan, Bongabong, Oriental Mindoro</p>
+            <p className="text-sm font-semibold text-[#01377D]">Pareñas Medical Clinic</p>
+            <p className="text-[11px] text-gray-500">Lomboy St., Brgy, Paclasan, Roxas, Oriental Mindoro</p>
           </div>
         </div>
         <img
           src="/images/umali-removebg-preview.png"
-          alt="RUR Hospital logo"
+          alt="Pareñas Medical Clinic logo"
           className="h-12 w-12 object-contain"
         />
       </div>

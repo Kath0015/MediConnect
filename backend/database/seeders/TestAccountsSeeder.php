@@ -12,6 +12,7 @@ class TestAccountsSeeder extends Seeder
     {
         // Ensure roles exist
         $adminRole = Role::firstOrCreate(['name' => 'admin']);
+        $doctorRole = Role::firstOrCreate(['name' => 'doctor']);
         $clinicianRole = Role::firstOrCreate(['name' => 'clinician']);
         $patientRole = Role::firstOrCreate(['name' => 'patient']);
 
@@ -24,7 +25,16 @@ class TestAccountsSeeder extends Seeder
         $admin->assignRole('admin');
         $admin->save();
 
-        // Clinician account
+        // Doctor account
+        $doctor = User::firstOrNew(['email' => 'doctor@gmail.com']);
+        $doctor->name = $doctor->name ?? 'Dr. Jose Santos';
+        $doctor->password = bcrypt('password');
+        $doctor->email_verified_at = $doctor->email_verified_at ?? now();
+        $doctor->save();
+        $doctor->assignRole('doctor');
+        $doctor->save();
+
+        // Clinician account (Clinic Staff)
         $clinician = User::firstOrNew(['email' => 'staff@gmail.com']);
         $clinician->name = $clinician->name ?? 'Staff Clinician';
         $clinician->password = bcrypt('password');
@@ -34,49 +44,25 @@ class TestAccountsSeeder extends Seeder
         $clinician->save();
 
         // Patient account
-        $patientUser = User::firstOrNew(['email' => 'detorresphilip6@gmail.com']);
-        $patientUser->name = $patientUser->name ?? 'Philip Detorres';
-        $patientUser->password = bcrypt('password');
-        $patientUser->email_verified_at = $patientUser->email_verified_at ?? now();
-        $patientUser->save();
-        $patientUser->assignRole('patient');
-        $patientUser->save();
+        $testPatient = User::firstOrNew(['email' => 'patient@gmail.com']);
+        $testPatient->name = 'Maria Santos';
+        $testPatient->password = bcrypt('password');
+        $testPatient->email_verified_at = $testPatient->email_verified_at ?? now();
+        $testPatient->save();
+        $testPatient->assignRole('patient');
+        $testPatient->save();
 
-        // Create patient record if not exists
-        if (!$patientUser->patient) {
+        if (!$testPatient->patient) {
             Patient::create([
-                'user_id' => $patientUser->id,
-                'date_of_birth' => now()->subYears(20)->toDateString(),
-                'phone' => '09171234567',
-                'address' => 'Sample Address',
+                'user_id'           => $testPatient->id,
+                'date_of_birth'     => '1995-06-15',
+                'phone'             => '09171234567',
+                'address'           => 'Quezon City, Metro Manila',
                 'emergency_contact' => [],
-                'is_active' => true,
+                'is_active'         => true,
             ]);
         }
 
-        // Deactivated patient account for testing
-        $deactivatedUser = User::firstOrNew(['email' => 'deactivated@gmail.com']);
-        $deactivatedUser->name = $deactivatedUser->name ?? 'Deactivated User';
-        $deactivatedUser->password = bcrypt('password');
-        $deactivatedUser->email_verified_at = $deactivatedUser->email_verified_at ?? now();
-        $deactivatedUser->is_active = false; // Deactivated for testing
-        $deactivatedUser->save();
-        $deactivatedUser->assignRole('patient');
-        $deactivatedUser->save();
-
-        // Create patient record if not exists
-        if (!$deactivatedUser->patient) {
-            Patient::create([
-                'user_id' => $deactivatedUser->id,
-                'date_of_birth' => now()->subYears(25)->toDateString(),
-                'phone' => '09170000000',
-                'address' => 'Deactivated User Address',
-                'emergency_contact' => [],
-                'is_active' => false,
-            ]);
-        }
-
-        $this->command->info('Test accounts ensured: admin@gmail.com, staff@gmail.com, detorresphilip6@gmail.com, deactivated@gmail.com (password)');
-        $this->command->info('Use deactivated@gmail.com to test deactivated account login message');
+        $this->command->info('Test accounts: admin@gmail.com, doctor@gmail.com, staff@gmail.com, patient@gmail.com (password: password)');
     }
 }

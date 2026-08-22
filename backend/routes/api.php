@@ -25,6 +25,8 @@ Route::middleware(['web'])->group(function () {
     Route::post('/auth/register', [AuthController::class, 'register']);
     Route::post('/auth/forgot-password', [AuthController::class, 'forgotPassword']);
     Route::post('/auth/reset-password', [AuthController::class, 'resetPassword']);
+    Route::post('/auth/send-otp', [AuthController::class, 'sendOtp']);
+    Route::post('/auth/verify-otp', [AuthController::class, 'verifyOtp']);
     Route::get('/med-certs/{hash}/verify', [MedCertController::class, 'publicVerify']);
     Route::get('/clinic/branding', [ClinicController::class, 'branding']);
     
@@ -76,6 +78,7 @@ Route::middleware(['web', 'auth:sanctum'])->group(function () {
     Route::post('/med-certs/{med_cert}/no-show', [MedCertController::class, 'markNoShow']);
     Route::post('/med-certs/{med_cert}/completed', [MedCertController::class, 'markCompleted']);
     Route::get('/med-certs/{med_cert}/download', [MedCertController::class, 'downloadPdf']);
+    Route::post('/med-certs/{med_cert}/upload', [MedCertController::class, 'uploadPdf']);
     
     // Documents
     Route::get('/documents', [DocumentController::class, 'getUserDocuments']); // Get user's own documents
