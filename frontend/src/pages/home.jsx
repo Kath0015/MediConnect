@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Activity,
@@ -9,8 +9,6 @@ import {
   CheckCircle,
   Calendar,
   ArrowRight,
-  MessageCircle,
-  Sparkles,
   Stethoscope,
   HeartPulse,
   Menu,
@@ -20,14 +18,13 @@ import {
   UserCircle,
 } from 'lucide-react';
 import { useBranding } from '../contexts/BrandingContext';
-import { MEDIBOT_FALLBACK, MEDIBOT_KNOWLEDGE_BASE } from '../data/medibotKnowledgeBase';
 import AuthModals from '../components/auth/AuthModals';
 
 const navItems = [
   { id: 'home', label: 'Home' },
   { id: 'libraries', label: 'Features' },
   { id: 'roles', label: 'Get Started' },
-  { id: 'assistant', label: 'AI Assistant' },
+
   { id: 'access', label: 'Quick Access' },
 ];
 
@@ -121,80 +118,7 @@ const roleCards = [
   },
 ];
 
-const chatbotFeatures = [
-  {
-    id: 'appointments',
-    title: 'Appointments and consultations',
-    description: 'Booking help and online consult guidance.',
-    icon: Calendar,
-  },
-  {
-    id: 'accounts',
-    title: 'Payments and account help',
-    description: 'GCash, password reset, and support access.',
-    icon: MessageCircle,
-  },
-];
 
-const chatbotQuickPrompts = [
-  { id: 'book', label: 'Book appointment', value: 'How can I book an appointment?' },
-  { id: 'consult', label: 'Online consultation', value: 'Do you offer online consultation?' },
-  { id: 'payment', label: 'Payment methods', value: 'Do you accept GCash?' },
-  { id: 'password', label: 'Forgot password', value: 'I forgot my password.' },
-];
-
-const medibotTopics = ['Appointments', 'Consultations', 'Payments', 'Account help'];
-
-const FALLBACK_SUGGESTIONS = [
-  'How can I book an appointment?',
-  'Do you accept GCash?',
-  'I forgot my password.',
-];
-
-const EMERGENCY_PATTERN = /chest pain|shortness of breath|difficulty breathing|severe bleeding|stroke|fainting/;
-
-const normalizeForMatch = (value) =>
-  value
-    .toLowerCase()
-    .replace(/[^a-z0-9\s]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-
-const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-
-const keywordMatches = (normalizedMessage, keyword) => {
-  const normalizedKeyword = normalizeForMatch(keyword);
-  if (!normalizedKeyword) return false;
-  if (normalizedKeyword.includes(' ')) {
-    return normalizedMessage.includes(normalizedKeyword);
-  }
-  const matcher = new RegExp(`\\b${escapeRegExp(normalizedKeyword)}\\b`, 'i');
-  return matcher.test(normalizedMessage);
-};
-
-const scoreIntent = (intent, normalizedMessage) => {
-  if (!intent?.keywords?.length) return 0;
-  return intent.keywords.reduce((score, keyword) => {
-    if (!keywordMatches(normalizedMessage, keyword)) return score;
-    const normalizedKeyword = normalizeForMatch(keyword);
-    return score + (normalizedKeyword.includes(' ') ? 2 : 1);
-  }, 0);
-};
-
-const findBestIntent = (normalizedMessage, knowledgeBase) => {
-  let bestIntent = null;
-  let bestScore = 0;
-
-  knowledgeBase.forEach((intent) => {
-    const score = scoreIntent(intent, normalizedMessage);
-    if (score > bestScore || (score === bestScore && (intent.priority || 0) > (bestIntent?.priority || 0))) {
-      bestScore = score;
-      bestIntent = intent;
-    }
-  });
-
-  return bestIntent;
-};
 
 const Home = () => {
   const { branding } = useBranding();
@@ -208,22 +132,6 @@ const Home = () => {
     setModalInitialRole(roleId);
     setModalOpen(true);
   };
-  const [chatMessages, setChatMessages] = useState(() => [
-    {
-      id: 'assistant-intro',
-      role: 'assistant',
-      text: 'Hi, I am MediBot, your MediConnect assistant. Ask me about appointments, consultations, payments, or account support.',
-    },
-    {
-      id: 'assistant-hint',
-      role: 'assistant',
-      text: 'Try: "How can I book an appointment?", "Do you accept GCash?", or "I forgot my password."',
-    },
-  ]);
-  const [chatInput, setChatInput] = useState('');
-  const [chatIsTyping, setChatIsTyping] = useState(false);
-  const [smartSuggestions, setSmartSuggestions] = useState([]);
-  const chatEndRef = useRef(null);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -242,21 +150,12 @@ const Home = () => {
   }, []);
 
 
-  useEffect(() => {
-    if (!chatEndRef.current) return;
-    if (chatMessages.length > 2 || chatIsTyping) {
-      chatEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }
-  }, [chatMessages, chatIsTyping]);
-
-
   const displayBrand = branding?.brandName;
 const displayShortBrand = branding?.shortBrandName || branding?.shortBrand;
 const displayBrandLabel = displayBrand || 'Pareñas Medical Clinic';
 const displayShortBrandLabel = displayShortBrand || 'Pareñas Medical Clinic';
   const displaySystemTitle = branding.systemTitle;
   const displaySystemSubtitle = branding.systemSubtitle;
-  const assistantName = displayShortBrand ? `${displayShortBrand} MediBot` : 'MediBot';
 
   const scrollToSection = (id) => {
     const element = document.getElementById(id);
@@ -264,67 +163,7 @@ const displayShortBrandLabel = displayShortBrand || 'Pareñas Medical Clinic';
     setMobileMenuOpen(false);
   };
 
-  const createChatMessage = (role, text) => ({
-    id: `${role}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-    role,
-    text,
-  });
 
-  const getBotResponse = (message) => {
-    const normalized = normalizeForMatch(message);
-
-    if (EMERGENCY_PATTERN.test(normalized)) {
-      return {
-        reply: 'If you are experiencing severe symptoms, call emergency services or go to the nearest ER right away.',
-        suggestions: ['Contact support', 'Clinic hours'],
-      };
-    }
-
-    const intent = findBestIntent(normalized, MEDIBOT_KNOWLEDGE_BASE);
-    if (intent) {
-      if (intent.id === 'contact-support') {
-        const phone = branding.contactPhone?.trim();
-        const email = branding.contactEmail?.trim();
-        const lines = [];
-        if (phone) lines.push(`Phone: ${phone}`);
-        if (email) lines.push(`Email: ${email}`);
-        if (lines.length) {
-          return { reply: `You can reach us at:\n${lines.join('\n')}`, suggestions: intent.suggestions || [] };
-        }
-      }
-
-      return { reply: intent.response, suggestions: intent.suggestions || [] };
-    }
-
-    return { reply: MEDIBOT_FALLBACK, suggestions: FALLBACK_SUGGESTIONS };
-  };
-
-  const sendChatMessage = (message) => {
-    const trimmed = message.trim();
-    if (!trimmed) return;
-    setChatInput('');
-    setChatMessages((prev) => [...prev, createChatMessage('user', trimmed)]);
-    setChatIsTyping(true);
-    const { reply, suggestions } = getBotResponse(trimmed);
-    setSmartSuggestions(suggestions || []);
-    window.setTimeout(() => {
-      setChatMessages((prev) => [...prev, createChatMessage('assistant', reply)]);
-      setChatIsTyping(false);
-    }, 500);
-  };
-
-  const handleChatSubmit = (event) => {
-    event.preventDefault();
-    sendChatMessage(chatInput);
-  };
-
-  const handleQuickPrompt = (promptValue) => {
-    sendChatMessage(promptValue);
-  };
-
-  const promptChips = smartSuggestions.length
-    ? smartSuggestions.map((value, index) => ({ id: `smart-${index}`, label: value, value }))
-    : chatbotQuickPrompts;
 
   return (
     <div className="min-h-screen bg-white">
@@ -398,40 +237,27 @@ const displayShortBrandLabel = displayShortBrand || 'Pareñas Medical Clinic';
       {/* Hero Section */}
       <section id="home" className="bg-white relative overflow-hidden">
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 bg-white">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center min-h-screen py-20">
-            <div className="text-center lg:text-left">
-              <h1 className="text-4xl lg:text-5xl font-bold text-[#009DD1] mb-4 leading-tight">
-                <span className="block mb-2">Welcome to </span>
-                <span className="block text-[#01377D] mb-2">MediConnect</span>
-                <span className="block text-2xl lg:text-3xl font-semibold text-[#35507A] leading-snug">
-                  A Digital Web-Based Medical and Laboratory Management System with Appointment Scheduling and Decision Support
-                </span>
-              </h1>
-              <p className="text-xl text-[#01377D] mb-8 max-w-2xl">Simplifying healthcare management for better patient care with appointment, records, and documents in one place.</p>
+          <div className="flex flex-col items-start justify-center text-left min-h-[75vh] py-24 max-w-3xl">
+            <h1 className="text-4xl lg:text-5xl font-bold text-[#009DD1] mb-6 leading-tight">
+              <span className="block mb-2">Welcome to </span>
+              <span className="block text-[#01377D] mb-3">MediConnect</span>
+              <span className="block text-2xl lg:text-3xl font-semibold text-[#35507A] leading-snug">
+                 A Web-Based Medical and Laboratory Management System with Appointment Scheduling and Decision Support for Pareñas Medical Clinic 
+              </span>
+            </h1>
+            <p className="text-xl text-[#01377D] mb-8 max-w-2xl leading-relaxed">
+              Simplifying healthcare management for better patient care with appointment, records, and documents in one place.
+            </p>
 
-              <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-                <button onClick={() => openModalAs('portal')} className="bg-[#26B170] text-white px-8 py-4 rounded-lg font-semibold hover:bg-[#7ED348] hover:scale-105 active:scale-95 shadow-lg transition-all duration-300 flex items-center justify-center gap-3">
-                  <Users className="w-5 h-5" />
-                  Get Started
-                </button>
-                <button onClick={() => scrollToSection('libraries')} className="border-2 border-[#009DD1] text-[#009DD1] px-8 py-4 rounded-lg font-semibold hover:bg-[#009DD1] hover:text-white hover:scale-105 active:scale-95 shadow-lg transition-all duration-300 flex items-center justify-center gap-3">
-                  <BookOpen className="w-5 h-5" />
-                  Explore Features
-                </button>
-              </div>
-            </div>
-            <div className="relative">
-              <div className="relative z-0 transform hover:scale-105 transition-transform duration-500">
-                <div className="relative rounded-xl overflow-hidden">
-                  <img src="https://i.pinimg.com/1200x/55/81/80/558180f961f4da7db384c55903ae464c.jpg" alt="Healthcare Management" className="w-full h-[600px] object-cover transform hover:scale-110 transition-transform duration-700" />
-                  <div className="absolute inset-0 flex items-end z-10">
-                    <div className="p-4 text-[#009DD1] bg-white/90 w-full">
-                      <h3 className="text-lg font-bold">{displaySystemTitle}</h3>
-                      <p className="text-sm opacity-90">{displaySystemSubtitle}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
+            <div className="flex flex-col sm:flex-row gap-4 justify-start">
+              <button onClick={() => openModalAs('portal')} className="bg-[#26B170] text-white px-8 py-4 rounded-lg font-semibold hover:bg-[#7ED348] hover:scale-105 active:scale-95 shadow-lg transition-all duration-300 flex items-center justify-center gap-3">
+                <Users className="w-5 h-5" />
+                Get Started
+              </button>
+              <button onClick={() => openModalAs('patient-login', 'patient')} className="border-2 border-[#009DD1] text-[#009DD1] px-8 py-4 rounded-lg font-semibold hover:bg-[#009DD1] hover:text-white hover:scale-105 active:scale-95 shadow-lg transition-all duration-300 flex items-center justify-center gap-3">
+                <Calendar className="w-5 h-5" />
+                Book Appointment
+              </button>
             </div>
           </div>
         </div>
@@ -471,27 +297,27 @@ const displayShortBrandLabel = displayShortBrand || 'Pareñas Medical Clinic';
       </section>
 
       {/* Portal Access / Get Started Section */}
-      <section id="roles" className="py-20 bg-gradient-to-br from-[#01377D] via-[#012f6b] to-[#011d4a]">
+      <section id="roles" className="py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-14">
-            <p className="text-[#97E7F5] text-sm font-semibold uppercase tracking-widest mb-3">Role Selection</p>
-            <h2 className="text-4xl sm:text-5xl font-bold text-white mb-4">Choose Your Role</h2>
-            <p className="text-lg text-[#97E7F5] max-w-2xl mx-auto">Select your role to get started with MediConnect. Each role has a dedicated dashboard tailored to your needs.</p>
+            <p className="text-[#009DD1] text-sm font-semibold uppercase tracking-widest mb-3">Role Selection</p>
+            <h2 className="text-4xl sm:text-5xl font-bold text-[#01377D] mb-4">Choose Your Role</h2>
+            <p className="text-lg text-[#35507A] max-w-2xl mx-auto">Select your role to get started with MediConnect. Each role has a dedicated dashboard tailored to your needs.</p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {roleCards.map((role) => (
               <div
                 key={role.id}
-                className={`relative rounded-2xl border-2 bg-white/5 backdrop-blur-sm p-6 transition-all duration-300 group cursor-default ${role.border} hover:-translate-y-1 hover:shadow-2xl hover:bg-white/10`}
+                className={`relative rounded-2xl border bg-white shadow-lg p-6 transition-all duration-300 group cursor-default ${role.border} hover:-translate-y-1 hover:shadow-2xl`}
               >
                 <div className={`inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br ${role.color} shadow-lg mb-4 text-2xl`}>
                   {role.emoji}
                 </div>
-                <h3 className="text-xl font-bold text-white mb-2">{role.title}</h3>
-                <p className="text-[#97E7F5] text-sm mb-5 leading-relaxed">{role.description}</p>
+                <h3 className="text-xl font-bold text-[#01377D] mb-2">{role.title}</h3>
+                <p className="text-[#35507A] text-sm mb-5 leading-relaxed">{role.description}</p>
                 <ul className="space-y-1.5 mb-6">
                   {role.features.map((feat) => (
-                    <li key={feat} className="flex items-center gap-2 text-[#d2ffb6] text-sm">
+                    <li key={feat} className="flex items-center gap-2 text-[#35507A] text-sm">
                       <CheckCircle className="w-3.5 h-3.5 flex-shrink-0 text-[#26B170]" />
                       {feat}
                     </li>
@@ -508,7 +334,7 @@ const displayShortBrandLabel = displayShortBrand || 'Pareñas Medical Clinic';
                   {role.registerPath && (
                     <button
                       onClick={() => openModalAs('patient-register', 'patient')}
-                      className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm font-semibold border border-white/20 text-white hover:bg-white/10 transition-all duration-200"
+                      className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm font-semibold border border-[#01377D]/20 text-[#01377D] hover:bg-[#01377D]/5 transition-all duration-200"
                     >
                       <UserCircle className="w-4 h-4" />
                       Register
@@ -517,151 +343,6 @@ const displayShortBrandLabel = displayShortBrand || 'Pareñas Medical Clinic';
                 </div>
               </div>
             ))}
-          </div>
-        </div>
-      </section>
-
-      {/* AI Assistant (MediBot) Section */}
-      <section id="assistant" className="chatbot-shell py-20">
-        <div className="chatbot-orb chatbot-orb-left" aria-hidden="true"></div>
-        <div className="chatbot-orb chatbot-orb-right" aria-hidden="true"></div>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 chatbot-body">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
-            <div className="chatbot-fade-up">
-              <p className="chatbot-kicker">MediConnect AI Assistant</p>
-              <div className="flex flex-wrap items-center gap-3">
-                <h2 className="chatbot-heading text-4xl sm:text-5xl">Meet {assistantName}</h2>
-                <span className="chatbot-pill">Always on</span>
-              </div>
-              <p className="mt-4 text-lg text-[#35507A] max-w-xl">
-                Get fast answers for MediConnect services with smart suggestions, clear next steps, and friendly support.
-              </p>
-              <div className="mt-6">
-                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#0f3d73]">MediConnect focus</p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {medibotTopics.map((topic) => (
-                    <span key={topic} className="chatbot-topic-chip">
-                      {topic}
-                    </span>
-                  ))}
-                </div>
-              </div>
-              <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {chatbotFeatures.map((feature, index) => {
-                  const Icon = feature.icon;
-                  return (
-                    <div key={feature.id} className="chatbot-feature-card chatbot-fade-up" style={{ animationDelay: `${index * 80}ms` }}>
-                      <div className="chatbot-feature-icon">
-                        <Icon className="w-5 h-5 text-[#009DD1]" />
-                      </div>
-                      <h3 className="text-lg font-semibold text-[#01377D] mb-1">{feature.title}</h3>
-                      <p className="text-sm text-[#35507A]">{feature.description}</p>
-                    </div>
-                  );
-                })}
-              </div>
-              <div className="mt-6 chatbot-guardrail">
-                <div className="chatbot-guardrail-icon">
-                  <Shield className="w-4 h-4" />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-[#01377D]">MediConnect-only answers</p>
-                  <p className="text-sm text-[#35507A]">{MEDIBOT_FALLBACK}</p>
-                </div>
-              </div>
-              <div className="mt-8 chatbot-appointment-card">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <h3 className="text-lg font-semibold text-[#01377D]">Smart support flow</h3>
-                    <p className="text-sm text-[#35507A]">
-                      Keyword recognition routes questions to the FAQ database, and admins can keep responses up to date.
-                    </p>
-                  </div>
-                  <span className="chatbot-pill chatbot-pill-accent">Auto reply</span>
-                </div>
-                <ol className="mt-4 space-y-2 text-sm text-[#35507A]">
-                  <li className="flex items-start gap-2"><span className="chatbot-step">1</span>Ask a MediConnect question.</li>
-                  <li className="flex items-start gap-2"><span className="chatbot-step">2</span>Get a clear answer with next steps.</li>
-                  <li className="flex items-start gap-2"><span className="chatbot-step">3</span>Use quick actions to book or reach support.</li>
-                </ol>
-                <div className="mt-4 flex flex-col sm:flex-row gap-3">
-                  <button
-                    onClick={() => openModalAs('portal')}
-                    className="bg-[#26B170] text-white px-5 py-3 rounded-lg font-semibold hover:bg-[#7ED348] transition-all duration-300 text-center"
-                  >
-                    Chat with MediBot
-                  </button>
-                  <button
-                    onClick={() => scrollToSection('access')}
-                    className="border border-[#009DD1] text-[#009DD1] px-5 py-3 rounded-lg font-semibold hover:bg-[#009DD1] hover:text-white transition-all duration-300"
-                  >
-                    See quick access
-                  </button>
-                </div>
-              </div>
-            </div>
-            <div className="chatbot-panel p-6 chatbot-fade-up" style={{ animationDelay: '120ms' }}>
-              <div className="flex items-center justify-between border-b border-[#D8EBFA] pb-4">
-                <div className="flex items-center gap-3">
-                  <div className="chatbot-avatar">
-                    <Sparkles className="w-5 h-5 text-[#009DD1]" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-[#01377D]">{assistantName}</p>
-                    <p className="text-xs text-[#35507A]">Online now</p>
-                  </div>
-                </div>
-                <span className="chatbot-status">24/7</span>
-              </div>
-              <div className="chatbot-messages" role="log" aria-live="polite">
-                {chatMessages.map((message) => (
-                  <div key={message.id} className={`chatbot-message flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`chatbot-bubble ${message.role === 'user' ? 'chatbot-bubble-user' : 'chatbot-bubble-assistant'}`}>
-                      <p className="whitespace-pre-line text-sm leading-relaxed">{message.text}</p>
-                    </div>
-                  </div>
-                ))}
-                {chatIsTyping && (
-                  <div className="chatbot-message flex justify-start">
-                    <div className="chatbot-bubble chatbot-bubble-assistant">
-                      <div className="chatbot-typing">
-                        <span></span>
-                        <span></span>
-                        <span></span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-                <div ref={chatEndRef} />
-              </div>
-              <div className="mt-4 flex flex-wrap gap-2">
-                {promptChips.map((prompt) => (
-                  <button key={prompt.id} type="button" className="chatbot-chip" onClick={() => handleQuickPrompt(prompt.value)}>
-                    {prompt.label}
-                  </button>
-                ))}
-              </div>
-              <form className="mt-4 flex items-center gap-3" onSubmit={handleChatSubmit}>
-                <input
-                  type="text"
-                  value={chatInput}
-                  onChange={(event) => setChatInput(event.target.value)}
-                  placeholder="Ask about appointments, consultations, payments, or account support..."
-                  className="flex-1 rounded-lg border border-[#D8EBFA] bg-white px-4 py-3 text-sm text-[#01377D] focus:border-[#009DD1] focus:outline-none focus:ring-2 focus:ring-[#97E7F5]"
-                  aria-label="Chat message"
-                />
-                <button
-                  type="submit"
-                  disabled={!chatInput.trim()}
-                  className="flex items-center justify-center rounded-lg bg-[#01377D] px-4 py-3 text-white transition-all duration-300 hover:bg-[#009DD1] disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  <ArrowRight className="w-5 h-5" />
-                </button>
-              </form>
-              <p className="mt-3 text-xs text-[#35507A]">
-                This assistant shares general information only and does not replace professional medical advice. For emergencies, call your local emergency number.
-              </p>
-            </div>
           </div>
         </div>
       </section>
@@ -717,7 +398,7 @@ const displayShortBrandLabel = displayShortBrand || 'Pareñas Medical Clinic';
                 <li><button onClick={() => scrollToSection('home')} className="hover:text-[#7ED348]">Home</button></li>
                 <li><button onClick={() => scrollToSection('libraries')} className="hover:text-[#7ED348]">Features</button></li>
                 <li><button onClick={() => scrollToSection('roles')} className="hover:text-[#7ED348]">Get Started</button></li>
-                <li><button onClick={() => scrollToSection('assistant')} className="hover:text-[#7ED348]">AI Assistant</button></li>
+
               </ul>
             </div>
             <div>

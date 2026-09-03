@@ -74,10 +74,10 @@ class DiagnosticMailSettings extends Command
             $this->info("✓ SMTP connection successful!");
             
             // Try to send test email
-            $message = (new \Swift_Message('Test Email from MediTrack'))
-                ->setFrom([$mailSettings->email => 'MediTrack Clinic'])
+            $message = (new \Swift_Message('Test Email from MediConnect'))
+                ->setFrom([$mailSettings->email => 'MediConnect Clinic'])
                 ->setTo($mailSettings->email)
-                ->setBody('This is a test email from the MediTrack diagnostic tool.');
+                ->setBody('This is a test email from the MediConnect diagnostic tool.');
 
             $result = $mailer->send($message);
             

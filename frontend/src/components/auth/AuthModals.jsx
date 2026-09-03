@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "../ui/input-otp";
 import { useNavigate } from "react-router-dom";
 import { X, Eye, EyeOff, ArrowLeft, Stethoscope, Users, HeartPulse, Shield, Lock, UserPlus, Mail, CheckCircle, RefreshCw, Loader2, Activity } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
@@ -15,25 +16,7 @@ const ROLE_CARDS = [
 
 const MODAL_ANIM = "@keyframes modalIn{from{opacity:0;transform:scale(0.93) translateY(12px)}to{opacity:1;transform:scale(1) translateY(0)}}";
 
-const OtpInput = ({ otp, setOtp, disabled }) => {
-  const refs = useRef([]);
-  const handleChange = (i, v) => {
-    const d = v.replace(/\D/g, "").slice(-1);
-    const n = [...otp]; n[i] = d; setOtp(n);
-    if (d && i < 5) refs.current[i + 1]?.focus();
-  };
-  const handleKeyDown = (i, e) => { if (e.key === "Backspace" && !otp[i] && i > 0) refs.current[i - 1]?.focus(); };
-  const handlePaste = (e) => { e.preventDefault(); const p = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6); if (p.length === 6) setOtp(p.split("")); };
-  return (
-    <div className="flex gap-2 justify-center" onPaste={handlePaste}>
-      {otp.map((d, i) => (
-        <input key={i} ref={el => refs.current[i] = el} type="text" inputMode="numeric" maxLength={1} value={d} disabled={disabled}
-          onChange={e => handleChange(i, e.target.value)} onKeyDown={e => handleKeyDown(i, e)}
-          className="w-11 h-14 text-center text-2xl font-bold border-2 border-[#97E7F5] rounded-xl focus:border-[#009DD1] focus:ring-2 focus:ring-[#009DD1]/30 focus:outline-none transition-all bg-white text-[#01377D] disabled:opacity-50" />
-      ))}
-    </div>
-  );
-};
+
 
 const ModalOverlay = ({ children, onClose, maxW = "max-w-lg" }) => {
   useEffect(() => {
@@ -77,7 +60,7 @@ const AuthModals = ({ isOpen, onClose, initialScreen = "portal", initialRole = n
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [regForm, setRegForm] = useState({ name: "", email: "", phone: "", date_of_birth: "", password: "", password_confirmation: "" });
+  const [regForm, setRegForm] = useState({ first_name: "", last_name: "", email: "", phone: "", date_of_birth: "", sex: "", address: "", password: "", password_confirmation: "" });
   const [showRegPass, setShowRegPass] = useState(false);
   const [showRegConfirm, setShowRegConfirm] = useState(false);
   const [otpDigits, setOtpDigits] = useState(["", "", "", "", "", ""]);
@@ -90,7 +73,7 @@ const AuthModals = ({ isOpen, onClose, initialScreen = "portal", initialRole = n
   const resetAndClose = useCallback(() => {
     setScreen(initialScreen); setError("");
     setSelectedRole(initialRole ? (ROLE_CARDS.find(r => r.id === initialRole) || null) : null);
-    setRegForm({ name: "", email: "", phone: "", date_of_birth: "", password: "", password_confirmation: "" });
+    setRegForm({ first_name: "", last_name: "", email: "", phone: "", date_of_birth: "", sex: "", address: "", password: "", password_confirmation: "" });
     setLoginForm({ email: "", password: "" });
     setOtpDigits(["", "", "", "", "", ""]); setDevOtp("");
     onClose();
@@ -106,7 +89,8 @@ const AuthModals = ({ isOpen, onClose, initialScreen = "portal", initialRole = n
     if (regForm.password.length < 8) { setError("Password must be at least 8 characters."); return; }
     setLoading(true);
     try {
-      await signup(regForm);
+      const payload = { ...regForm, name: `${regForm.first_name} ${regForm.last_name}`.trim() };
+      await signup(payload);
       const otpRes = await sendOtp(regForm.email);
       const data = otpRes?.data?.data || otpRes?.data || {};
       setOtpEmail(regForm.email);
@@ -236,33 +220,72 @@ const AuthModals = ({ isOpen, onClose, initialScreen = "portal", initialRole = n
           </form>
         )}
         {screen === "patient-register" && (
-          <form onSubmit={handleRegSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {[{label:"Full Name *",field:"name",type:"text",placeholder:"Juan dela Cruz"},{label:"Email *",field:"email",type:"email",placeholder:"you@example.com"},{label:"Phone *",field:"phone",type:"tel",placeholder:"09171234567"},{label:"Date of Birth *",field:"date_of_birth",type:"date",placeholder:""}].map(({label,field,type,placeholder}) => (
-                <div key={field}><label className="block text-sm font-medium text-[#01377D] mb-1">{label}</label>
-                  <input type={type} value={regForm[field]} placeholder={placeholder} onChange={e => setRegForm(p => ({ ...p, [field]: e.target.value }))} required disabled={loading} className="w-full px-4 py-2.5 border-2 border-[#97E7F5] rounded-xl focus:border-[#009DD1] focus:outline-none text-sm text-[#01377D] transition-all" /></div>
-              ))}
+          <div className="space-y-4">
+            <div>
+              <h2 className="text-2xl font-bold text-[#1a56db]">Patient Registration</h2>
+              <p className="text-sm text-gray-500 mt-1">Create your MediConnect patient account.</p>
             </div>
-            <div className="border-t border-slate-100 pt-3">
-              <p className="text-xs font-semibold text-[#01377D] mb-3">Account Security</p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div><label className="block text-sm font-medium text-[#01377D] mb-1">Password *</label>
-                  <div className="relative">
-                    <input type={showRegPass ? "text" : "password"} value={regForm.password} onChange={e => setRegForm(p => ({ ...p, password: e.target.value }))} placeholder="••••••••" required disabled={loading} className="w-full px-4 py-2.5 pr-10 border-2 border-[#97E7F5] rounded-xl focus:border-[#009DD1] focus:outline-none text-sm text-[#01377D] transition-all" />
-                    <button type="button" onClick={() => setShowRegPass(p => !p)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[#009DD1]">{showRegPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}</button>
-                  </div></div>
-                <div><label className="block text-sm font-medium text-[#01377D] mb-1">Confirm Password *</label>
-                  <div className="relative">
-                    <input type={showRegConfirm ? "text" : "password"} value={regForm.password_confirmation} onChange={e => setRegForm(p => ({ ...p, password_confirmation: e.target.value }))} placeholder="••••••••" required disabled={loading} className="w-full px-4 py-2.5 pr-10 border-2 border-[#97E7F5] rounded-xl focus:border-[#009DD1] focus:outline-none text-sm text-[#01377D] transition-all" />
-                    <button type="button" onClick={() => setShowRegConfirm(p => !p)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[#009DD1]">{showRegConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}</button>
-                  </div></div>
+            <ErrorBox msg={error} />
+            <form onSubmit={handleRegSubmit} className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">First Name</label>
+                  <input type="text" placeholder="Enter first name" value={regForm.first_name} onChange={e => setRegForm(p => ({ ...p, first_name: e.target.value }))} required disabled={loading} className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-[#1a56db] focus:outline-none focus:ring-1 focus:ring-[#1a56db] transition-all" />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Last Name</label>
+                  <input type="text" placeholder="Enter last name" value={regForm.last_name} onChange={e => setRegForm(p => ({ ...p, last_name: e.target.value }))} required disabled={loading} className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-[#1a56db] focus:outline-none focus:ring-1 focus:ring-[#1a56db] transition-all" />
+                </div>
               </div>
-              <p className="text-[11px] text-slate-400 mt-1">At least 8 characters</p>
-            </div>
-            <button type="submit" disabled={loading} className="w-full py-3 bg-[#26B170] text-white rounded-xl font-semibold hover:bg-[#1a8a55] transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-60">
-              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}{loading ? "Creating Account…" : "Create Patient Account"}
-            </button>
-          </form>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Email Address</label>
+                  <input type="email" placeholder="example@gmail.com" value={regForm.email} onChange={e => setRegForm(p => ({ ...p, email: e.target.value }))} required disabled={loading} className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-[#1a56db] focus:outline-none focus:ring-1 focus:ring-[#1a56db] transition-all" />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Contact Number</label>
+                  <input type="tel" placeholder="09XXXXXXXXX" value={regForm.phone} onChange={e => setRegForm(p => ({ ...p, phone: e.target.value }))} required disabled={loading} className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-[#1a56db] focus:outline-none focus:ring-1 focus:ring-[#1a56db] transition-all" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Date of Birth</label>
+                  <input type="date" value={regForm.date_of_birth} onChange={e => setRegForm(p => ({ ...p, date_of_birth: e.target.value }))} required disabled={loading} className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm text-gray-600 focus:border-[#1a56db] focus:outline-none focus:ring-1 focus:ring-[#1a56db] transition-all" />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Sex</label>
+                  <select value={regForm.sex} onChange={e => setRegForm(p => ({ ...p, sex: e.target.value }))} required disabled={loading} className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm text-gray-600 focus:border-[#1a56db] focus:outline-none focus:ring-1 focus:ring-[#1a56db] transition-all">
+                    <option value="">Select sex</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Complete Address</label>
+                <input type="text" placeholder="Enter complete address" value={regForm.address} onChange={e => setRegForm(p => ({ ...p, address: e.target.value }))} required disabled={loading} className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-[#1a56db] focus:outline-none focus:ring-1 focus:ring-[#1a56db] transition-all" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Password</label>
+                  <div className="relative">
+                    <input type={showRegPass ? "text" : "password"} placeholder="Minimum 8 characters" value={regForm.password} onChange={e => setRegForm(p => ({ ...p, password: e.target.value }))} required disabled={loading} className="w-full rounded-lg border border-gray-300 px-3 py-2.5 pr-10 text-sm focus:border-[#1a56db] focus:outline-none focus:ring-1 focus:ring-[#1a56db] transition-all" />
+                    <button type="button" onClick={() => setShowRegPass(p => !p)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[#1a56db]">{showRegPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}</button>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Confirm Password</label>
+                  <div className="relative">
+                    <input type={showRegConfirm ? "text" : "password"} placeholder="Confirm password" value={regForm.password_confirmation} onChange={e => setRegForm(p => ({ ...p, password_confirmation: e.target.value }))} required disabled={loading} className="w-full rounded-lg border border-gray-300 px-3 py-2.5 pr-10 text-sm focus:border-[#1a56db] focus:outline-none focus:ring-1 focus:ring-[#1a56db] transition-all" />
+                    <button type="button" onClick={() => setShowRegConfirm(p => !p)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[#1a56db]">{showRegConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}</button>
+                  </div>
+                </div>
+              </div>
+              <button type="submit" disabled={loading} className="w-full rounded-xl bg-[#1d61ff] py-3 text-sm font-semibold text-white transition-all hover:bg-[#124bce] mt-2 flex items-center justify-center gap-2 disabled:opacity-60">
+                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}{loading ? "Creating Account…" : "Continue to Email Verification"}
+              </button>
+            </form>
+          </div>
         )}
       </div>
     </ModalOverlay>
@@ -283,7 +306,24 @@ const AuthModals = ({ isOpen, onClose, initialScreen = "portal", initialRole = n
         </div>
         <ErrorBox msg={error} />
         <form onSubmit={handleOtpSubmit} className="space-y-6">
-          <OtpInput otp={otpDigits} setOtp={setOtpDigits} disabled={loading} />
+          <div className="flex justify-center">
+            <InputOTP
+              maxLength={6}
+              value={otpDigits.join("")}
+              onChange={(val) => setOtpDigits(val.split("").concat(Array(6).fill("")).slice(0, 6))}
+              disabled={loading}
+            >
+              <InputOTPGroup>
+                {[0,1,2,3,4,5].map((i) => (
+                  <InputOTPSlot
+                    key={i}
+                    index={i}
+                    className="w-11 h-14 text-xl font-bold border-2 border-[#97E7F5] rounded-xl first:rounded-l-xl last:rounded-r-xl focus:border-[#009DD1] focus:ring-2 focus:ring-[#009DD1]/30 text-[#01377D] bg-white"
+                  />
+                ))}
+              </InputOTPGroup>
+            </InputOTP>
+          </div>
           <button type="submit" disabled={loading || otpDigits.join("").length < 6} className="w-full py-3 bg-[#26B170] text-white rounded-xl font-semibold hover:bg-[#1a8a55] transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-60">
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}{loading ? "Verifying…" : "Verify Email"}
           </button>

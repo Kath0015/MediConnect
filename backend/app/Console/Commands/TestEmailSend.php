@@ -40,16 +40,16 @@ class TestEmailSend extends Command
                 'mail.mailers.smtp.password' => $decryptedPassword,
                 'mail.mailers.smtp.encryption' => $mailSettings->encryption,
                 'mail.from.address' => $mailSettings->email,
-                'mail.from.name' => 'MediTrack',
+                'mail.from.name' => 'MediConnect',
                 'mail.mailer' => 'smtp',
             ]);
 
             $this->info('Attempting to send email...');
 
-            Mail::raw('This is a test email from MediTrack.', function ($message) use ($testEmail, $mailSettings) {
+            Mail::raw('This is a test email from MediConnect.', function ($message) use ($testEmail, $mailSettings) {
                 $message->to($testEmail)
-                    ->from($mailSettings->email, 'MediTrack')
-                    ->subject('Test Email from MediTrack');
+                    ->from($mailSettings->email, 'MediConnect')
+                    ->subject('Test Email from MediConnect');
             });
 
             $this->info("✓ Email sent successfully!");
