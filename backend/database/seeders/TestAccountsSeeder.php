@@ -4,6 +4,7 @@ namespace Database\Seeders;
 use Illuminate\Database\Seeder;
 use App\Models\User;
 use App\Models\Patient;
+use App\Models\Message;
 use Spatie\Permission\Models\Role;
 
 class TestAccountsSeeder extends Seeder
@@ -60,6 +61,25 @@ class TestAccountsSeeder extends Seeder
                 'address'           => 'Quezon City, Metro Manila',
                 'emergency_contact' => [],
                 'is_active'         => true,
+            ]);
+        }
+
+        // Seed initial message exchange between Doctor and Patient
+        if ($doctor && $testPatient && Message::where('sender_id', $testPatient->id)->where('receiver_id', $doctor->id)->count() === 0) {
+            Message::create([
+                'sender_id' => $testPatient->id,
+                'receiver_id' => $doctor->id,
+                'message' => 'Good day Doc Jose, should I take the prescribed medication before or after eating?',
+                'is_read' => false,
+                'created_at' => now()->subHours(2),
+            ]);
+
+            Message::create([
+                'sender_id' => $doctor->id,
+                'receiver_id' => $testPatient->id,
+                'message' => 'Hello Maria! Please take it 30 minutes after your meal with a full glass of water.',
+                'is_read' => false,
+                'created_at' => now()->subHour(),
             ]);
         }
 

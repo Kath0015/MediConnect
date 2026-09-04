@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   Activity,
   BookOpen,
@@ -18,7 +18,6 @@ import {
   UserCircle,
 } from 'lucide-react';
 import { useBranding } from '../contexts/BrandingContext';
-import AuthModals from '../components/auth/AuthModals';
 
 const navItems = [
   { id: 'home', label: 'Home' },
@@ -44,8 +43,8 @@ const serviceCards = [
     icon: Stethoscope,
     color: 'text-[#7C3AED]',
     iconBg: 'bg-[#7C3AED]/10',
-    description: 'Manage patients, write prescriptions, and issue medical certificates.',
-    highlights: ['Patient management', 'Prescriptions', 'Medical certificates'],
+    description: 'Provide quality consultations, write digital prescriptions, and request labs.',
+    highlights: ['Patient consultations', 'Digital prescriptions', 'Lab requests'],
   },
   {
     id: 'clinicians',
@@ -121,17 +120,10 @@ const roleCards = [
 
 
 const Home = () => {
+  const navigate = useNavigate();
   const { branding } = useBranding();
   const [activeSection, setActiveSection] = useState('home');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [modalInitialScreen, setModalInitialScreen] = useState('portal');
-  const [modalInitialRole, setModalInitialRole] = useState(null);
-  const openModalAs = (screen, roleId = null) => {
-    setModalInitialScreen(screen);
-    setModalInitialRole(roleId);
-    setModalOpen(true);
-  };
 
   useEffect(() => {
     const handleScroll = () => {
@@ -167,12 +159,6 @@ const displayShortBrandLabel = displayShortBrand || 'Pareñas Medical Clinic';
 
   return (
     <div className="min-h-screen bg-white">
-      <AuthModals
-        isOpen={modalOpen}
-        onClose={() => { setModalOpen(false); setModalInitialScreen('portal'); setModalInitialRole(null); }}
-        initialScreen={modalInitialScreen}
-        initialRole={modalInitialRole}
-      />
       <header className="fixed top-0 left-0 right-0 bg-[#01377D] shadow-md z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16 gap-2">
@@ -197,18 +183,18 @@ const displayShortBrandLabel = displayShortBrand || 'Pareñas Medical Clinic';
               ))}
             </nav>
             <div className="flex items-center gap-2 sm:gap-3">
-              <button
-                onClick={() => openModalAs('portal')}
+              <Link
+                to="/auth/login"
                 className="px-3 sm:px-4 py-2 text-xs sm:text-sm text-[#97E7F5] hover:text-[#d2ffb6] font-medium transition-all duration-300 border border-[#97E7F5]/50 sm:border-0 rounded-md"
               >
                 Login
-              </button>
-              <button
-                onClick={() => openModalAs('patient-register', 'patient')}
+              </Link>
+              <Link
+                to="/auth/signup"
                 className="px-3 sm:px-6 py-2 text-xs sm:text-sm bg-[#26B170] text-white rounded-md sm:rounded-lg font-semibold hover:bg-[#d2ffb6] hover:text-[#26B170] transition-all duration-300"
               >
                 Sign Up
-              </button>
+              </Link>
               <button className="md:hidden p-2 text-[#97E7F5] hover:text-[#d2ffb6]" onClick={() => setMobileMenuOpen((p) => !p)} aria-label="Toggle navigation menu">
                 {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
               </button>
@@ -250,11 +236,11 @@ const displayShortBrandLabel = displayShortBrand || 'Pareñas Medical Clinic';
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-start">
-              <button onClick={() => openModalAs('portal')} className="bg-[#26B170] text-white px-8 py-4 rounded-lg font-semibold hover:bg-[#7ED348] hover:scale-105 active:scale-95 shadow-lg transition-all duration-300 flex items-center justify-center gap-3">
+              <button onClick={() => scrollToSection('roles')} className="bg-[#26B170] text-white px-8 py-4 rounded-lg font-semibold hover:bg-[#7ED348] hover:scale-105 active:scale-95 shadow-lg transition-all duration-300 flex items-center justify-center gap-3">
                 <Users className="w-5 h-5" />
                 Get Started
               </button>
-              <button onClick={() => openModalAs('patient-login', 'patient')} className="border-2 border-[#009DD1] text-[#009DD1] px-8 py-4 rounded-lg font-semibold hover:bg-[#009DD1] hover:text-white hover:scale-105 active:scale-95 shadow-lg transition-all duration-300 flex items-center justify-center gap-3">
+              <button onClick={() => navigate('/patient/appointment')} className="bg-[#009DD1] text-white px-8 py-4 rounded-lg font-semibold hover:bg-[#0077A8] hover:scale-105 active:scale-95 shadow-lg shadow-[#009DD1]/30 transition-all duration-300 flex items-center justify-center gap-3">
                 <Calendar className="w-5 h-5" />
                 Book Appointment
               </button>
@@ -286,10 +272,10 @@ const displayShortBrandLabel = displayShortBrand || 'Pareñas Medical Clinic';
                 <div className="flex items-center gap-3 text-[#26B170]"><CheckCircle className="w-5 h-5" /><span>Instant certificate requests</span></div>
               </div>
               <div className="mt-8">
-                <button onClick={() => openModalAs('portal')} className="inline-flex bg-[#26B170] text-white px-8 py-4 rounded-lg font-semibold hover:bg-[#7ED348] shadow-lg transition-all duration-300 items-center gap-3">
+                <Link to="/auth/login" className="inline-flex bg-[#26B170] text-white px-8 py-4 rounded-lg font-semibold hover:bg-[#7ED348] shadow-lg transition-all duration-300 items-center gap-3">
                   <ArrowRight className="w-5 h-5" />
                   Access Portal
-                </button>
+                </Link>
               </div>
             </div>
           </div>
@@ -324,21 +310,21 @@ const displayShortBrandLabel = displayShortBrand || 'Pareñas Medical Clinic';
                   ))}
                 </ul>
                 <div className="flex flex-col gap-2">
-                  <button
-                    onClick={() => openModalAs(role.id === 'patient' ? 'patient-login' : 'staff-login', role.id)}
+                  <Link
+                    to={role.loginPath || '/auth/login'}
                     className={`flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm font-semibold bg-gradient-to-r ${role.color} text-white hover:opacity-90 transition-all duration-200 shadow-md`}
                   >
                     <Lock className="w-4 h-4" />
                     Login as {role.title}
-                  </button>
+                  </Link>
                   {role.registerPath && (
-                    <button
-                      onClick={() => openModalAs('patient-register', 'patient')}
+                    <Link
+                      to={role.registerPath}
                       className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm font-semibold border border-[#01377D]/20 text-[#01377D] hover:bg-[#01377D]/5 transition-all duration-200"
                     >
                       <UserCircle className="w-4 h-4" />
                       Register
-                    </button>
+                    </Link>
                   )}
                 </div>
               </div>
@@ -354,7 +340,7 @@ const displayShortBrandLabel = displayShortBrand || 'Pareñas Medical Clinic';
             <h2 className="text-4xl font-bold text-[#01377D] mb-4"><span className="text-[#009DD1]">Quick</span> Access</h2>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <button onClick={() => openModalAs('portal')} className="p-8 bg-white rounded-2xl shadow-lg transition-all duration-300 border-2 border-transparent hover:border-[#26B170] text-left w-full">
+            <button onClick={() => navigate('/patient/appointment')} className="p-8 bg-white rounded-2xl shadow-lg transition-all duration-300 border-2 border-transparent hover:border-[#009DD1] text-left w-full cursor-pointer">
               <Search className="w-6 h-6 text-[#009DD1] mb-4" />
               <h3 className="text-xl font-semibold text-[#01377D] mb-2">Book Appointment</h3>
               <p className="text-[#01377D] text-sm">Schedule your visit quickly.</p>
@@ -364,12 +350,12 @@ const displayShortBrandLabel = displayShortBrand || 'Pareñas Medical Clinic';
               <h3 className="text-xl font-semibold text-[#01377D] mb-2">Clinic Hours</h3>
               <p className="text-[#01377D] text-sm">Mon-Fri: 8AM-5PM, Sat: 9AM-12PM.</p>
             </div>
-            <button onClick={() => openModalAs('portal')} className="p-8 bg-white rounded-2xl shadow-lg transition-all duration-300 border-2 border-transparent hover:border-[#26B170] text-left w-full">
+            <button onClick={() => scrollToSection('roles')} className="p-8 bg-white rounded-2xl shadow-lg transition-all duration-300 border-2 border-transparent hover:border-[#26B170] text-left w-full cursor-pointer">
               <Users className="w-6 h-6 text-[#26B170] mb-4" />
               <h3 className="text-xl font-semibold text-[#01377D] mb-2">Get Started</h3>
               <p className="text-[#01377D] text-sm">Create your account in minutes.</p>
             </button>
-            <button onClick={() => openModalAs('portal')} className="p-8 bg-white rounded-2xl shadow-lg transition-all duration-300 border-2 border-transparent hover:border-[#009DD1] text-left w-full">
+            <button onClick={() => navigate('/patient/records')} className="p-8 bg-white rounded-2xl shadow-lg transition-all duration-300 border-2 border-transparent hover:border-[#009DD1] text-left w-full cursor-pointer">
               <Calendar className="w-6 h-6 text-[#009DD1] mb-4" />
               <h3 className="text-xl font-semibold text-[#01377D] mb-2">My Records</h3>
               <p className="text-[#01377D] text-sm">View your health history securely.</p>

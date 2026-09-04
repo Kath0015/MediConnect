@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { MessageCircle, Send, Search, Plus, User, Loader2, RefreshCw } from 'lucide-react';
+import { MessageCircle, Send, Search, Plus, Stethoscope, Loader2, HeartPulse, User } from 'lucide-react';
 import { getConversations, getContacts, getMessages, sendMessage } from '../../api/Messages';
 import { toast } from 'sonner';
 
-const DoctorMessages = () => {
+const PatientMessages = () => {
   const [conversations, setConversations] = useState([]);
   const [contacts, setContacts] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
@@ -22,7 +22,7 @@ const DoctorMessages = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto' });
   };
 
-  // Load conversations
+  // Fetch conversations
   const fetchConversations = useCallback(async (isPolling = false) => {
     try {
       if (!isPolling) setLoadingConversations(true);
@@ -30,34 +30,34 @@ const DoctorMessages = () => {
       const data = res.data || [];
       setConversations(data);
 
-      // Default select the first conversation if none selected yet
+      // Default select first conversation if none selected yet
       setSelectedUser((prev) => {
         if (prev) {
-          // Keep current selected user, update any details
           const updated = data.find((c) => c.id === prev.id);
           return updated ? { ...prev, ...updated } : prev;
         }
         return data.length > 0 ? data[0] : null;
       });
     } catch (err) {
-      console.error('Failed to load conversations:', err);
+      console.error('Failed to load patient conversations:', err);
       if (!isPolling) toast.error('Failed to load conversations');
     } finally {
       if (!isPolling) setLoadingConversations(false);
     }
   }, []);
 
-  // Load contacts for starting new chats
+  // Fetch doctors and clinicians available for chat
   const fetchContacts = useCallback(async () => {
     try {
       const res = await getContacts();
-      setContacts(res.data || []);
+      const data = res.data || [];
+      setContacts(data);
     } catch (err) {
-      console.error('Failed to load contacts:', err);
+      console.error('Failed to load doctors list:', err);
     }
   }, []);
 
-  // Load messages for the selected user
+  // Fetch messages with the selected doctor/staff
   const fetchActiveMessages = useCallback(async (userId, isPolling = false) => {
     if (!userId) return;
     try {
@@ -95,12 +95,12 @@ const DoctorMessages = () => {
     }
   }, [selectedUser?.id, fetchActiveMessages]);
 
-  // Scroll to bottom when messages update
+  // Auto-scroll on new message
   useEffect(() => {
     scrollToBottom(false);
   }, [messages.length]);
 
-  // Periodic polling every 3.5 seconds to pick up incoming replies
+  // Periodic polling every 3.5 seconds
   useEffect(() => {
     if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
 
@@ -116,7 +116,7 @@ const DoctorMessages = () => {
     };
   }, [selectedUser?.id, fetchConversations, fetchActiveMessages]);
 
-  // Handle sending a message
+  // Handle sending message
   const handleSend = async (e) => {
     e.preventDefault();
     const trimmed = input.trim();
@@ -133,7 +133,6 @@ const DoctorMessages = () => {
       setMessages((prev) => [...prev, sentMsg]);
       setInput('');
 
-      // Refresh conversations in background to update order and last_message
       fetchConversations(true);
       setTimeout(() => scrollToBottom(true), 50);
     } catch (err) {
@@ -144,19 +143,16 @@ const DoctorMessages = () => {
     }
   };
 
-  // Filter conversations by search
   const filteredConversations = conversations.filter(
     (c) =>
       c.name.toLowerCase().includes(search.toLowerCase()) ||
       (c.last_message && c.last_message.toLowerCase().includes(search.toLowerCase()))
   );
 
-  // Filter contacts by search when in new chat mode
   const filteredContacts = contacts.filter(
     (c) =>
       c.name.toLowerCase().includes(search.toLowerCase()) ||
-      (c.role && c.role.toLowerCase().includes(search.toLowerCase())) ||
-      (c.email && c.email.toLowerCase().includes(search.toLowerCase()))
+      (c.role && c.role.toLowerCase().includes(search.toLowerCase()))
   );
 
   const startChatWithContact = (contact) => {
@@ -170,11 +166,11 @@ const DoctorMessages = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-            <MessageCircle className="w-6 h-6 text-[#7C3AED]" />
-            Messages
+            <MessageCircle className="w-6 h-6 text-[#009DD1]" />
+            Doctor & Clinic Messages
           </h1>
           <p className="text-slate-500 mt-1 text-sm">
-            Direct communications with patients and clinic staff.
+            Directly communicate with your attending doctor and medical staff.
           </p>
         </div>
         <button
@@ -182,10 +178,10 @@ const DoctorMessages = () => {
             setShowNewChat(!showNewChat);
             setSearch('');
           }}
-          className="flex items-center gap-2 px-4 py-2 bg-[#7C3AED] hover:bg-[#6D28D9] text-white text-sm font-medium rounded-xl transition-all shadow-sm"
+          className="flex items-center gap-2 px-4 py-2 bg-[#009DD1] hover:bg-[#0077A8] text-white text-sm font-medium rounded-xl transition-all shadow-sm cursor-pointer"
         >
           <Plus className="w-4 h-4" />
-          {showNewChat ? 'View Chats' : 'New Message'}
+          {showNewChat ? 'View Conversations' : 'Message Doctor'}
         </button>
       </div>
 
@@ -198,46 +194,48 @@ const DoctorMessages = () => {
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder={showNewChat ? 'Search patients & staff...' : 'Search conversations...'}
-                className="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/30"
+                placeholder={showNewChat ? 'Search doctors & staff...' : 'Search conversations...'}
+                className="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#009DD1]/30 focus:border-[#009DD1]"
               />
             </div>
             {showNewChat && (
               <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider px-1">
-                Select a contact to message
+                Select your doctor to chat
               </p>
             )}
           </div>
 
           <div className="flex-1 overflow-y-auto divide-y divide-slate-100">
             {showNewChat ? (
-              // Contacts List for New Message
               filteredContacts.length === 0 ? (
                 <div className="p-8 text-center text-slate-400 text-sm">
-                  No contacts found
+                  No doctors or clinic staff found.
                 </div>
               ) : (
                 filteredContacts.map((contact) => (
                   <button
                     key={contact.id}
                     onClick={() => startChatWithContact(contact)}
-                    className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-purple-50/50 transition-colors"
+                    className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-sky-50/50 transition-colors cursor-pointer"
                   >
-                    <div className="w-10 h-10 rounded-full bg-[#7C3AED] text-white flex items-center justify-center text-sm font-bold flex-shrink-0">
+                    <div className="w-10 h-10 rounded-full bg-[#009DD1] text-white flex items-center justify-center text-sm font-bold flex-shrink-0">
                       {contact.avatar}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-slate-900 truncate">
                         {contact.name}
                       </p>
-                      <p className="text-xs text-slate-500 truncate">{contact.role}</p>
+                      <div className="flex items-center gap-1 mt-0.5">
+                        <Stethoscope className="w-3 h-3 text-[#009DD1]" />
+                        <span className="text-xs text-slate-500 truncate">{contact.role}</span>
+                      </div>
                     </div>
                   </button>
                 ))
               )
             ) : loadingConversations ? (
               <div className="p-8 text-center text-slate-400 text-sm flex items-center justify-center gap-2">
-                <Loader2 className="w-4 h-4 animate-spin text-[#7C3AED]" />
+                <Loader2 className="w-4 h-4 animate-spin text-[#009DD1]" />
                 Loading conversations...
               </div>
             ) : filteredConversations.length === 0 ? (
@@ -245,9 +243,9 @@ const DoctorMessages = () => {
                 <p>No conversations yet.</p>
                 <button
                   onClick={() => setShowNewChat(true)}
-                  className="text-xs text-[#7C3AED] font-semibold hover:underline"
+                  className="text-xs text-[#009DD1] font-semibold hover:underline cursor-pointer"
                 >
-                  Start a conversation
+                  Message your doctor now
                 </button>
               </div>
             ) : (
@@ -258,13 +256,13 @@ const DoctorMessages = () => {
                     setSelectedUser(c);
                     setShowNewChat(false);
                   }}
-                  className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-purple-50/50 transition-colors ${
+                  className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-sky-50/50 transition-colors cursor-pointer ${
                     selectedUser?.id === c.id
-                      ? 'bg-[#7C3AED]/5 border-l-4 border-[#7C3AED]'
+                      ? 'bg-[#009DD1]/5 border-l-4 border-[#009DD1]'
                       : ''
                   }`}
                 >
-                  <div className="w-10 h-10 rounded-full bg-[#7C3AED] text-white flex items-center justify-center text-sm font-bold flex-shrink-0">
+                  <div className="w-10 h-10 rounded-full bg-[#009DD1] text-white flex items-center justify-center text-sm font-bold flex-shrink-0">
                     {c.avatar}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -279,7 +277,7 @@ const DoctorMessages = () => {
                         {c.last_message}
                       </span>
                       {c.unread > 0 && (
-                        <span className="bg-[#7C3AED] text-white text-[10px] font-bold min-w-4 h-4 px-1 rounded-full flex items-center justify-center flex-shrink-0 ml-1">
+                        <span className="bg-[#009DD1] text-white text-[10px] font-bold min-w-4 h-4 px-1 rounded-full flex items-center justify-center flex-shrink-0 ml-1">
                           {c.unread}
                         </span>
                       )}
@@ -298,15 +296,15 @@ const DoctorMessages = () => {
               {/* Header */}
               <div className="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-[#7C3AED] text-white flex items-center justify-center text-sm font-bold">
-                    {selectedUser.avatar || 'U'}
+                  <div className="w-10 h-10 rounded-full bg-[#009DD1] text-white flex items-center justify-center text-sm font-bold">
+                    {selectedUser.avatar || 'D'}
                   </div>
                   <div>
                     <p className="font-semibold text-slate-900">{selectedUser.name}</p>
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-slate-500">{selectedUser.role}</span>
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"></span>
-                      <span className="text-[11px] text-emerald-600 font-medium">Active</span>
+                      <span className="text-[11px] text-emerald-600 font-medium">Clinic Online</span>
                     </div>
                   </div>
                 </div>
@@ -316,14 +314,14 @@ const DoctorMessages = () => {
               <div className="flex-1 overflow-y-auto p-5 space-y-3 bg-slate-50/40">
                 {loadingMessages ? (
                   <div className="h-full flex items-center justify-center text-slate-400 text-sm gap-2">
-                    <Loader2 className="w-5 h-5 animate-spin text-[#7C3AED]" />
-                    Loading message history...
+                    <Loader2 className="w-5 h-5 animate-spin text-[#009DD1]" />
+                    Loading messages...
                   </div>
                 ) : messages.length === 0 ? (
                   <div className="h-full flex flex-col items-center justify-center text-slate-400 text-sm space-y-1">
                     <MessageCircle className="w-10 h-10 text-slate-300 stroke-1" />
-                    <p className="font-medium text-slate-600">No messages yet</p>
-                    <p className="text-xs">Send a message to start communicating with {selectedUser.name}.</p>
+                    <p className="font-medium text-slate-600">Start conversation</p>
+                    <p className="text-xs">Type a question or message to {selectedUser.name}.</p>
                   </div>
                 ) : (
                   messages.map((m) => (
@@ -334,7 +332,7 @@ const DoctorMessages = () => {
                       <div
                         className={`max-w-md rounded-2xl px-4 py-2.5 text-sm shadow-xs ${
                           m.mine
-                            ? 'bg-[#7C3AED] text-white rounded-tr-xs'
+                            ? 'bg-[#009DD1] text-white rounded-tr-xs'
                             : 'bg-white border border-slate-200 text-slate-800 rounded-tl-xs'
                         }`}
                       >
@@ -364,12 +362,12 @@ const DoctorMessages = () => {
                     onChange={(e) => setInput(e.target.value)}
                     placeholder={`Message ${selectedUser.name}...`}
                     disabled={sending}
-                    className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/30 focus:border-[#7C3AED] transition-all"
+                    className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#009DD1]/30 focus:border-[#009DD1] transition-all"
                   />
                   <button
                     type="submit"
                     disabled={!input.trim() || sending}
-                    className="w-10 h-10 rounded-xl bg-[#7C3AED] text-white flex items-center justify-center hover:bg-[#6D28D9] transition-all disabled:opacity-50 shadow-sm cursor-pointer"
+                    className="w-10 h-10 rounded-xl bg-[#009DD1] text-white flex items-center justify-center hover:bg-[#0077A8] transition-all disabled:opacity-50 shadow-sm cursor-pointer"
                   >
                     {sending ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
@@ -383,9 +381,9 @@ const DoctorMessages = () => {
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center text-slate-400 p-8 text-center">
               <MessageCircle className="w-12 h-12 text-slate-300 stroke-1 mb-2" />
-              <h3 className="font-semibold text-slate-700">Your Messages</h3>
+              <h3 className="font-semibold text-slate-700">Doctor Messaging</h3>
               <p className="text-sm mt-1 max-w-sm">
-                Select a conversation on the left or click "New Message" to chat directly with a patient or staff member.
+                Click "Message Doctor" to start a direct chat with Dr. Jose Santos or clinic staff.
               </p>
             </div>
           )}
@@ -395,4 +393,4 @@ const DoctorMessages = () => {
   );
 };
 
-export default DoctorMessages;
+export default PatientMessages;

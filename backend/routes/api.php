@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\V1\AppointmentTypeController;
 use App\Http\Controllers\Api\V1\DocumentTypeController;
 use App\Http\Controllers\Api\V1\MedcertReasonController;
 use App\Http\Controllers\Api\V1\SymptomCheckerController;
+use App\Http\Controllers\Api\V1\MessageController;
 use App\Http\Controllers\Api\ActivityLogController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Http\Request;
@@ -88,6 +89,13 @@ Route::middleware(['web', 'auth:sanctum'])->group(function () {
     Route::get('/documents/{document}/download', [DocumentController::class, 'download']);
     Route::delete('/documents/{document}', [DocumentController::class, 'destroy']);
     Route::get('/clinician/documents', [DocumentController::class, 'getAllPatientDocuments']); // All patient documents for clinician
+    
+    // Direct Messaging (Doctor, Clinician, Patient)
+    Route::get('/messages/conversations', [MessageController::class, 'conversations']);
+    Route::get('/messages/contacts', [MessageController::class, 'contacts']);
+    Route::get('/messages/unread-count', [MessageController::class, 'unreadCount']);
+    Route::get('/messages/{userId}', [MessageController::class, 'messages']);
+    Route::post('/messages', [MessageController::class, 'send']);
     
     // Role-based routes
     Route::middleware(['role:admin'])->group(function () {
