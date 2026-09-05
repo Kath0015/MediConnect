@@ -22,12 +22,19 @@ use Illuminate\Http\Request;
 
 // Public routes that need session/CSRF (Sanctum SPA)
 Route::middleware(['web'])->group(function () {
+    // Authentication endpoints
     Route::post('/auth/login', [AuthController::class, 'login']);
     Route::post('/auth/register', [AuthController::class, 'register']);
     Route::post('/auth/forgot-password', [AuthController::class, 'forgotPassword']);
     Route::post('/auth/reset-password', [AuthController::class, 'resetPassword']);
     Route::post('/auth/send-otp', [AuthController::class, 'sendOtp']);
     Route::post('/auth/verify-otp', [AuthController::class, 'verifyOtp']);
+
+    // NEW: Two-step patient registration with OTP
+    Route::post('/auth/patient/register', [AuthController::class, 'registerPatient']);
+    Route::post('/auth/patient/verify-otp', [AuthController::class, 'verifyRegistrationOTP']);
+    Route::post('/auth/patient/resend-otp', [AuthController::class, 'resendRegistrationOTP']);
+    Route::get('/auth/patient/check-resend-status', [AuthController::class, 'checkResendStatus']);
     Route::get('/med-certs/{hash}/verify', [MedCertController::class, 'publicVerify']);
     Route::get('/clinic/branding', [ClinicController::class, 'branding']);
     
@@ -93,9 +100,14 @@ Route::middleware(['web', 'auth:sanctum'])->group(function () {
     // Direct Messaging (Doctor, Clinician, Patient)
     Route::get('/messages/conversations', [MessageController::class, 'conversations']);
     Route::get('/messages/contacts', [MessageController::class, 'contacts']);
+    Route::get('/messages/contacts/by-role', [MessageController::class, 'contactsByRole']);
+    Route::get('/messages/contacts/suggested', [MessageController::class, 'suggestedContacts']);
     Route::get('/messages/unread-count', [MessageController::class, 'unreadCount']);
+    Route::get('/messages/stats', [MessageController::class, 'getMessagingStats']);
     Route::get('/messages/{userId}', [MessageController::class, 'messages']);
+    Route::get('/messages/{userId}/has-conversation', [MessageController::class, 'hasConversation']);
     Route::post('/messages', [MessageController::class, 'send']);
+    Route::patch('/messages/{userId}/mark-read', [MessageController::class, 'markAsRead']);
     
     // Role-based routes
     Route::middleware(['role:admin'])->group(function () {

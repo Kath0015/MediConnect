@@ -140,14 +140,13 @@ export const Layout = ({ children }) => {
     } else if (isPatientLayout) {
       return [
         { path: '/patient/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-        { path: '/patient/appointment', label: 'My Appointments', icon: Calendar },
+        { path: '/patient/my-appointments', label: 'My Appointments', icon: Calendar },
         { path: '/patient/records', label: 'Medical Records', icon: FileText },
         { path: '/patient/previous-laboratory', label: 'Laboratory Results', icon: FlaskConical },
         { path: '/patient/prescriptions', label: 'Prescriptions', icon: Pill },
         { path: '/patient/audit-logs', label: 'Audit Logs', icon: ScrollText },
         { path: '/patient/notifications', label: 'Notifications', icon: Bell },
         { path: '/patient/messages', label: 'Messages', icon: MessageSquare },
-        { path: '/patient/medibot', label: 'MediBot', icon: MessageCircle },
         { path: '/auth/profile', label: 'Profile Settings', icon: UserCircle },
         { path: '/patient/help', label: 'Help & Support', icon: HelpCircle },
       ];

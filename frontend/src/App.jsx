@@ -20,6 +20,8 @@ import Signup from "./pages/auth/Signup";
 import Profile from "./pages/auth/Profile";
 import ForgotPassword from "./pages/auth/ForgotPassword";
 import VerifyEmail from "./pages/auth/VerifyEmail";
+import PatientRegistration from "./pages/auth/PatientRegistration";
+import PatientOTPVerification from "./pages/auth/PatientOTPVerification";
 
 // ─── Admin lazy imports ──────────────────────────────────────────────────────
 const AdminDashboard = lazy(() => import("./pages/admin/Dashboard"));
@@ -71,6 +73,8 @@ const ClinicianHelp = lazy(() => import("./pages/clinician/Help"));
 // ─── Patient lazy imports ────────────────────────────────────────────────────
 const PatientDashboard = lazy(() => import("./pages/patient/Dashboard"));
 const Appointment = lazy(() => import("./pages/patient/Appointment"));
+const BookAppointment = lazy(() => import("./pages/patient/BookAppointment"));
+const MyAppointments = lazy(() => import("./pages/patient/MyAppointments"));
 const Records = lazy(() => import("./pages/patient/Records"));
 const RequestCertificate = lazy(() => import("./pages/patient/RequestCertificate"));
 const UploadDocument = lazy(() => import("./pages/patient/UploadDocument"));
@@ -152,6 +156,8 @@ const App = () => {
             <Route path="/auth/signup" element={<Signup />} />
             <Route path="/auth/forgot-password" element={<ForgotPassword />} />
             <Route path="/auth/verify-email" element={<VerifyEmail />} />
+            <Route path="/auth/patient/register" element={<PatientRegistration />} />
+            <Route path="/auth/patient/verify-otp" element={<PatientOTPVerification />} />
 
             {/* Dashboard redirect */}
             <Route
@@ -227,6 +233,8 @@ const App = () => {
             {/* ── PATIENT ROUTES ────────────────────────────────────── */}
             <Route path="/patient/dashboard" element={<PRoute allowedRoles={['patient']} fallback={<PatientPageSkeleton variant="dashboard" rows={4} />}><PatientDashboard /></PRoute>} />
             <Route path="/patient/appointment" element={<PRoute allowedRoles={['patient']} fallback={<PatientAppointmentSkeleton />}><Appointment /></PRoute>} />
+            <Route path="/patient/book-appointment" element={<PRoute allowedRoles={['patient']} fallback={<PatientPageSkeleton variant="form" rows={5} />}><BookAppointment /></PRoute>} />
+            <Route path="/patient/my-appointments" element={<PRoute allowedRoles={['patient']} fallback={<PatientPageSkeleton variant="list" rows={4} />}><MyAppointments /></PRoute>} />
             <Route path="/patient/records" element={<PRoute allowedRoles={['patient']} fallback={<PatientPageSkeleton variant="tabs" rows={4} />}><Records /></PRoute>} />
             <Route path="/patient/previous-laboratory" element={<PRoute allowedRoles={['patient']} fallback={<PatientPageSkeleton variant="list" rows={4} />}><PatientPreviousLaboratory /></PRoute>} />
             <Route path="/patient/prescriptions" element={<PRoute allowedRoles={['patient']} fallback={<PatientPageSkeleton variant="list" rows={4} />}><PatientPrescriptions /></PRoute>} />

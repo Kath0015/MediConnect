@@ -5,11 +5,18 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Models\Message;
 use App\Models\User;
+use App\Services\MessageRoutingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 
 class MessageController extends Controller
 {
+    protected $messageRoutingService;
+
+    public function __construct(MessageRoutingService $messageRoutingService)
+    {
+        $this->messageRoutingService = $messageRoutingService;
+    }
     /**
      * Get list of conversations for authenticated user.
      */
@@ -91,25 +98,9 @@ class MessageController extends Controller
     public function contacts(Request $request)
     {
         $user = $request->user();
-        $isDoctor = $user->hasRole('doctor');
-        $isClinician = $user->hasRole('clinician');
-        $isPatient = $user->hasRole('patient');
+        $contacts = $this->messageRoutingService->getAvailableContacts($user);
 
-        $query = User::with('roles')->where('id', '!=', $user->id)->where('is_active', true);
-
-        if ($isDoctor || $isClinician) {
-            // Doctors and Clinicians can message patients, doctors, and staff
-            $query->whereHas('roles', function ($q) {
-                $q->whereIn('name', ['patient', 'doctor', 'clinician']);
-            });
-        } elseif ($isPatient) {
-            // Patients can message doctors and clinic staff
-            $query->whereHas('roles', function ($q) {
-                $q->whereIn('name', ['doctor', 'clinician']);
-            });
-        }
-
-        $contacts = $query->orderBy('name')->get()->map(function (User $u) {
+        $contactsArray = $contacts->map(function (User $u) {
             $roleName = $u->roles->first()?->name ?? 'User';
             $roleLabel = match (strtolower($roleName)) {
                 'doctor' => 'Doctor',
@@ -130,7 +121,51 @@ class MessageController extends Controller
             ];
         });
 
-        return response()->json($contacts);
+        return response()->json($contactsArray);
+    }
+
+    /**
+     * Get contacts organized by role for better UX.
+     */
+    public function contactsByRole(Request $request)
+    {
+        $user = $request->user();
+        $groupedContacts = $this->messageRoutingService->getContactsGroupedByRole($user);
+
+        return response()->json($groupedContacts);
+    }
+
+    /**
+     * Get suggested contacts based on recent activity.
+     */
+    public function suggestedContacts(Request $request)
+    {
+        $user = $request->user();
+        $limit = $request->get('limit', 5);
+        $suggestions = $this->messageRoutingService->getSuggestedContacts($user, $limit);
+
+        $suggestionsArray = $suggestions->map(function (User $u) {
+            $roleName = $u->roles->first()?->name ?? 'User';
+            $roleLabel = match (strtolower($roleName)) {
+                'doctor' => 'Doctor',
+                'clinician' => 'Clinic Staff',
+                'patient' => 'Patient',
+                'admin' => 'Administrator',
+                default => ucfirst($roleName),
+            };
+
+            return [
+                'id' => $u->id,
+                'name' => $u->name,
+                'email' => $u->email,
+                'role' => $roleLabel,
+                'role_key' => strtolower($roleName),
+                'avatar' => $this->getInitials($u->name),
+                'photo_url' => $u->profile_photo_url,
+            ];
+        });
+
+        return response()->json($suggestionsArray);
     }
 
     /**
@@ -138,8 +173,17 @@ class MessageController extends Controller
      */
     public function messages(Request $request, $otherUserId)
     {
-        $myId = $request->user()->id;
+        $user = $request->user();
+        $myId = $user->id;
         $otherUser = User::with('roles')->findOrFail($otherUserId);
+
+        // Check if the user is allowed to message this recipient
+        if (!$this->messageRoutingService->canMessage($user, $otherUser) && !$this->messageRoutingService->canMessage($otherUser, $user)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You are not authorized to view messages with this user.',
+            ], 403);
+        }
 
         // Mark incoming messages as read
         Message::where('sender_id', $otherUserId)
@@ -201,11 +245,23 @@ class MessageController extends Controller
             'message' => 'required|string|max:5000',
         ]);
 
-        $myId = $request->user()->id;
+        $user = $request->user();
+        $myId = $user->id;
+        $receiverId = $request->receiver_id;
+
+        // Check if the user is allowed to send messages to this recipient
+        $receiver = User::with('roles')->findOrFail($receiverId);
+        
+        if (!$this->messageRoutingService->canMessage($user, $receiver)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You are not authorized to send messages to this user.',
+            ], 403);
+        }
 
         $message = Message::create([
             'sender_id' => $myId,
-            'receiver_id' => $request->receiver_id,
+            'receiver_id' => $receiverId,
             'message' => trim($request->message),
             'is_read' => false,
         ]);
@@ -233,6 +289,27 @@ class MessageController extends Controller
             ->count();
 
         return response()->json(['unread_count' => $count]);
+    }
+
+    /**
+     * Mark all messages from a specific user as read.
+     */
+    public function markAsRead(Request $request, $otherUserId)
+    {
+        $myId = $request->user()->id;
+        
+        $updated = Message::where('sender_id', $otherUserId)
+            ->where('receiver_id', $myId)
+            ->where('is_read', false)
+            ->update([
+                'is_read' => true,
+                'read_at' => now(),
+            ]);
+
+        return response()->json([
+            'success' => true,
+            'marked_read' => $updated,
+        ]);
     }
 
     /**
@@ -268,5 +345,86 @@ class MessageController extends Controller
         } else {
             return $carbon->format('M d, Y');
         }
+    }
+
+    /**
+     * Get messaging statistics for the current user.
+     */
+    public function getMessagingStats(Request $request)
+    {
+        $user = $request->user();
+        $userId = $user->id;
+        
+        $totalSent = Message::where('sender_id', $userId)->count();
+        $totalReceived = Message::where('receiver_id', $userId)->count();
+        $unreadReceived = Message::where('receiver_id', $userId)->where('is_read', false)->count();
+        $activeConversations = Message::where('sender_id', $userId)
+            ->orWhere('receiver_id', $userId)
+            ->distinct('sender_id', 'receiver_id')
+            ->count();
+
+        // Get routing stats using the service
+        $routingStats = $this->messageRoutingService->getRoutingStats($user);
+
+        return response()->json([
+            'total_sent' => $totalSent,
+            'total_received' => $totalReceived,
+            'unread_received' => $unreadReceived,
+            'active_conversations' => $activeConversations,
+            'routing_stats' => $routingStats,
+        ]);
+    }
+
+    /**
+     * Check if two users have an existing conversation.
+     */
+    public function hasConversation(Request $request, $otherUserId)
+    {
+        $myId = $request->user()->id;
+        
+        $hasMessages = Message::betweenUsers($myId, $otherUserId)->exists();
+        
+        return response()->json([
+            'has_conversation' => $hasMessages,
+        ]);
+    }
+
+    /**
+     * Get role-specific contact suggestions based on user's role and messaging rules.
+     */
+    private function getRoleBasedContacts($user)
+    {
+        $suggestions = [];
+        
+        if ($user->hasRole('patient')) {
+            // Patients should primarily message their attending doctor
+            $suggestions['primary'] = User::whereHas('roles', function($q) {
+                $q->where('name', 'doctor');
+            })->where('is_active', true)->get();
+            
+            $suggestions['secondary'] = User::whereHas('roles', function($q) {
+                $q->where('name', 'clinician');
+            })->where('is_active', true)->get();
+        } elseif ($user->hasRole('doctor')) {
+            // Doctors can prioritize patients, then staff
+            $suggestions['patients'] = User::whereHas('roles', function($q) {
+                $q->where('name', 'patient');
+            })->where('is_active', true)->get();
+            
+            $suggestions['staff'] = User::whereHas('roles', function($q) {
+                $q->whereIn('name', ['clinician', 'admin']);
+            })->where('is_active', true)->get();
+        } elseif ($user->hasRole('clinician')) {
+            // Clinicians can message patients and doctors
+            $suggestions['patients'] = User::whereHas('roles', function($q) {
+                $q->where('name', 'patient');
+            })->where('is_active', true)->get();
+            
+            $suggestions['doctors'] = User::whereHas('roles', function($q) {
+                $q->where('name', 'doctor');
+            })->where('is_active', true)->get();
+        }
+        
+        return $suggestions;
     }
 }
