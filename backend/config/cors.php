@@ -20,20 +20,28 @@ return [
     'allowed_methods' => ['*'],
 
     'allowed_origins' => [
-        env('FRONTEND_URL', 'http://localhost:5173'),
-        'http://localhost:5173',
-        'http://127.0.0.1:5173',
-        'http://localhost:5174',
-        'http://127.0.0.1:5174',
-        'http://localhost:3000',
-        'http://127.0.0.1:3000',
+        // Development origins
+        env('APP_ENV') === 'local' ? 'http://localhost:5173' : null,
+        env('APP_ENV') === 'local' ? 'http://127.0.0.1:5173' : null,
+        env('APP_ENV') === 'local' ? 'http://localhost:5174' : null,
+        env('APP_ENV') === 'local' ? 'http://127.0.0.1:5174' : null,
+        env('APP_ENV') === 'local' ? 'http://localhost:3000' : null,
+        env('APP_ENV') === 'local' ? 'http://127.0.0.1:3000' : null,
+        // Production frontend URL from environment
+        env('FRONTEND_URL', null),
     ],
 
     'allowed_origins_patterns' => [],
 
     'allowed_headers' => ['*'],
 
-    'exposed_headers' => [],
+    'exposed_headers' => [
+        'X-RateLimit-Limit',
+        'X-RateLimit-Remaining',
+        'X-RateLimit-Reset',
+        'X-Total-Count',
+        'X-Page-Count',
+    ],
 
     'max_age' => 0,
 

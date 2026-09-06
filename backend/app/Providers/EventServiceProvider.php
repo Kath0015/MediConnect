@@ -5,11 +5,13 @@ namespace App\Providers;
 use App\Events\MedCertApproved;
 use App\Events\MedCertRejected;
 use App\Events\AppointmentConfirmed;
+use App\Events\AppointmentCreated;
 use App\Events\AppointmentRejected;
 use App\Events\AppointmentRescheduled;
 use App\Listeners\SendMedCertApprovedNotification;
 use App\Listeners\SendMedCertRejectedNotification;
 use App\Listeners\SendAppointmentConfirmedNotification;
+use App\Listeners\SendAppointmentCreatedNotification;
 use App\Listeners\SendAppointmentRejectedNotification;
 use App\Listeners\SendAppointmentRescheduledNotification;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
@@ -27,6 +29,9 @@ class EventServiceProvider extends ServiceProvider
         ],
         MedCertRejected::class => [
             SendMedCertRejectedNotification::class,
+        ],
+        AppointmentCreated::class => [
+            SendAppointmentCreatedNotification::class,
         ],
         AppointmentConfirmed::class => [
             SendAppointmentConfirmedNotification::class,

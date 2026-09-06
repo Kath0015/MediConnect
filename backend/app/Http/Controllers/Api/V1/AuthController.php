@@ -8,7 +8,11 @@ use App\Http\Requests\LoginUserRequest;
 use App\Http\Requests\RegisterUserRequest;
 use App\Http\Requests\PatientRegistrationRequest;
 use App\Http\Requests\VerifyRegistrationOTPRequest;
+use App\Http\Requests\ForgotPasswordRequest;
+use App\Http\Requests\ResetPasswordRequest;
 use App\Services\RegistrationService;
+use App\Models\PasswordReset;
+use App\Mail\PasswordResetMail;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Hash;
@@ -16,6 +20,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Validation\Rules;
 use Illuminate\Support\Facades\DB;
 
@@ -255,37 +260,84 @@ class AuthController extends Controller
         return $this->ok('User retrieved', $user);
     }
 
-    public function forgotPassword(Request $request)
+    public function forgotPassword(ForgotPasswordRequest $request)
     {
-        $request->validate([
-            'email' => 'required|email|exists:users',
-        ]);
+        try {
+            $user = User::where('email', $request->email)->first();
 
-        $user = User::where('email', $request->email)->first();
-        if (!$user) {
-            return $this->error('User not found', 404);
+            if (!$user) {
+                // Don't reveal if email exists (security best practice)
+                return $this->ok('If an account exists with this email, a password reset link has been sent.');
+            }
+
+            // Create password reset token
+            $token = PasswordReset::createToken($user->id);
+
+            // Generate reset URL - Frontend will use this
+            $resetUrl = config('app.frontend_url') . '/reset-password?token=' . $token;
+
+            // Send email
+            Mail::send(new PasswordResetMail($user, $token, $resetUrl));
+
+            // Log the action
+            Log::info('Password reset email sent', [
+                'user_id' => $user->id,
+                'email' => $user->email,
+                'ip' => $request->ip(),
+            ]);
+
+            return $this->ok('If an account exists with this email, a password reset link has been sent.');
+        } catch (\Exception $e) {
+            Log::error('Password reset request failed: ' . $e->getMessage());
+            return $this->error('Failed to process password reset request. Please try again later.', 500);
         }
-
-        // TODO: Implement password reset logic
-        return $this->ok('Password reset link sent to your email');
     }
 
     public function sendOtp(Request $request)
     {
-        // TODO: Existing OTP implementation
-        return $this->ok('OTP sent');
+        // This endpoint is deprecated - use POST /api/auth/patient/register instead
+        return $this->error('This endpoint is deprecated. Please use POST /api/auth/patient/register for OTP registration.', 410);
     }
 
     public function verifyOtp(Request $request)
     {
-        // TODO: Existing OTP verification
-        return $this->ok('OTP verified');
+        // This endpoint is deprecated - use POST /api/auth/patient/verify-otp instead
+        return $this->error('This endpoint is deprecated. Please use POST /api/auth/patient/verify-otp for OTP verification.', 410);
     }
 
-    public function resetPassword(Request $request)
+    public function resetPassword(ResetPasswordRequest $request)
     {
-        // TODO: Existing reset password
-        return $this->ok('Password reset successfully');
+        try {
+            $validated = $request->validated();
+
+            // Find valid reset token
+            $resetToken = PasswordReset::findValidToken($validated['token']);
+
+            if (!$resetToken) {
+                return $this->error('Invalid or expired password reset token. Please request a new one.', 422);
+            }
+
+            // Update user password
+            DB::transaction(function () use ($resetToken, $validated) {
+                $resetToken->user->update([
+                    'password' => Hash::make($validated['password']),
+                ]);
+
+                // Mark token as used
+                $resetToken->markAsUsed();
+
+                // Log password change
+                Log::info('Password reset completed', [
+                    'user_id' => $resetToken->user->id,
+                    'email' => $resetToken->user->email,
+                ]);
+            });
+
+            return $this->ok('Password reset successfully. Please log in with your new password.');
+        } catch (\Exception $e) {
+            Log::error('Password reset failed: ' . $e->getMessage());
+            return $this->error('Failed to reset password. Please try again.', 500);
+        }
     }
 
     public function updateProfile(Request $request): \Illuminate\Http\JsonResponse

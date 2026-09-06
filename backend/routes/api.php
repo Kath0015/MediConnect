@@ -22,19 +22,36 @@ use Illuminate\Http\Request;
 
 // Public routes that need session/CSRF (Sanctum SPA)
 Route::middleware(['web'])->group(function () {
-    // Authentication endpoints
-    Route::post('/auth/login', [AuthController::class, 'login']);
-    Route::post('/auth/register', [AuthController::class, 'register']);
-    Route::post('/auth/forgot-password', [AuthController::class, 'forgotPassword']);
-    Route::post('/auth/reset-password', [AuthController::class, 'resetPassword']);
-    Route::post('/auth/send-otp', [AuthController::class, 'sendOtp']);
-    Route::post('/auth/verify-otp', [AuthController::class, 'verifyOtp']);
+    // Authentication endpoints - WITH RATE LIMITING
+    // 5 login attempts per minute per IP
+    Route::post('/auth/login', [AuthController::class, 'login'])
+        ->middleware('throttle:5,1');
+    
+    // 3 registration attempts per minute per IP
+    Route::post('/auth/register', [AuthController::class, 'register'])
+        ->middleware('throttle:3,1');
+    
+    // Password reset - 3 requests per 5 minutes per IP
+    Route::post('/auth/forgot-password', [AuthController::class, 'forgotPassword'])
+        ->middleware('throttle:3,5');
+    Route::post('/auth/reset-password', [AuthController::class, 'resetPassword'])
+        ->middleware('throttle:3,5');
+    
+    // OTP endpoints - 5 requests per minute per IP
+    Route::post('/auth/send-otp', [AuthController::class, 'sendOtp'])
+        ->middleware('throttle:5,1');
+    Route::post('/auth/verify-otp', [AuthController::class, 'verifyOtp'])
+        ->middleware('throttle:5,1');
 
-    // NEW: Two-step patient registration with OTP
-    Route::post('/auth/patient/register', [AuthController::class, 'registerPatient']);
-    Route::post('/auth/patient/verify-otp', [AuthController::class, 'verifyRegistrationOTP']);
-    Route::post('/auth/patient/resend-otp', [AuthController::class, 'resendRegistrationOTP']);
+    // Two-step patient registration with OTP - 5 requests per minute per IP
+    Route::post('/auth/patient/register', [AuthController::class, 'registerPatient'])
+        ->middleware('throttle:5,1');
+    Route::post('/auth/patient/verify-otp', [AuthController::class, 'verifyRegistrationOTP'])
+        ->middleware('throttle:5,1');
+    Route::post('/auth/patient/resend-otp', [AuthController::class, 'resendRegistrationOTP'])
+        ->middleware('throttle:3,5');
     Route::get('/auth/patient/check-resend-status', [AuthController::class, 'checkResendStatus']);
+    
     Route::get('/med-certs/{hash}/verify', [MedCertController::class, 'publicVerify']);
     Route::get('/clinic/branding', [ClinicController::class, 'branding']);
     
@@ -51,7 +68,8 @@ Route::middleware(['web'])->group(function () {
 });
 
 // Protected routes (must include web to start session for Sanctum)
-Route::middleware(['web', 'auth:sanctum'])->group(function () {
+Route::middleware(['web', 'auth:sanctum', 'throttle:300,1'])->group(function () {
+    // 300 requests per minute per authenticated user (general API limit)
     Route::get('/auth/user', [AuthController::class, 'user']);
     Route::put('/auth/user', [AuthController::class, 'updateProfile']);
     Route::post('/auth/user/change-password', [AuthController::class, 'changePassword']);

@@ -20,21 +20,12 @@ class Document extends Model
         'size',
         'disk',
         'path',
-        'version',
-        'tags',
         'description',
         'uploaded_by',
         'checksum',
-        'is_encrypted',
-        'is_public',
-        'last_accessed_at',
     ];
 
     protected $casts = [
-        'tags' => 'array',
-        'is_encrypted' => 'boolean',
-        'is_public' => 'boolean',
-        'last_accessed_at' => 'datetime',
         'size' => 'integer',
     ];
 
@@ -74,11 +65,6 @@ class Document extends Model
     }
 
     // Methods
-    public function recordAccess()
-    {
-        $this->update(['last_accessed_at' => now()]);
-    }
-
     public function isImage()
     {
         return str_starts_with($this->mime_type, 'image/');
@@ -98,11 +84,6 @@ class Document extends Model
     public function scopePdfs($query)
     {
         return $query->where('mime_type', 'application/pdf');
-    }
-
-    public function scopeByTags($query, array $tags)
-    {
-        return $query->whereJsonContains('tags', $tags);
     }
 
     public function scopeSearch($query, $search)

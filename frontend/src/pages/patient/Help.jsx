@@ -129,17 +129,7 @@ const Help = () => {
           <p className="text-xs text-slate-400 mt-1">Click to send ticket</p>
         </div>
 
-        <div
-          onClick={() => navigate('/patient/medibot')}
-          className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 text-center hover:shadow-md transition-all cursor-pointer hover:border-[#7C3AED]/40 group"
-        >
-          <div className="w-12 h-12 rounded-xl bg-[#7C3AED]/10 flex items-center justify-center mx-auto mb-3 group-hover:scale-105 transition-transform">
-            <MessageCircle className="w-6 h-6 text-[#7C3AED]" />
-          </div>
-          <p className="font-semibold text-slate-800 text-sm">Live Chat</p>
-          <p className="text-sm mt-1 font-medium text-[#7C3AED]">Chat with MediBot</p>
-          <p className="text-xs text-slate-400 mt-1">Available 24/7</p>
-        </div>
+
       </div>
 
       {/* Contact Support Dialog */}

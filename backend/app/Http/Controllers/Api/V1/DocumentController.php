@@ -87,8 +87,6 @@ class DocumentController extends Controller {
             return response()->json(['message' => 'File not found'], 404);
         }
 
-        $document->recordAccess();
-
         return Storage::download($document->path, $document->file_name);
     }
 

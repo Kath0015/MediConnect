@@ -30,9 +30,6 @@ class MedCert extends Model
         'revoked_at',
         'pdf_path',
         'verification_hash',
-        'qr_code_path',
-        'is_verified',
-        'verified_at',
     ];
 
     protected $casts = [
@@ -41,8 +38,6 @@ class MedCert extends Model
         'approved_at' => 'datetime',
         'pickup_date' => 'date',
         'revoked_at' => 'datetime',
-        'verified_at' => 'datetime',
-        'is_verified' => 'boolean',
     ];
 
     // Relationships

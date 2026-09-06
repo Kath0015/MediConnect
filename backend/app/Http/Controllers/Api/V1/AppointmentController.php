@@ -106,7 +106,7 @@ class AppointmentController extends Controller
                 ->log('appointment_created');
 
             // Send notification (queued)
-            // event(new AppointmentCreated($appointment));
+            \App\Events\AppointmentCreated::dispatch($appointment);
 
             return response()->json($appointment->load(['patient.user', 'clinician', 'appointmentType']), Response::HTTP_CREATED);
         });

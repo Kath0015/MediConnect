@@ -277,25 +277,7 @@ export const PatientDashboard = () => {
 
       {/* Quick Access Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <Link to="/patient/medibot" className="group">
-          <Card className="border-cyan-200/60 bg-gradient-to-b from-white to-cyan-50/40 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md cursor-pointer">
-            <CardContent className="p-6">
-              <div className="flex items-start justify-between mb-3">
-                <div className="grid h-12 w-12 place-items-center rounded-xl bg-cyan-100 text-cyan-700">
-                  <MessageCircle className="h-6 w-6" />
-                </div>
-              </div>
-              <h3 className="font-semibold text-slate-900 mb-1">MediBot Assistant</h3>
-              <p className="text-sm text-slate-600 mb-4">Chat for lab prep, appointments, and clinic FAQs</p>
-              <div className="flex items-center text-sm font-medium text-cyan-700 group-hover:text-cyan-800">
-                Chat now
-                <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
-              </div>
-            </CardContent>
-          </Card>
-        </Link>
-
-        <Link to="/patient/appointment" className="group">
+        <Link to="/patient/book-appointment" className="group">
           <Card className="border-blue-200/60 bg-gradient-to-b from-white to-blue-50/40 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md cursor-pointer">
             <CardContent className="p-6">
               <div className="flex items-start justify-between mb-3">
@@ -340,7 +322,7 @@ export const PatientDashboard = () => {
                 <CardTitle className="text-slate-900">Upcoming Appointments</CardTitle>
                 <CardDescription className="text-slate-500">Confirmed & in progress</CardDescription>
               </div>
-              <Link to="/patient/appointment">
+              <Link to="/patient/my-appointments">
                 <Button variant="outline" size="sm" className="h-8 border-slate-200 px-2.5 text-xs text-slate-700 hover:bg-slate-100">
                   View all
                   <ArrowRight className="ml-1 h-3.5 w-3.5" />
@@ -388,7 +370,7 @@ export const PatientDashboard = () => {
                 <CardTitle className="text-slate-900">Waiting Approval</CardTitle>
                 <CardDescription className="text-slate-500">Pending appointment requests</CardDescription>
               </div>
-              <Link to="/patient/appointment">
+              <Link to="/patient/my-appointments">
                 <Button variant="outline" size="sm" className="h-8 border-slate-200 px-2.5 text-xs text-slate-700 hover:bg-slate-100">
                   View all
                   <ArrowRight className="ml-1 h-3.5 w-3.5" />

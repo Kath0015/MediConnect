@@ -318,12 +318,12 @@ class MedCertController extends Controller
             ->where('status', 'approved')
             ->firstOrFail();
 
-        // Mark as verified if not already
-        if (!$medCert->is_verified) {
-            $medCert->update([
-                'is_verified' => true,
-                'verified_at' => now(),
-            ]);
+        // Verify certificate (status must be 'approved' for validity)
+        if ($medCert->status !== 'approved') {
+            return response()->json([
+                'valid' => false,
+                'message' => 'Certificate is not approved',
+            ], 404);
         }
 
         return response()->json([

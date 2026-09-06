@@ -14,7 +14,6 @@ use Spatie\Permission\Traits\HasRoles;
  * @property string $name
  * @property string $email
  * @property string|null $phone
- * @property \Illuminate\Support\Carbon|null $date_of_birth
  * @property bool $is_active
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
@@ -36,13 +35,8 @@ class User extends Authenticatable implements MustVerifyEmail
         'email',
         'password',
         'phone',
-        'date_of_birth',
-        'address',
-        'emergency_contact',
         'profile_photo_path',
         'email_verified_at',
-        'last_login_at',
-        'last_login_ip',
         'is_active',
     ];
 
@@ -55,9 +49,6 @@ class User extends Authenticatable implements MustVerifyEmail
 
     protected $casts = [
         'email_verified_at' => 'datetime',
-        'last_login_at' => 'datetime',
-        'date_of_birth' => 'date',
-        'emergency_contact' => 'array',
         'is_active' => 'boolean',
     ];
 
