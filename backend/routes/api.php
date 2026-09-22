@@ -21,6 +21,7 @@ use App\Http\Controllers\Api\V1\PrescriptionController;
 use App\Http\Controllers\Api\V1\LabRequestController;
 use App\Http\Controllers\Api\V1\CheckInController;
 use App\Http\Controllers\Api\V1\VitalSignController;
+use App\Http\Controllers\Api\V1\DecisionSupportController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Http\Request;
 
@@ -155,6 +156,15 @@ Route::middleware(['web', 'auth:sanctum', 'throttle:300,1'])->group(function () 
     Route::get('/vitals', [VitalSignController::class, 'index']);
     Route::post('/vitals', [VitalSignController::class, 'store']);
     Route::get('/vitals/{id}', [VitalSignController::class, 'show']);
+
+    // Clinical Decision Support System (DSS)
+    Route::prefix('dss')->group(function () {
+        Route::get('/overview', [DecisionSupportController::class, 'overview']);
+        Route::post('/analyze-symptoms', [DecisionSupportController::class, 'analyzeSymptoms']);
+        Route::post('/interpret-labs', [DecisionSupportController::class, 'interpretLaboratory']);
+        Route::get('/patient/{patientId}', [DecisionSupportController::class, 'assessPatient']);
+        Route::get('/predictive-analytics', [DecisionSupportController::class, 'predictiveAnalytics']);
+    });
     
     // Role-based routes
     Route::middleware(['role:admin'])->group(function () {

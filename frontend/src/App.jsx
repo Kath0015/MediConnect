@@ -54,6 +54,7 @@ const DoctorNotifications = lazy(() => import("./pages/doctor/Notifications"));
 const DoctorMessages = lazy(() => import("./pages/doctor/Messages"));
 const DoctorSettings = lazy(() => import("./pages/doctor/Settings"));
 const DoctorHelp = lazy(() => import("./pages/doctor/Help"));
+const ClinicalDSS = lazy(() => import("./pages/doctor/ClinicalDSS"));
 
 // ─── Clinician lazy imports ──────────────────────────────────────────────────
 const ClinicianDashboard = lazy(() => import("./pages/clinician/Dashboard"));
@@ -213,6 +214,7 @@ const App = () => {
             <Route path="/doctor/messages" element={<PRoute allowedRoles={['doctor']}><DoctorMessages /></PRoute>} />
             <Route path="/doctor/settings" element={<PRoute allowedRoles={['doctor']}><DoctorSettings /></PRoute>} />
             <Route path="/doctor/help" element={<PRoute allowedRoles={['doctor']}><DoctorHelp /></PRoute>} />
+            <Route path="/doctor/dss" element={<PRoute allowedRoles={['doctor']}><ClinicalDSS /></PRoute>} />
 
             {/* ── CLINICIAN (CLINIC STAFF) ROUTES ───────────────────── */}
             <Route path="/clinician/dashboard" element={<PRoute allowedRoles={['clinician']}><ClinicianDashboard /></PRoute>} />
@@ -226,6 +228,7 @@ const App = () => {
             <Route path="/clinician/messages" element={<PRoute allowedRoles={['clinician']}><ClinicianMessages /></PRoute>} />
             <Route path="/clinician/settings" element={<PRoute allowedRoles={['clinician']}><ClinicianSettings /></PRoute>} />
             <Route path="/clinician/help" element={<PRoute allowedRoles={['clinician']}><ClinicianHelp /></PRoute>} />
+            <Route path="/clinician/dss" element={<PRoute allowedRoles={['clinician']}><ClinicalDSS /></PRoute>} />
             <Route path="/clinician/requests" element={<PRoute allowedRoles={['clinician']}><RequestManagement /></PRoute>} />
             <Route path="/staff/patient-records/:patientId" element={<PRoute allowedRoles={['clinician']}><PatientRecords /></PRoute>} />
 

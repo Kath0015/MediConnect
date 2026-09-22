@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Users, Calendar, FileText, Pill, FlaskConical, FileBadge, TrendingUp, Clock, CheckCircle, AlertCircle, RefreshCw } from 'lucide-react';
+import { Users, Calendar, FileText, Pill, FlaskConical, FileBadge, TrendingUp, Clock, CheckCircle, AlertCircle, RefreshCw, Sparkles, Activity, ShieldAlert } from 'lucide-react';
 import api from '../../api/axios';
 
 const DoctorDashboard = () => {
@@ -65,6 +65,7 @@ const DoctorDashboard = () => {
   ];
 
   const quickActions = [
+    { label: 'Clinical DSS', icon: Sparkles, color: 'bg-teal-50 text-teal-700', border: 'hover:border-teal-400', path: '/doctor/dss' },
     { label: 'Write Prescription', icon: Pill, color: 'bg-[#7C3AED]/10 text-[#7C3AED]', border: 'hover:border-[#7C3AED]/40', path: '/doctor/prescriptions' },
     { label: 'Request Lab', icon: FlaskConical, color: 'bg-[#009DD1]/10 text-[#009DD1]', border: 'hover:border-[#009DD1]/40', path: '/doctor/laboratory' },
     { label: 'Review MedCerts', icon: FileBadge, color: 'bg-[#26B170]/10 text-[#26B170]', border: 'hover:border-[#26B170]/40', path: '/doctor/medcerts' },

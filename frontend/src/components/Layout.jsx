@@ -49,6 +49,7 @@ import {
   UserCheck,
   Syringe,
   BookOpen,
+  Sparkles,
 } from 'lucide-react';
 
 export const Layout = ({ children }) => {
@@ -116,6 +117,7 @@ export const Layout = ({ children }) => {
         { path: '/doctor/laboratory', label: 'Laboratory Requests', icon: FlaskConical },
         { path: '/doctor/prescriptions', label: 'Prescriptions', icon: Pill },
         { path: '/doctor/medcerts', label: 'Medical Certificates', icon: FileBadge },
+        { path: '/doctor/dss', label: 'Clinical DSS', icon: Sparkles },
         { path: '/doctor/notifications', label: 'Notifications', icon: Bell },
         { path: '/doctor/messages', label: 'Messages', icon: MessageCircle },
         { path: '/auth/profile', label: 'My Profile', icon: UserCircle },
@@ -130,6 +132,7 @@ export const Layout = ({ children }) => {
         { path: '/clinician/checkin', label: 'Patient Check-In', icon: UserCheck },
         { path: '/clinician/vitals', label: 'Vital Signs', icon: Syringe },
         { path: '/clinician/previous-laboratory', label: 'Laboratory', icon: FlaskConical },
+        { path: '/clinician/dss', label: 'Clinical DSS', icon: Sparkles },
         { path: '/clinician/documents', label: 'Documents', icon: FileText },
         { path: '/clinician/notifications', label: 'Notifications', icon: Bell },
         { path: '/clinician/messages', label: 'Messages', icon: MessageCircle },
