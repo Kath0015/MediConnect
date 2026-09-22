@@ -31,6 +31,9 @@ export const PatientRegistration = () => {
     date_of_birth: "",
     sex: "",
     address: "",
+    blood_type: "",
+    insurance_provider: "",
+    insurance_number: "",
     password: "",
     password_confirmation: "",
     emergency_contact: [],
@@ -413,6 +416,62 @@ export const PatientRegistration = () => {
                       {validationErrors.address}
                     </p>
                   )}
+                </div>
+
+                {/* Medical & Insurance Information */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="blood_type" className="text-[#01377D] text-sm font-medium">
+                      Blood Type
+                    </Label>
+                    <select
+                      id="blood_type"
+                      name="blood_type"
+                      value={formData.blood_type}
+                      onChange={handleChange}
+                      className="w-full px-3 py-2 border rounded-lg border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#009DD1]"
+                    >
+                      <option value="">Select (Optional)</option>
+                      <option value="A+">A+</option>
+                      <option value="A-">A-</option>
+                      <option value="B+">B+</option>
+                      <option value="B-">B-</option>
+                      <option value="AB+">AB+</option>
+                      <option value="AB-">AB-</option>
+                      <option value="O+">O+</option>
+                      <option value="O-">O-</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="insurance_provider" className="text-[#01377D] text-sm font-medium">
+                      HMO / Insurance Provider
+                    </Label>
+                    <Input
+                      id="insurance_provider"
+                      name="insurance_provider"
+                      type="text"
+                      placeholder="e.g. PhilHealth, Maxicare"
+                      value={formData.insurance_provider}
+                      onChange={handleChange}
+                      className="border-slate-300 focus:ring-[#009DD1]"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="insurance_number" className="text-[#01377D] text-sm font-medium">
+                      Insurance / PhilHealth ID
+                    </Label>
+                    <Input
+                      id="insurance_number"
+                      name="insurance_number"
+                      type="text"
+                      placeholder="e.g. 12-345678901-2"
+                      value={formData.insurance_number}
+                      onChange={handleChange}
+                      className="border-slate-300 focus:ring-[#009DD1]"
+                    />
+                  </div>
                 </div>
               </div>
 

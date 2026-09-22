@@ -188,6 +188,9 @@ class RegistrationService
                     'address' => $registrationData['address'],
                     'sex' => $registrationData['sex'] ?? null,
                     'emergency_contact' => $registrationData['emergency_contact'] ?? [],
+                    'blood_type' => $registrationData['blood_type'] ?? null,
+                    'insurance_provider' => $registrationData['insurance_provider'] ?? null,
+                    'insurance_number' => $registrationData['insurance_number'] ?? null,
                     'is_active' => true,
                 ]);
 

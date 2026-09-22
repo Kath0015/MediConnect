@@ -1,72 +1,104 @@
-import React, { useState } from 'react';
-import { Calendar, Search, Clock, CheckCircle, XCircle, Eye, Plus, Filter, User, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Calendar, Search, Clock, CheckCircle, XCircle, Eye, Plus, Filter, User, AlertCircle, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../../components/ui/dialog';
-
-const initialAppts = [
-  { id: 1, patient: 'Maria Santos', type: 'Follow-up', date: '2026-08-20', time: '10:00 AM', status: 'Confirmed', notes: 'Check BP readings and medication tolerance' },
-  { id: 2, patient: 'Juan dela Cruz', type: 'Consultation', date: '2026-08-20', time: '11:00 AM', status: 'Confirmed', notes: 'Diabetes monitoring, HbA1c review' },
-  { id: 3, patient: 'Ana Reyes', type: 'Lab Review', date: '2026-08-21', time: '02:00 PM', status: 'Pending', notes: 'CBC and urinalysis results discussion' },
-  { id: 4, patient: 'Pedro Lim', type: 'Follow-up', date: '2026-08-22', time: '03:30 PM', status: 'Confirmed', notes: 'Post-ECG cardiovascular review' },
-  { id: 5, patient: 'Rosa Garcia', type: 'Consultation', date: '2026-08-18', time: '09:00 AM', status: 'Completed', notes: 'Annual check-up complete' },
-];
+import api from '../../api/axios';
 
 const statusConfig = {
   Confirmed: 'bg-[#009DD1]/10 text-[#009DD1] border-[#009DD1]/20',
   Pending: 'bg-amber-100 text-amber-700 border-amber-200',
+  pending: 'bg-amber-100 text-amber-700 border-amber-200',
+  confirmed: 'bg-[#009DD1]/10 text-[#009DD1] border-[#009DD1]/20',
   Completed: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+  completed: 'bg-emerald-100 text-emerald-700 border-emerald-200',
   Cancelled: 'bg-rose-100 text-rose-700 border-rose-200',
+  cancelled: 'bg-rose-100 text-rose-700 border-rose-200',
 };
 
 const DoctorAppointments = () => {
-  const [appts, setAppts] = useState(initialAppts);
+  const [appts, setAppts] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [selectedAppt, setSelectedAppt] = useState(null);
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [newAppt, setNewAppt] = useState({
     patient: '',
-    type: 'Consultation',
+    type: 'General Consultation',
     date: new Date().toISOString().split('T')[0],
-    time: '09:00 AM',
+    time: '09:00',
     notes: '',
   });
 
+  const loadAppointments = async () => {
+    try {
+      setLoading(true);
+      const res = await api.get('/api/appointments');
+      const list = Array.isArray(res.data?.data) ? res.data.data : Array.isArray(res.data) ? res.data : [];
+      const mapped = list.map((a) => {
+        const start = a.start_time ? new Date(a.start_time) : null;
+        return {
+          id: a.id,
+          patient: a.patient?.user?.name || a.patient?.name || 'Walk-In Patient',
+          type: a.appointment_type?.name || a.title || 'Consultation',
+          date: start ? start.toISOString().split('T')[0] : '—',
+          time: start ? start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—',
+          status: a.status ? a.status.charAt(0).toUpperCase() + a.status.slice(1) : 'Confirmed',
+          notes: a.notes || a.description || 'Clinical consultation scheduled.',
+        };
+      });
+      setAppts(mapped);
+    } catch (err) {
+      console.error('Failed to load appointments:', err);
+      toast.error('Failed to load appointments from database');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadAppointments();
+  }, []);
+
   const filtered = appts.filter((a) => {
-    const matchesSearch = a.patient.toLowerCase().includes(search.toLowerCase()) || a.type.toLowerCase().includes(search.toLowerCase());
-    const matchesFilter = statusFilter === 'All' || a.status === statusFilter;
+    const matchesSearch = a.patient?.toLowerCase().includes(search.toLowerCase()) || a.type?.toLowerCase().includes(search.toLowerCase());
+    const matchesFilter = statusFilter === 'All' || a.status?.toLowerCase() === statusFilter.toLowerCase();
     return matchesSearch && matchesFilter;
   });
 
-  const handleCreateAppointment = (e) => {
-    e.preventDefault();
-    if (!newAppt.patient.trim()) {
-      toast.error('Please enter patient name');
-      return;
+  const handleConfirm = async (appt) => {
+    try {
+      await api.post(`/api/appointments/${appt.id}/confirm`);
+      toast.success(`Appointment confirmed for ${appt.patient}!`);
+      await loadAppointments();
+    } catch (err) {
+      console.error('Failed to confirm appointment:', err);
+      toast.error('Failed to update appointment status');
     }
-    const item = {
-      id: Date.now(),
-      ...newAppt,
-      status: 'Confirmed',
-    };
-    setAppts([item, ...appts]);
-    setIsNewModalOpen(false);
-    setNewAppt({
-      patient: '',
-      type: 'Consultation',
-      date: new Date().toISOString().split('T')[0],
-      time: '09:00 AM',
-      notes: '',
-    });
-    toast.success(`Appointment scheduled for ${item.patient}`);
   };
 
-  const handleUpdateStatus = (id, newStatus) => {
-    setAppts(appts.map((a) => (a.id === id ? { ...a, status: newStatus } : a)));
-    if (selectedAppt && selectedAppt.id === id) {
-      setSelectedAppt({ ...selectedAppt, status: newStatus });
+  const handleComplete = async (appt) => {
+    try {
+      await api.post(`/api/appointments/${appt.id}/complete`);
+      toast.success(`Appointment completed for ${appt.patient}!`);
+      await loadAppointments();
+    } catch (err) {
+      console.error('Failed to complete appointment:', err);
+      toast.error('Failed to complete appointment');
     }
-    toast.success(`Appointment marked as ${newStatus}`);
+  };
+
+  const handleCancel = async (appt) => {
+    if (!window.confirm(`Cancel appointment for ${appt.patient}?`)) return;
+    try {
+      await api.post(`/api/appointments/${appt.id}/cancel`, { reason: 'Doctor schedule adjustment' });
+      toast.success(`Appointment cancelled`);
+      await loadAppointments();
+    } catch (err) {
+      console.error('Failed to cancel appointment:', err);
+      toast.error('Failed to cancel appointment');
+    }
   };
 
   return (
@@ -75,167 +107,172 @@ const DoctorAppointments = () => {
         <div>
           <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
             <Calendar className="w-6 h-6 text-[#7C3AED]" />
-            My Appointments
+            Doctor Appointments
           </h1>
-          <p className="text-slate-500 mt-1 text-sm">Manage scheduled consultations and patient follow-ups.</p>
+          <p className="text-slate-500 mt-1 text-sm">Real-time database-backed consultation schedule and patient booking management.</p>
         </div>
-        <button
-          onClick={() => setIsNewModalOpen(true)}
-          className="flex items-center gap-2 bg-[#7C3AED] text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-[#5B21B6] transition-colors shadow-sm"
-        >
-          <Plus className="w-4 h-4" /> Book Appointment
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={loadAppointments}
+            disabled={loading}
+            className="p-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors"
+            title="Refresh"
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-[#7C3AED]' : ''}`} />
+          </button>
+        </div>
       </div>
 
-      {/* Filter Tabs & Search */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search appointments by patient or type..."
+            placeholder="Search appointments by patient name or type..."
             className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/30 focus:border-[#7C3AED]"
           />
         </div>
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
-          {['All', 'Confirmed', 'Pending', 'Completed', 'Cancelled'].map((st) => (
+        <div className="flex gap-2">
+          {['All', 'Confirmed', 'Pending', 'Completed'].map((s) => (
             <button
-              key={st}
-              onClick={() => setStatusFilter(st)}
-              className={`px-3 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
-                statusFilter === st
-                  ? 'bg-[#7C3AED] text-white shadow-sm'
+              key={s}
+              onClick={() => setStatusFilter(s)}
+              className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition-colors ${
+                statusFilter === s
+                  ? 'bg-[#7C3AED] text-white'
                   : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
               }`}
             >
-              {st}
+              {s}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Appointment List */}
-      <div className="space-y-3">
-        {filtered.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-slate-100 p-8 text-center text-slate-500">
-            No appointments found matching your criteria.
-          </div>
-        ) : (
-          filtered.map((a) => (
-            <div
-              key={a.id}
-              className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 hover:shadow-md hover:border-[#7C3AED]/30 transition-all duration-200"
-            >
-              <div className="flex items-start justify-between gap-3 flex-wrap">
-                <div className="flex items-center gap-4">
-                  <div className="w-11 h-11 rounded-xl bg-[#7C3AED]/10 flex items-center justify-center flex-shrink-0">
-                    <Calendar className="w-5 h-5 text-[#7C3AED]" />
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+        <table className="w-full text-sm text-left">
+          <thead className="bg-slate-50 border-b border-slate-100 text-xs font-semibold text-slate-500 uppercase tracking-wide">
+            <tr>
+              <th className="px-5 py-3">Patient</th>
+              <th className="px-5 py-3">Type</th>
+              <th className="px-5 py-3">Date</th>
+              <th className="px-5 py-3">Time</th>
+              <th className="px-5 py-3">Status</th>
+              <th className="px-5 py-3">Notes</th>
+              <th className="px-5 py-3 text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {loading ? (
+              <tr>
+                <td colSpan={7} className="px-5 py-8 text-center text-slate-400">
+                  <div className="flex items-center justify-center gap-2">
+                    <RefreshCw className="w-4 h-4 animate-spin text-[#7C3AED]" />
+                    <span>Loading appointments from database...</span>
                   </div>
-                  <div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="font-semibold text-slate-900">{a.patient}</h3>
-                      <span className={`text-xs px-2.5 py-0.5 rounded-full font-medium border ${statusConfig[a.status] || 'bg-slate-100 text-slate-600'}`}>
-                        {a.status}
-                      </span>
+                </td>
+              </tr>
+            ) : filtered.length === 0 ? (
+              <tr>
+                <td colSpan={7} className="px-5 py-8 text-center text-slate-400">
+                  No appointments found in database.
+                </td>
+              </tr>
+            ) : (
+              filtered.map((a) => (
+                <tr key={a.id} className="hover:bg-slate-50/50 transition-colors">
+                  <td className="px-5 py-4 font-semibold text-slate-900">{a.patient}</td>
+                  <td className="px-5 py-4 text-slate-700 font-medium">{a.type}</td>
+                  <td className="px-5 py-4 text-slate-600 whitespace-nowrap">{a.date}</td>
+                  <td className="px-5 py-4 text-slate-600">{a.time}</td>
+                  <td className="px-5 py-4">
+                    <span className={`text-xs px-2.5 py-1 rounded-full font-medium border ${statusConfig[a.status] || statusConfig.Confirmed}`}>
+                      {a.status}
+                    </span>
+                  </td>
+                  <td className="px-5 py-4 text-slate-500 text-xs max-w-xs truncate">{a.notes}</td>
+                  <td className="px-5 py-4 text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      {a.status?.toLowerCase() === 'pending' && (
+                        <button
+                          onClick={() => handleConfirm(a)}
+                          className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-xs font-semibold"
+                        >
+                          Confirm
+                        </button>
+                      )}
+                      {a.status?.toLowerCase() === 'confirmed' && (
+                        <button
+                          onClick={() => handleComplete(a)}
+                          className="px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 text-xs font-semibold"
+                        >
+                          Complete
+                        </button>
+                      )}
+                      <button
+                        onClick={() => setSelectedAppt(a)}
+                        className="p-1.5 rounded-lg hover:bg-purple-50 text-slate-400 hover:text-[#7C3AED] transition-colors"
+                        title="View Details"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </button>
+                      {a.status?.toLowerCase() !== 'cancelled' && a.status?.toLowerCase() !== 'completed' && (
+                        <button
+                          onClick={() => handleCancel(a)}
+                          className="p-1.5 rounded-lg hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition-colors"
+                          title="Cancel"
+                        >
+                          <XCircle className="w-4 h-4" />
+                        </button>
+                      )}
                     </div>
-                    <p className="text-sm text-slate-500">{a.type}</p>
-                    {a.notes && <p className="text-xs text-slate-400 italic mt-0.5">{a.notes}</p>}
-                  </div>
-                </div>
-                <div className="flex flex-col sm:items-end gap-2">
-                  <div className="text-right text-sm text-slate-500">
-                    <div className="font-medium text-slate-700">{a.date}</div>
-                    <div className="flex items-center gap-1 sm:justify-end mt-0.5">
-                      <Clock className="w-3.5 h-3.5" />
-                      {a.time}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      onClick={() => setSelectedAppt(a)}
-                      className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-[#7C3AED]/10 hover:text-[#7C3AED] text-slate-600 text-xs font-medium transition-colors"
-                    >
-                      Details
-                    </button>
-                    {a.status === 'Pending' && (
-                      <button
-                        onClick={() => handleUpdateStatus(a.id, 'Confirmed')}
-                        className="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-medium transition-colors"
-                      >
-                        Confirm
-                      </button>
-                    )}
-                    {a.status === 'Confirmed' && (
-                      <button
-                        onClick={() => handleUpdateStatus(a.id, 'Completed')}
-                        className="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-medium transition-colors"
-                      >
-                        Complete
-                      </button>
-                    )}
-                    {a.status !== 'Cancelled' && a.status !== 'Completed' && (
-                      <button
-                        onClick={() => handleUpdateStatus(a.id, 'Cancelled')}
-                        className="px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-medium transition-colors"
-                      >
-                        Cancel
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))
-        )}
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
       </div>
 
-      {/* Appointment Details Modal */}
+      {/* Details Modal */}
       <Dialog open={!!selectedAppt} onOpenChange={(open) => !open && setSelectedAppt(null)}>
         <DialogContent className="max-w-md bg-white p-6 rounded-2xl">
           <DialogHeader>
             <DialogTitle className="text-lg font-bold text-slate-900">Appointment Details</DialogTitle>
             <DialogDescription className="text-xs text-slate-500">
-              Review appointment information and update status.
+              Live consultation record from MediConnect clinical database.
             </DialogDescription>
           </DialogHeader>
           {selectedAppt && (
-            <div className="space-y-4 pt-2">
-              <div className="bg-slate-50 p-4 rounded-xl space-y-2">
+            <div className="space-y-4 pt-2 text-sm">
+              <div className="bg-slate-50 p-4 rounded-xl space-y-2 border border-slate-100">
                 <div className="flex justify-between">
                   <span className="text-xs text-slate-500">Patient:</span>
-                  <span className="text-sm font-semibold text-slate-800">{selectedAppt.patient}</span>
+                  <span className="font-bold text-slate-900">{selectedAppt.patient}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-xs text-slate-500">Type:</span>
-                  <span className="text-sm text-slate-700">{selectedAppt.type}</span>
+                  <span className="text-slate-800 font-medium">{selectedAppt.type}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-xs text-slate-500">Date & Time:</span>
-                  <span className="text-sm text-slate-700">{selectedAppt.date} at {selectedAppt.time}</span>
+                  <span className="text-slate-700">{selectedAppt.date} at {selectedAppt.time}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-xs text-slate-500">Status:</span>
-                  <span className={`text-xs px-2.5 py-0.5 rounded-full font-medium ${statusConfig[selectedAppt.status]}`}>
+                  <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-purple-50 text-[#7C3AED]">
                     {selectedAppt.status}
                   </span>
                 </div>
-                {selectedAppt.notes && (
-                  <div className="pt-2 border-t border-slate-200">
-                    <span className="text-xs text-slate-500 block mb-1">Clinical Notes:</span>
-                    <p className="text-xs text-slate-700">{selectedAppt.notes}</p>
-                  </div>
-                )}
+                <div className="border-t border-slate-200 pt-2 mt-2">
+                  <span className="text-xs text-slate-500 block mb-1">Clinical Notes:</span>
+                  <p className="text-xs text-slate-700 bg-white p-2.5 rounded-lg border border-slate-200">
+                    {selectedAppt.notes}
+                  </p>
+                </div>
               </div>
               <div className="flex justify-end gap-2 pt-2">
-                {selectedAppt.status !== 'Completed' && (
-                  <button
-                    onClick={() => handleUpdateStatus(selectedAppt.id, 'Completed')}
-                    className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold"
-                  >
-                    Mark as Completed
-                  </button>
-                )}
                 <button
                   onClick={() => setSelectedAppt(null)}
                   className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium"
@@ -247,98 +284,8 @@ const DoctorAppointments = () => {
           )}
         </DialogContent>
       </Dialog>
-
-      {/* Book Appointment Modal */}
-      <Dialog open={isNewModalOpen} onOpenChange={setIsNewModalOpen}>
-        <DialogContent className="max-w-md bg-white p-6 rounded-2xl">
-          <DialogHeader>
-            <DialogTitle className="text-lg font-bold text-slate-900">Book New Appointment</DialogTitle>
-            <DialogDescription className="text-xs text-slate-500">
-              Schedule a consultation or follow-up with a patient.
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleCreateAppointment} className="space-y-4 pt-2">
-            <div>
-              <label className="text-xs font-semibold text-slate-700 block mb-1">Patient Name</label>
-              <input
-                type="text"
-                required
-                placeholder="e.g. Maria Santos"
-                value={newAppt.patient}
-                onChange={(e) => setNewAppt({ ...newAppt, patient: e.target.value })}
-                className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-[#7C3AED]/30"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-slate-700 block mb-1">Appointment Type</label>
-              <select
-                value={newAppt.type}
-                onChange={(e) => setNewAppt({ ...newAppt, type: e.target.value })}
-                className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-[#7C3AED]/30"
-              >
-                <option value="Consultation">General Consultation</option>
-                <option value="Follow-up">Follow-up Visit</option>
-                <option value="Lab Review">Lab Review</option>
-                <option value="Emergency Evaluation">Emergency Evaluation</option>
-              </select>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs font-semibold text-slate-700 block mb-1">Date</label>
-                <input
-                  type="date"
-                  value={newAppt.date}
-                  onChange={(e) => setNewAppt({ ...newAppt, date: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-[#7C3AED]/30"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-semibold text-slate-700 block mb-1">Time Slot</label>
-                <select
-                  value={newAppt.time}
-                  onChange={(e) => setNewAppt({ ...newAppt, time: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-[#7C3AED]/30"
-                >
-                  <option value="09:00 AM">09:00 AM</option>
-                  <option value="10:00 AM">10:00 AM</option>
-                  <option value="11:00 AM">11:00 AM</option>
-                  <option value="01:30 PM">01:30 PM</option>
-                  <option value="02:30 PM">02:30 PM</option>
-                  <option value="03:30 PM">03:30 PM</option>
-                  <option value="04:30 PM">04:30 PM</option>
-                </select>
-              </div>
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-slate-700 block mb-1">Reason / Notes</label>
-              <textarea
-                rows={2}
-                placeholder="Chief complaints or appointment purpose..."
-                value={newAppt.notes}
-                onChange={(e) => setNewAppt({ ...newAppt, notes: e.target.value })}
-                className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-[#7C3AED]/30"
-              />
-            </div>
-            <div className="flex justify-end gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setIsNewModalOpen(false)}
-                className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="px-4 py-2 rounded-xl bg-[#7C3AED] hover:bg-[#5B21B6] text-white text-xs font-semibold"
-              >
-                Schedule Appointment
-              </button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };
-export default DoctorAppointments;
 
+export default DoctorAppointments;

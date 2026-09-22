@@ -16,6 +16,11 @@ use App\Http\Controllers\Api\V1\MedcertReasonController;
 use App\Http\Controllers\Api\V1\SymptomCheckerController;
 use App\Http\Controllers\Api\V1\MessageController;
 use App\Http\Controllers\Api\ActivityLogController;
+use App\Http\Controllers\Api\V1\InvoiceController;
+use App\Http\Controllers\Api\V1\PrescriptionController;
+use App\Http\Controllers\Api\V1\LabRequestController;
+use App\Http\Controllers\Api\V1\CheckInController;
+use App\Http\Controllers\Api\V1\VitalSignController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Http\Request;
 
@@ -103,6 +108,7 @@ Route::middleware(['web', 'auth:sanctum', 'throttle:300,1'])->group(function () 
     Route::post('/med-certs/{med_cert}/reject', [MedCertController::class, 'reject']);
     Route::post('/med-certs/{med_cert}/no-show', [MedCertController::class, 'markNoShow']);
     Route::post('/med-certs/{med_cert}/completed', [MedCertController::class, 'markCompleted']);
+    Route::post('/med-certs/{med_cert}/revoke', [MedCertController::class, 'revoke']);
     Route::get('/med-certs/{med_cert}/download', [MedCertController::class, 'downloadPdf']);
     Route::post('/med-certs/{med_cert}/upload', [MedCertController::class, 'uploadPdf']);
     
@@ -126,6 +132,29 @@ Route::middleware(['web', 'auth:sanctum', 'throttle:300,1'])->group(function () 
     Route::get('/messages/{userId}/has-conversation', [MessageController::class, 'hasConversation']);
     Route::post('/messages', [MessageController::class, 'send']);
     Route::patch('/messages/{userId}/mark-read', [MessageController::class, 'markAsRead']);
+    
+    // Invoices / Billing
+    Route::get('/invoices', [InvoiceController::class, 'index']);
+    Route::post('/invoices', [InvoiceController::class, 'store']);
+    Route::get('/invoices/{invoice}', [InvoiceController::class, 'show']);
+    Route::patch('/invoices/{id}/pay', [InvoiceController::class, 'markPaid']);
+    Route::delete('/invoices/{id}', [InvoiceController::class, 'destroy']);
+
+    // Prescriptions
+    Route::apiResource('prescriptions', PrescriptionController::class);
+
+    // Lab Requests
+    Route::apiResource('lab-requests', LabRequestController::class);
+
+    // Triage: Check-in queue & Vitals
+    Route::get('/check-ins', [CheckInController::class, 'index']);
+    Route::post('/check-ins', [CheckInController::class, 'store']);
+    Route::patch('/check-ins/{id}/status', [CheckInController::class, 'updateStatus']);
+    Route::delete('/check-ins/{id}', [CheckInController::class, 'destroy']);
+
+    Route::get('/vitals', [VitalSignController::class, 'index']);
+    Route::post('/vitals', [VitalSignController::class, 'store']);
+    Route::get('/vitals/{id}', [VitalSignController::class, 'show']);
     
     // Role-based routes
     Route::middleware(['role:admin'])->group(function () {

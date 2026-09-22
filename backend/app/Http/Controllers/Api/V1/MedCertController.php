@@ -312,17 +312,52 @@ class MedCertController extends Controller
         return Storage::download($medCert->pdf_path, "medcert-{$medCert->certificate_number}.pdf");
     }
 
+    public function revoke(Request $request, MedCert $medCert)
+    {
+        $validated = $request->validate([
+            'reason' => 'nullable|string|max:500',
+        ]);
+
+        DB::transaction(function () use ($request, $medCert, $validated) {
+            $medCert->update([
+                'status' => 'revoked',
+                'revoked_at' => now(),
+                'rejection_reason' => $validated['reason'] ?? 'Revoked by clinical authority',
+            ]);
+
+            activity()
+                ->causedBy($request->user())
+                ->performedOn($medCert)
+                ->withProperties([
+                    'ip' => $request->ip(),
+                    'reason' => $validated['reason'] ?? 'Revoked by clinical authority',
+                    'revoked_at' => now()->toDateTimeString(),
+                ])
+                ->log('medcert_revoked');
+        });
+
+        return response()->json($medCert->load(['patient.user', 'requester', 'approver']));
+    }
+
     public function publicVerify($hash)
     {
-        $medCert = MedCert::where('verification_hash', $hash)
-            ->where('status', 'approved')
-            ->firstOrFail();
+        $medCert = MedCert::where('verification_hash', $hash)->firstOrFail();
 
-        // Verify certificate (status must be 'approved' for validity)
-        if ($medCert->status !== 'approved') {
+        // Check if certificate has been revoked
+        if ($medCert->revoked_at || $medCert->status === 'revoked') {
             return response()->json([
                 'valid' => false,
-                'message' => 'Certificate is not approved',
+                'status' => 'revoked',
+                'message' => 'This medical certificate was REVOKED on ' . ($medCert->revoked_at ? $medCert->revoked_at->format('M d, Y h:i A') : 'date of revocation') . ' and is INVALID.',
+            ], 422);
+        }
+
+        // Verify certificate (status must be 'approved' for validity)
+        if ($medCert->status !== 'approved' && $medCert->status !== 'completed') {
+            return response()->json([
+                'valid' => false,
+                'status' => $medCert->status,
+                'message' => 'Certificate is not active or approved.',
             ], 404);
         }
 
@@ -338,6 +373,7 @@ class MedCertController extends Controller
                 'approved_by' => $medCert->approver->name,
                 'approved_at' => $medCert->approved_at->format('Y-m-d H:i:s'),
                 'is_active' => $medCert->is_active,
+                'status' => $medCert->status,
             ]
         ]);
     }

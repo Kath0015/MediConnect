@@ -8,8 +8,8 @@ import { Badge } from '../../components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '../../components/ui/popover';
 import { Calendar as DatePickerCalendar } from '../../components/ui/calendar';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../../components/ui/dialog';
-import { FileBadge, Search, CheckCircle, XCircle, Loader2, X, CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react';
-import { getMedCerts, approveMedCert, rejectMedCert, markMedCertCompleted } from '../../api/ClinicianDashboard';
+import { FileBadge, Search, CheckCircle, XCircle, Ban, Loader2, X, CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react';
+import { getMedCerts, approveMedCert, rejectMedCert, markMedCertCompleted, revokeMedCert } from '../../api/ClinicianDashboard';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import StaffRoleBanner from '../../components/staff/StaffRoleBanner';
@@ -101,6 +101,28 @@ export const RequestManagement = () => {
     }
   };
 
+  const handleRevoke = async () => {
+    if (!selectedCert || !reason.trim()) {
+      toast.error('Please provide a reason for revoking this certificate');
+      return;
+    }
+
+    try {
+      setProcessing(true);
+      await revokeMedCert(selectedCert.id, reason);
+      toast.success('Medical certificate revoked successfully');
+      setActionDialog({ open: false, type: null });
+      setSelectedCert(null);
+      setReason('');
+      loadMedCerts();
+    } catch (err) {
+      console.error('Failed to revoke medical certificate:', err);
+      toast.error(err.response?.data?.message || 'Failed to revoke medical certificate');
+    } finally {
+      setProcessing(false);
+    }
+  };
+
   const handleMarkCompleted = async (certId) => {
     if (!certId) return;
 
@@ -127,6 +149,8 @@ export const RequestManagement = () => {
         return 'bg-yellow-100 text-yellow-800 border-yellow-300';
       case 'completed':
         return 'bg-blue-100 text-blue-800 border-blue-300';
+      case 'revoked':
+        return 'bg-purple-100 text-purple-800 border-purple-300';
       case 'no-show':
         return 'bg-gray-100 text-gray-800 border-gray-300';
       default:
@@ -181,6 +205,8 @@ export const RequestManagement = () => {
       return matchesSearch && cert.status === 'rejected';
     } else if (activeTab === 'completed') {
       return matchesSearch && cert.status === 'completed';
+    } else if (activeTab === 'revoked') {
+      return matchesSearch && cert.status === 'revoked';
     } else if (activeTab === 'no-show') {
       return matchesSearch && cert.status === 'no-show';
     }
@@ -193,6 +219,7 @@ export const RequestManagement = () => {
   const approvedCount = allMedCerts.filter(c => c.status === 'approved').length;
   const rejectedCount = allMedCerts.filter(c => c.status === 'rejected').length;
   const completedCount = allMedCerts.filter(c => c.status === 'completed').length;
+  const revokedCount = allMedCerts.filter(c => c.status === 'revoked').length;
   const noShowCount = allMedCerts.filter(c => c.status === 'no-show').length;
 
   // Pagination logic for current tab
@@ -292,16 +319,30 @@ export const RequestManagement = () => {
                       </>
                     )}
                     {activeTab === 'approved' && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleMarkCompleted(cert.id)}
-                        disabled={completedId === cert.id}
-                        className="h-8 w-8 border-blue-200 bg-blue-50 p-0 text-blue-700 hover:bg-blue-100"
-                        title="Mark as completed"
-                      >
-                        {completedId === cert.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
-                      </Button>
+                      <div className="flex items-center gap-1.5">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleMarkCompleted(cert.id)}
+                          disabled={completedId === cert.id}
+                          className="h-8 w-8 border-blue-200 bg-blue-50 p-0 text-blue-700 hover:bg-blue-100"
+                          title="Mark as completed"
+                        >
+                          {completedId === cert.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setSelectedCert(cert);
+                            setActionDialog({ open: true, type: 'revoke' });
+                          }}
+                          className="h-8 w-8 border-purple-200 bg-purple-50 p-0 text-purple-700 hover:bg-purple-100"
+                          title="Revoke certificate"
+                        >
+                          <Ban className="h-4 w-4" />
+                        </Button>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -353,16 +394,30 @@ export const RequestManagement = () => {
                       </>
                     )}
                     {activeTab === 'approved' && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleMarkCompleted(cert.id)}
-                        disabled={completedId === cert.id}
-                        className="h-8 w-8 border-blue-200 bg-blue-50 p-0 text-blue-700 hover:bg-blue-100"
-                        title="Mark as completed"
-                      >
-                        {completedId === cert.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
-                      </Button>
+                      <div className="flex items-center gap-1.5">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleMarkCompleted(cert.id)}
+                          disabled={completedId === cert.id}
+                          className="h-8 w-8 border-blue-200 bg-blue-50 p-0 text-blue-700 hover:bg-blue-100"
+                          title="Mark as completed"
+                        >
+                          {completedId === cert.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setSelectedCert(cert);
+                            setActionDialog({ open: true, type: 'revoke' });
+                          }}
+                          className="h-8 w-8 border-purple-200 bg-purple-50 p-0 text-purple-700 hover:bg-purple-100"
+                          title="Revoke certificate"
+                        >
+                          <Ban className="h-4 w-4" />
+                        </Button>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -448,7 +503,7 @@ export const RequestManagement = () => {
       </div>
 
       {/* Status Cards - Clickable */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 xl:grid-cols-6">
         <button
           onClick={() => { setActiveTab('pending'); setCurrentPage(1); }}
           className={`text-left rounded-xl px-4 py-3 transition-all duration-200 shadow-sm hover:-translate-y-0.5 hover:shadow-md ${
@@ -526,6 +581,25 @@ export const RequestManagement = () => {
           </div>
         </button>
         <button
+          onClick={() => { setActiveTab('revoked'); setCurrentPage(1); }}
+          className={`text-left rounded-xl px-4 py-3 transition-all duration-200 shadow-sm hover:-translate-y-0.5 hover:shadow-md ${
+            activeTab === 'revoked'
+              ? 'border-2 border-purple-500 bg-gradient-to-b from-white to-purple-50/70'
+              : 'border border-purple-200/60 bg-gradient-to-b from-white to-purple-50/40'
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-purple-700">Revoked</p>
+              <p className="mt-1 text-2xl font-semibold text-purple-700">{revokedCount}</p>
+              <p className="text-[11px] text-purple-700/80">Revoked certs</p>
+            </div>
+            <div className="grid h-9 w-9 place-items-center rounded-lg bg-purple-100 text-purple-700">
+              <Ban className="h-4 w-4" />
+            </div>
+          </div>
+        </button>
+        <button
           onClick={() => { setActiveTab('no-show'); setCurrentPage(1); }}
           className={`text-left rounded-xl px-4 py-3 transition-all duration-200 shadow-sm hover:-translate-y-0.5 hover:shadow-md ${
             activeTab === 'no-show'
@@ -562,11 +636,17 @@ export const RequestManagement = () => {
         <DialogContent className="w-[min(92vw,700px)] max-h-[88vh] overflow-y-auto rounded-2xl border border-cyan-100 bg-white p-0 shadow-[0_24px_65px_rgba(2,32,71,0.28)] [&>button]:hidden">
           <DialogHeader className="sticky top-0 z-10 rounded-t-2xl border-b border-cyan-100 bg-gradient-to-r from-cyan-50 to-blue-50 px-4 py-3 sm:px-6 sm:py-4">
             <DialogTitle className="text-xl text-[#01377D]">
-              {actionDialog.type === 'approve' ? 'Approve Medical Certificate' : 'Reject Medical Certificate'}
+              {actionDialog.type === 'approve'
+                ? 'Approve Medical Certificate'
+                : actionDialog.type === 'revoke'
+                ? 'Revoke Medical Certificate'
+                : 'Reject Medical Certificate'}
             </DialogTitle>
             <DialogDescription className="text-[#4A6A8F]">
               {actionDialog.type === 'approve'
                 ? 'Review and approve this medical certificate request. Set a pickup date if needed.'
+                : actionDialog.type === 'revoke'
+                ? 'This will immediately revoke the certificate and invalidate its verification QR / hash.'
                 : 'Please provide a reason for rejecting this medical certificate request.'}
             </DialogDescription>
           </DialogHeader>
@@ -655,13 +735,13 @@ export const RequestManagement = () => {
                 </div>
               )}
 
-              {actionDialog.type === 'reject' && (
+              {(actionDialog.type === 'reject' || actionDialog.type === 'revoke') && (
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-[#01377D] mb-2 block">
-                    Rejection Reason *
+                    {actionDialog.type === 'revoke' ? 'Revocation Reason *' : 'Rejection Reason *'}
                   </label>
                   <Textarea
-                    placeholder="Enter reason for rejection..."
+                    placeholder={actionDialog.type === 'revoke' ? 'Enter clinical reason for revoking this certificate...' : 'Enter reason for rejection...'}
                     value={reason}
                     onChange={(e) => setReason(e.target.value)}
                     className="min-h-[100px] rounded-xl border-slate-200 bg-white focus:border-[#009DD1] focus:ring-[#009DD1]"
@@ -685,11 +765,23 @@ export const RequestManagement = () => {
                   Cancel
                 </Button>
                 <Button
-                  onClick={actionDialog.type === 'approve' ? handleApprove : handleReject}
-                  disabled={processing || (actionDialog.type === 'reject' && !reason.trim()) || (actionDialog.type === 'approve' && !pickupDate.trim())}
-                  className={actionDialog.type === 'approve'
-                    ? 'h-10 w-full rounded-lg bg-green-600 hover:bg-green-700 text-white sm:w-auto'
-                    : 'h-10 w-full rounded-lg bg-red-600 hover:bg-red-700 text-white sm:w-auto'}
+                  onClick={
+                    actionDialog.type === 'approve'
+                      ? handleApprove
+                      : actionDialog.type === 'revoke'
+                      ? handleRevoke
+                      : handleReject
+                  }
+                  disabled={
+                    processing ||
+                    ((actionDialog.type === 'reject' || actionDialog.type === 'revoke') && !reason.trim()) ||
+                    (actionDialog.type === 'approve' && !pickupDate.trim())
+                  }
+                  className={
+                    actionDialog.type === 'approve'
+                      ? 'h-10 w-full rounded-lg bg-green-600 hover:bg-green-700 text-white sm:w-auto'
+                      : 'h-10 w-full rounded-lg bg-red-600 hover:bg-red-700 text-white sm:w-auto'
+                  }
                 >
                   {processing ? (
                     <>
@@ -702,6 +794,11 @@ export const RequestManagement = () => {
                         <>
                           <CheckCircle className="w-4 h-4 mr-2" />
                           Approve
+                        </>
+                      ) : actionDialog.type === 'revoke' ? (
+                        <>
+                          <Ban className="w-4 h-4 mr-2" />
+                          Revoke Certificate
                         </>
                       ) : (
                         <>

@@ -1,58 +1,115 @@
-import React, { useState } from 'react';
-import { Pill, Search, Eye, Download, Plus, Calendar, User, Stethoscope } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Pill, Search, Eye, Download, Plus, Calendar, User, Stethoscope, Trash2, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../../components/ui/dialog';
-
-const initialRx = [
-  { id: 1, patient: 'Maria Santos', medication: 'Amoxicillin 500mg', doctor: 'Dr. Santos', date: '2026-08-10', refills: 2, dosage: '1 capsule 3x daily with meals for 7 days', status: 'Active' },
-  { id: 2, patient: 'Juan dela Cruz', medication: 'Metformin 500mg', doctor: 'Dr. Reyes', date: '2026-08-08', refills: 5, dosage: '1 tablet 2x daily with meals', status: 'Active' },
-  { id: 3, patient: 'Ana Reyes', medication: 'Losartan 50mg', doctor: 'Dr. Cruz', date: '2026-06-15', refills: 0, dosage: '1 tablet once daily every morning', status: 'Expired' },
-  { id: 4, patient: 'Pedro Lim', medication: 'Aspirin 81mg', doctor: 'Dr. Santos', date: '2026-08-15', refills: 11, dosage: '1 tablet once daily after lunch', status: 'Active' },
-];
+import { getPrescriptions, createPrescription, deletePrescription } from '../../api/Prescriptions';
 
 const AdminPrescriptions = () => {
-  const [prescriptions, setPrescriptions] = useState(initialRx);
+  const [prescriptions, setPrescriptions] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [isIssueOpen, setIsIssueOpen] = useState(false);
   const [selectedRx, setSelectedRx] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [newRx, setNewRx] = useState({
     patient: '',
     medication: '',
-    doctor: 'Dr. Santos',
+    doctor: 'Dr. Jose Santos',
     dosage: '1 tablet once daily',
-    refills: '2',
+    instructions: 'Take after meals.',
   });
 
+  const loadAllPrescriptions = async () => {
+    try {
+      setLoading(true);
+      const res = await getPrescriptions();
+      const mapped = (res.data || []).map((r) => {
+        const firstMed = Array.isArray(r.medications) && r.medications[0] ? r.medications[0] : null;
+        return {
+          id: r.id,
+          rxNumber: r.prescription_number,
+          patient: r.patient_name,
+          medication: firstMed?.name || 'Prescription',
+          doctor: r.doctor_name || 'Dr. Physician',
+          date: r.date_prescribed || r.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
+          dosage: firstMed ? `${firstMed.dosage || ''} ${firstMed.frequency || ''}`.trim() : r.notes || 'As prescribed',
+          status: r.status || 'Active',
+          instructions: firstMed?.instructions || r.notes || 'As advised.',
+          medications: r.medications || [],
+        };
+      });
+      setPrescriptions(mapped);
+    } catch (err) {
+      console.error('Failed to load prescriptions:', err);
+      toast.error('Failed to load prescriptions from database');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadAllPrescriptions();
+  }, []);
+
   const filtered = prescriptions.filter((r) =>
-    r.patient.toLowerCase().includes(search.toLowerCase()) ||
-    r.medication.toLowerCase().includes(search.toLowerCase()) ||
-    r.doctor.toLowerCase().includes(search.toLowerCase())
+    r.patient?.toLowerCase().includes(search.toLowerCase()) ||
+    r.medication?.toLowerCase().includes(search.toLowerCase()) ||
+    r.doctor?.toLowerCase().includes(search.toLowerCase()) ||
+    r.rxNumber?.toLowerCase().includes(search.toLowerCase())
   );
 
-  const handleIssueRx = (e) => {
+  const handleIssueRx = async (e) => {
     e.preventDefault();
     if (!newRx.patient.trim() || !newRx.medication.trim()) {
       toast.error('Please enter patient and medication details');
       return;
     }
-    const item = {
-      id: Date.now(),
-      patient: newRx.patient,
-      medication: newRx.medication,
-      doctor: newRx.doctor,
-      date: new Date().toISOString().split('T')[0],
-      refills: parseInt(newRx.refills) || 0,
-      dosage: newRx.dosage,
-      status: 'Active',
-    };
-    setPrescriptions([item, ...prescriptions]);
-    setIsIssueOpen(false);
-    setNewRx({ patient: '', medication: '', doctor: 'Dr. Santos', dosage: '1 tablet once daily', refills: '2' });
-    toast.success(`e-Prescription issued for ${item.patient}!`);
+    try {
+      setIsSubmitting(true);
+      await createPrescription({
+        patient_name: newRx.patient,
+        doctor_name: newRx.doctor,
+        diagnosis: 'Consultation & Medication Order',
+        medications: [
+          {
+            name: newRx.medication,
+            dosage: newRx.dosage,
+            frequency: 'As prescribed',
+            duration: '30 Days',
+            instructions: newRx.instructions,
+          },
+        ],
+        notes: newRx.instructions,
+        status: 'Active',
+      });
+      toast.success(`e-Prescription issued for ${newRx.patient} and saved to database!`);
+      setIsIssueOpen(false);
+      setNewRx({ patient: '', medication: '', doctor: 'Dr. Jose Santos', dosage: '1 tablet once daily', instructions: 'Take after meals.' });
+      await loadAllPrescriptions();
+    } catch (err) {
+      console.error('Failed to issue prescription:', err);
+      toast.error('Failed to save prescription to database');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteRx = async (rx) => {
+    if (!window.confirm(`Delete prescription ${rx.rxNumber || rx.id}?`)) return;
+    try {
+      await deletePrescription(rx.id);
+      toast.success('Prescription deleted from database');
+      if (selectedRx?.id === rx.id) setSelectedRx(null);
+      await loadAllPrescriptions();
+    } catch (err) {
+      console.error('Failed to delete prescription:', err);
+      toast.error('Failed to delete prescription');
+    }
   };
 
   const handleDownloadPdf = (rx) => {
-    toast.success(`Downloading e-Prescription PDF for ${rx.medication}`);
+    toast.success(`Printing e-Prescription for ${rx.medication}`);
+    window.print();
   };
 
   return (
@@ -60,64 +117,86 @@ const AdminPrescriptions = () => {
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-            <Pill className="w-6 h-6 text-[#009DD1]" /> Prescriptions
+            <Pill className="w-6 h-6 text-[#009DD1]" /> Prescriptions Management
           </h1>
-          <p className="text-slate-500 mt-1 text-sm">View and manage electronic prescriptions issued in the clinic.</p>
+          <p className="text-slate-500 mt-1 text-sm">Real-time database-backed clinic electronic prescriptions, dispensed drugs, and refills.</p>
         </div>
-        <button
-          onClick={() => setIsIssueOpen(true)}
-          className="flex items-center gap-2 bg-[#009DD1] text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-[#01377D] transition-colors shadow-sm"
-        >
-          <Plus className="w-4 h-4" /> Issue e-Prescription
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={loadAllPrescriptions}
+            disabled={loading}
+            className="p-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors"
+            title="Refresh"
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-[#009DD1]' : ''}`} />
+          </button>
+          <button
+            onClick={() => setIsIssueOpen(true)}
+            className="flex items-center gap-2 bg-[#009DD1] text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-[#01377D] transition-colors shadow-sm"
+          >
+            <Plus className="w-4 h-4" /> Issue e-Prescription
+          </button>
+        </div>
       </div>
 
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
         <input
+          type="text"
+          placeholder="Search by patient, medication, doctor, or RX number..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search prescriptions by patient, medication, or doctor..."
-          className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#009DD1]/30 focus:border-[#009DD1]"
+          className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#009DD1]/30 focus:border-[#009DD1]"
         />
       </div>
 
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-slate-50 border-b border-slate-100">
+      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+        <table className="w-full text-sm text-left">
+          <thead className="bg-slate-50 text-slate-600 text-xs uppercase font-semibold border-b border-slate-200">
             <tr>
-              {['Patient', 'Medication', 'Doctor', 'Date', 'Refills', 'Status', 'Actions'].map((h) => (
-                <th key={h} className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                  {h}
-                </th>
-              ))}
+              <th className="px-5 py-3">RX #</th>
+              <th className="px-5 py-3">Patient</th>
+              <th className="px-5 py-3">Medication</th>
+              <th className="px-5 py-3">Prescribing Doctor</th>
+              <th className="px-5 py-3">Dosage & Sig</th>
+              <th className="px-5 py-3">Date</th>
+              <th className="px-5 py-3">Status</th>
+              <th className="px-5 py-3">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {filtered.length === 0 ? (
+            {loading ? (
               <tr>
-                <td colSpan={7} className="px-5 py-8 text-center text-slate-400">
-                  No prescriptions found.
+                <td colSpan={8} className="px-5 py-8 text-center text-slate-400">
+                  <div className="flex items-center justify-center gap-2">
+                    <RefreshCw className="w-4 h-4 animate-spin text-[#009DD1]" />
+                    <span>Loading prescriptions from database...</span>
+                  </div>
+                </td>
+              </tr>
+            ) : filtered.length === 0 ? (
+              <tr>
+                <td colSpan={8} className="px-5 py-8 text-center text-slate-400">
+                  No prescriptions found in database.
                 </td>
               </tr>
             ) : (
               filtered.map((r) => (
                 <tr key={r.id} className="hover:bg-slate-50/50 transition-colors">
-                  <td className="px-5 py-4 font-medium text-slate-900">{r.patient}</td>
-                  <td className="px-5 py-4 text-slate-700 font-semibold">{r.medication}</td>
+                  <td className="px-5 py-4 font-mono text-xs text-[#009DD1] font-semibold">{r.rxNumber || `RX-${r.id}`}</td>
+                  <td className="px-5 py-4 font-semibold text-slate-900">{r.patient}</td>
+                  <td className="px-5 py-4 font-medium text-slate-800">{r.medication}</td>
                   <td className="px-5 py-4 text-slate-600">{r.doctor}</td>
-                  <td className="px-5 py-4 text-slate-600">{r.date}</td>
-                  <td className="px-5 py-4 text-slate-600">{r.refills} refills</td>
+                  <td className="px-5 py-4 text-slate-600 max-w-xs truncate">{r.dosage}</td>
+                  <td className="px-5 py-4 text-slate-600 whitespace-nowrap">{r.date}</td>
                   <td className="px-5 py-4">
-                    <span
-                      className={`text-xs px-2.5 py-1 rounded-full font-medium ${
-                        r.status === 'Active' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
-                      }`}
-                    >
+                    <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${
+                      r.status === 'Active' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'
+                    }`}>
                       {r.status}
                     </span>
                   </td>
-                  <td className="px-5 py-4 flex gap-1">
+                  <td className="px-5 py-4 flex items-center gap-1">
                     <button
                       onClick={() => setSelectedRx(r)}
                       className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-[#009DD1] transition-colors"
@@ -128,9 +207,16 @@ const AdminPrescriptions = () => {
                     <button
                       onClick={() => handleDownloadPdf(r)}
                       className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-[#009DD1] transition-colors"
-                      title="Download PDF"
+                      title="Print PDF"
                     >
                       <Download className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteRx(r)}
+                      className="p-1.5 rounded-lg hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition-colors"
+                      title="Delete"
+                    >
+                      <Trash2 className="w-4 h-4" />
                     </button>
                   </td>
                 </tr>
@@ -140,15 +226,15 @@ const AdminPrescriptions = () => {
         </table>
       </div>
 
-      {/* Issue Rx Modal */}
+      {/* Issue Modal */}
       <Dialog open={isIssueOpen} onOpenChange={setIsIssueOpen}>
         <DialogContent className="max-w-md bg-white p-6 rounded-2xl">
           <DialogHeader>
             <DialogTitle className="text-lg font-bold text-slate-900 flex items-center gap-2">
-              <Plus className="w-5 h-5 text-[#009DD1]" /> Issue e-Prescription
+              <Pill className="w-5 h-5 text-[#009DD1]" /> Issue e-Prescription
             </DialogTitle>
             <DialogDescription className="text-xs text-slate-500">
-              Create and sign an electronic prescription.
+              Create an official digital prescription stored in the database.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleIssueRx} className="space-y-4 pt-2">
@@ -164,7 +250,7 @@ const AdminPrescriptions = () => {
               />
             </div>
             <div>
-              <label className="text-xs font-semibold text-slate-700 block mb-1">Medication & Strength</label>
+              <label className="text-xs font-semibold text-slate-700 block mb-1">Medication Name & Strength</label>
               <input
                 type="text"
                 required
@@ -174,35 +260,20 @@ const AdminPrescriptions = () => {
                 className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-[#009DD1]/30"
               />
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs font-semibold text-slate-700 block mb-1">Prescribing Doctor</label>
-                <select
-                  value={newRx.doctor}
-                  onChange={(e) => setNewRx({ ...newRx, doctor: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-[#009DD1]/30"
-                >
-                  <option value="Dr. Santos">Dr. Santos (Internal Medicine)</option>
-                  <option value="Dr. Reyes">Dr. Reyes (Pediatrics)</option>
-                  <option value="Dr. Cruz">Dr. Cruz (Cardiology)</option>
-                </select>
-              </div>
-              <div>
-                <label className="text-xs font-semibold text-slate-700 block mb-1">Refills Allowed</label>
-                <input
-                  type="number"
-                  min="0"
-                  max="12"
-                  value={newRx.refills}
-                  onChange={(e) => setNewRx({ ...newRx, refills: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-[#009DD1]/30"
-                />
-              </div>
+            <div>
+              <label className="text-xs font-semibold text-slate-700 block mb-1">Prescribing Doctor</label>
+              <input
+                type="text"
+                required
+                value={newRx.doctor}
+                onChange={(e) => setNewRx({ ...newRx, doctor: e.target.value })}
+                className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-[#009DD1]/30"
+              />
             </div>
             <div>
-              <label className="text-xs font-semibold text-slate-700 block mb-1">Dosage & Instructions</label>
-              <textarea
-                rows={2}
+              <label className="text-xs font-semibold text-slate-700 block mb-1">Dosage & Sig</label>
+              <input
+                type="text"
                 required
                 placeholder="e.g. 1 capsule 3x daily with meals for 7 days"
                 value={newRx.dosage}
@@ -220,52 +291,59 @@ const AdminPrescriptions = () => {
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 rounded-xl bg-[#009DD1] hover:bg-[#01377D] text-white text-xs font-semibold"
+                disabled={isSubmitting}
+                className="px-4 py-2 rounded-xl bg-[#009DD1] hover:bg-[#01377D] text-white text-xs font-semibold disabled:opacity-50"
               >
-                Issue e-Rx
+                {isSubmitting ? 'Saving...' : 'Issue Prescription'}
               </button>
             </div>
           </form>
         </DialogContent>
       </Dialog>
 
-      {/* View Rx Modal */}
+      {/* Details Modal */}
       <Dialog open={!!selectedRx} onOpenChange={(open) => !open && setSelectedRx(null)}>
         <DialogContent className="max-w-md bg-white p-6 rounded-2xl">
           <DialogHeader>
             <DialogTitle className="text-lg font-bold text-slate-900 flex items-center gap-2">
-              <Pill className="w-5 h-5 text-[#009DD1]" /> e-Prescription Details
+              <Pill className="w-5 h-5 text-[#009DD1]" /> Official e-Prescription Details
             </DialogTitle>
             <DialogDescription className="text-xs text-slate-500">
-              Official electronic prescription information.
+              Verified clinical prescription stored in the database.
             </DialogDescription>
           </DialogHeader>
           {selectedRx && (
             <div className="space-y-4 pt-2">
-              <div className="bg-slate-50 p-4 rounded-xl space-y-2 border border-slate-100">
+              <div className="bg-slate-50 p-4 rounded-xl space-y-2 border border-slate-100 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-xs text-slate-500">RX ID:</span>
+                  <span className="font-mono font-bold text-[#009DD1]">{selectedRx.rxNumber || `RX-${selectedRx.id}`}</span>
+                </div>
                 <div className="flex justify-between">
                   <span className="text-xs text-slate-500">Patient:</span>
-                  <span className="text-sm font-bold text-slate-900">{selectedRx.patient}</span>
+                  <span className="font-bold text-slate-900">{selectedRx.patient}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-xs text-slate-500">Medication:</span>
-                  <span className="text-sm font-bold text-[#009DD1]">{selectedRx.medication}</span>
+                  <span className="font-semibold text-slate-800">{selectedRx.medication}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-xs text-slate-500">Doctor:</span>
-                  <span className="text-sm text-slate-700">{selectedRx.doctor}</span>
+                  <span className="text-slate-700">{selectedRx.doctor}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-xs text-slate-500">Date Issued:</span>
-                  <span className="text-sm text-slate-700">{selectedRx.date}</span>
+                  <span className="text-xs text-slate-500">Dosage:</span>
+                  <span className="text-slate-700">{selectedRx.dosage}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-xs text-slate-500">Refills Remaining:</span>
-                  <span className="text-sm font-semibold text-slate-800">{selectedRx.refills}</span>
+                  <span className="text-xs text-slate-500">Date:</span>
+                  <span className="text-slate-700">{selectedRx.date}</span>
                 </div>
-                <div className="pt-2 border-t border-slate-200">
-                  <span className="text-xs text-slate-500 block mb-1">Instructions / Sig:</span>
-                  <p className="text-xs text-slate-700 italic">{selectedRx.dosage}</p>
+                <div className="flex justify-between">
+                  <span className="text-xs text-slate-500">Status:</span>
+                  <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">
+                    {selectedRx.status}
+                  </span>
                 </div>
               </div>
               <div className="flex justify-end gap-2 pt-2">
@@ -273,7 +351,7 @@ const AdminPrescriptions = () => {
                   onClick={() => handleDownloadPdf(selectedRx)}
                   className="px-4 py-2 rounded-xl bg-[#009DD1] hover:bg-[#01377D] text-white text-xs font-semibold flex items-center gap-1.5"
                 >
-                  <Download className="w-3.5 h-3.5" /> Download e-Rx PDF
+                  <Download className="w-3.5 h-3.5" /> Print Rx
                 </button>
                 <button
                   onClick={() => setSelectedRx(null)}
@@ -291,4 +369,3 @@ const AdminPrescriptions = () => {
 };
 
 export default AdminPrescriptions;
-

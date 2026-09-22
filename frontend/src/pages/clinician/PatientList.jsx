@@ -255,6 +255,26 @@ export const PatientList = () => {
                                       {selectedPatient.emergency_contact_number || selectedPatient.emergency_contact_phone || 'N/A'}
                                     </p>
                                   </div>
+                                  <div>
+                                    <p className="text-xs text-gray-500 uppercase font-semibold">Blood Type</p>
+                                    <div className="mt-1">
+                                      {selectedPatient.blood_type ? (
+                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-800">
+                                          {selectedPatient.blood_type}
+                                        </span>
+                                      ) : (
+                                        <span className="text-[#01377D]">Not specified</span>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <p className="text-xs text-gray-500 uppercase font-semibold">HMO / Insurance Provider</p>
+                                    <p className="text-[#01377D] mt-1">{selectedPatient.insurance_provider || 'None'}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-xs text-gray-500 uppercase font-semibold">Insurance / Policy Number</p>
+                                    <p className="text-[#01377D] mt-1">{selectedPatient.insurance_number || 'N/A'}</p>
+                                  </div>
                                 </div>
                               </div>
 

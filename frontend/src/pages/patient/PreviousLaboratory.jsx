@@ -9,6 +9,7 @@ import { FileText, Download, Loader2, Search, Calendar, X, Eye } from 'lucide-re
 import { toast } from 'sonner';
 import { useAuth } from '../../contexts/AuthContext';
 import { getDocuments, downloadDocument } from '../../api/Documents';
+import api from '../../api/axios';
 import PatientRoleBanner from '../../components/patient/PatientRoleBanner';
 import PatientPageSkeleton from '../../components/patient/PatientPageSkeleton';
 
@@ -66,13 +67,34 @@ const PreviousLaboratory = () => {
     const loadLaboratoryDocuments = async () => {
       try {
         setLoading(true);
-        const response = await getDocuments(patientId, {
-          per_page: 100,
-          laboratory_only: true,
-        });
-        const payload = response?.data;
-        const data = Array.isArray(payload?.data) ? payload.data : [];
-        setDocuments(data);
+        const [docsRes, labsRes] = await Promise.allSettled([
+          getDocuments(patientId, { per_page: 100, laboratory_only: true }),
+          api.get('/api/lab-requests'),
+        ]);
+
+        let combined = [];
+        if (docsRes.status === 'fulfilled') {
+          const payload = docsRes.value?.data;
+          const data = Array.isArray(payload?.data) ? payload.data : [];
+          combined = [...combined, ...data];
+        }
+
+        if (labsRes.status === 'fulfilled') {
+          const labs = Array.isArray(labsRes.value?.data?.data) ? labsRes.value.data.data : [];
+          const mappedLabs = labs.map((l) => ({
+            id: `lab-${l.id}`,
+            name: `${l.test_name} (${l.request_number || 'LAB'})`,
+            description: l.results || `Status: ${l.status}. Requested by ${l.requested_by}`,
+            created_at: l.created_at || l.date_requested,
+            documentType: { name: l.category || 'Laboratory Result' },
+            isLabRequest: true,
+            status: l.status,
+            rawResults: l.results,
+          }));
+          combined = [...combined, ...mappedLabs];
+        }
+
+        setDocuments(combined);
       } catch (error) {
         console.error('Failed to load laboratory documents:', error);
         toast.error('Unable to load previous laboratory files');
@@ -84,7 +106,7 @@ const PreviousLaboratory = () => {
     loadLaboratoryDocuments();
   }, [authLoading, patientId]);
 
-  const displayDocuments = documents.length > 0 ? documents : mockLaboratoryDocuments;
+  const displayDocuments = documents;
 
   const filteredDocuments = useMemo(() => {
     const lowered = query.toLowerCase().trim();

@@ -42,6 +42,9 @@ class PatientController extends Controller {
         $validated = $request->validate([
             'phone' => 'sometimes|string|max:20',
             'address' => 'sometimes|string|max:500',
+            'blood_type' => 'nullable|string|in:A+,A-,B+,B-,AB+,AB-,O+,O-,Unknown',
+            'insurance_provider' => 'nullable|string|max:100',
+            'insurance_number' => 'nullable|string|max:100',
         ]);
 
         $patient->update($validated);

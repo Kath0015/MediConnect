@@ -29,6 +29,10 @@ export const rejectMedCert = async (id, reason) => {
     return api.post(`/api/med-certs/${id}/reject`, { reason });
 };
 
+export const revokeMedCert = async (id, reason) => {
+    return api.post(`/api/med-certs/${id}/revoke`, { reason });
+};
+
 export const downloadMedCert = async (id) => {
     return api.get(`/api/med-certs/${id}/download`, { responseType: 'blob' });
 };

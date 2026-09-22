@@ -325,6 +325,18 @@ export const PatientRecords = () => {
                     {patient.emergency_contact_number || patient.emergency_contact_phone || 'N/A'}
                   </p>
                 </div>
+                <div className="border-l-4 border-rose-500 pl-4">
+                  <p className="text-xs text-gray-500 uppercase font-semibold">Blood Type</p>
+                  <p className="text-rose-700 font-bold mt-2">{patient.blood_type || 'Unspecified'}</p>
+                </div>
+                <div className="border-l-4 border-emerald-500 pl-4">
+                  <p className="text-xs text-gray-500 uppercase font-semibold">HMO / Insurance</p>
+                  <p className="text-emerald-700 font-medium mt-2">
+                    {patient.insurance_provider
+                      ? `${patient.insurance_provider} ${patient.insurance_number ? `(${patient.insurance_number})` : ''}`
+                      : 'None / Self-Pay'}
+                  </p>
+                </div>
               </div>
 
               {patient.medical_history && (

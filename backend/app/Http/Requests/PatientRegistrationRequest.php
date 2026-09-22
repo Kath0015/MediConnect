@@ -30,6 +30,9 @@ class PatientRegistrationRequest extends FormRequest
             'address' => ['required', 'string', 'max:500'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
             'emergency_contact' => ['nullable', 'array'],
+            'blood_type' => ['nullable', 'string', 'in:A+,A-,B+,B-,AB+,AB-,O+,O-'],
+            'insurance_provider' => ['nullable', 'string', 'max:100'],
+            'insurance_number' => ['nullable', 'string', 'max:100'],
         ];
     }
 

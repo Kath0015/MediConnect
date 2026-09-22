@@ -58,6 +58,10 @@ export const markMedCertCompleted = async (medCertId) => {
     return api.post(`/api/med-certs/${medCertId}/completed`);
 };
 
+export const revokeMedCert = async (medCertId, reason) => {
+    return api.post(`/api/med-certs/${medCertId}/revoke`, { reason });
+};
+
 // Patients
 export const getPatients = async (params = {}) => {
     return api.get('/api/patients', { params });

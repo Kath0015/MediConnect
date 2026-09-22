@@ -1,87 +1,76 @@
-import React, { useState } from 'react';
-import { Pill, Search, Filter, Calendar, Clock, User, ChevronRight, Download, Eye, RotateCw, CheckCircle2, FileText, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Pill, Search, Filter, Calendar, Clock, User, ChevronRight, Download, Eye, RotateCw, CheckCircle2, FileText, AlertCircle, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../../components/ui/dialog';
-
-const initialPrescriptions = [
-  {
-    id: 1,
-    medication: 'Amoxicillin 500mg',
-    dosage: '1 capsule 3x daily',
-    prescribedBy: 'Dr. Santos',
-    date: '2026-08-10',
-    refills: 2,
-    status: 'active',
-    duration: '7 Days',
-    instructions: 'Take with food. Complete the full antibiotic course even if feeling better.',
-    pharmacy: 'MediConnect Central Pharmacy',
-  },
-  {
-    id: 2,
-    medication: 'Metformin 500mg',
-    dosage: '1 tablet 2x daily',
-    prescribedBy: 'Dr. Reyes',
-    date: '2026-07-28',
-    refills: 5,
-    status: 'active',
-    duration: '60 Days',
-    instructions: 'Take with morning and evening meals to minimize GI discomfort.',
-    pharmacy: 'MediConnect Central Pharmacy',
-  },
-  {
-    id: 3,
-    medication: 'Losartan 50mg',
-    dosage: '1 tablet once daily',
-    prescribedBy: 'Dr. Santos',
-    date: '2026-06-15',
-    refills: 0,
-    status: 'expired',
-    duration: '30 Days',
-    instructions: 'Take in the morning with a full glass of water. Monitor blood pressure weekly.',
-    pharmacy: 'MediConnect Central Pharmacy',
-  },
-  {
-    id: 4,
-    medication: 'Cetirizine 10mg',
-    dosage: '1 tablet once daily',
-    prescribedBy: 'Dr. Cruz',
-    date: '2026-08-01',
-    refills: 1,
-    status: 'active',
-    duration: '14 Days',
-    instructions: 'Take at bedtime. May cause mild drowsiness.',
-    pharmacy: 'MediConnect Central Pharmacy',
-  },
-];
+import { getPrescriptions } from '../../api/Prescriptions';
 
 const statusConfig = {
   active: { label: 'Active', color: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
+  completed: { label: 'Completed', color: 'bg-slate-100 text-slate-700 border-slate-200' },
   expired: { label: 'Expired', color: 'bg-rose-100 text-rose-700 border-rose-200' },
   pending: { label: 'Pending', color: 'bg-amber-100 text-amber-700 border-amber-200' },
 };
 
 const Prescriptions = () => {
-  const [prescriptions, setPrescriptions] = useState(initialPrescriptions);
+  const [prescriptions, setPrescriptions] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('all');
   const [selectedRx, setSelectedRx] = useState(null);
   const [refillRx, setRefillRx] = useState(null);
 
+  const loadPatientPrescriptions = async () => {
+    try {
+      setLoading(true);
+      const res = await getPrescriptions();
+      const mapped = (res.data || []).map((p) => {
+        const firstMed = Array.isArray(p.medications) && p.medications[0] ? p.medications[0] : null;
+        return {
+          id: p.id,
+          rxNumber: p.prescription_number,
+          medication: firstMed?.name || 'Prescribed Medicine',
+          dosage: firstMed?.dosage || '1 dose',
+          frequency: firstMed?.frequency || 'As directed',
+          prescribedBy: p.doctor_name || 'Attending Physician',
+          date: p.date_prescribed || p.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
+          status: (p.status || 'Active').toLowerCase(),
+          duration: firstMed?.duration || 'Course duration',
+          instructions: firstMed?.instructions || p.notes || 'Take as advised by doctor.',
+          diagnosis: p.diagnosis || 'Clinical evaluation',
+          pharmacy: 'MediConnect Central Pharmacy',
+          medications: p.medications || [],
+        };
+      });
+      setPrescriptions(mapped);
+    } catch (err) {
+      console.error('Failed to load prescriptions:', err);
+      toast.error('Failed to load prescriptions from database');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadPatientPrescriptions();
+  }, []);
+
   const filtered = prescriptions.filter((p) => {
     const matchesSearch =
       p.medication.toLowerCase().includes(search.toLowerCase()) ||
-      p.prescribedBy.toLowerCase().includes(search.toLowerCase());
+      p.prescribedBy.toLowerCase().includes(search.toLowerCase()) ||
+      p.rxNumber?.toLowerCase().includes(search.toLowerCase());
     const matchesFilter = filter === 'all' || p.status === filter;
     return matchesSearch && matchesFilter;
   });
 
   const handleDownload = (p) => {
-    toast.success(`Downloading e-Prescription PDF for ${p.medication}`);
+    toast.success(`Printing official e-Prescription for ${p.medication}`);
+    window.print();
   };
 
   const handleConfirmRefill = () => {
     if (!refillRx) return;
-    toast.success(`Refill request for ${refillRx.medication} submitted to ${refillRx.prescribedBy}!`);
+    toast.success(`Refill request for ${refillRx.medication} sent to ${refillRx.prescribedBy}!`);
     setRefillRx(null);
   };
 
@@ -91,52 +80,43 @@ const Prescriptions = () => {
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-            <Pill className="w-6 h-6 text-[#009DD1]" />
-            Prescriptions
+            <Pill className="w-6 h-6 text-[#009DD1]" /> My e-Prescriptions
           </h1>
-          <p className="text-slate-500 mt-1 text-sm">View and manage your current and past prescriptions.</p>
+          <p className="text-slate-500 mt-1 text-sm">
+            View your doctor-prescribed medications and pharmacy orders saved in the clinical database.
+          </p>
         </div>
-        <div className="flex items-center gap-2 text-sm text-slate-500 bg-white border border-slate-200 rounded-xl px-4 py-2 shadow-sm">
-          <Calendar className="w-4 h-4 text-[#009DD1]" />
-          <span>{new Date().toLocaleDateString('en-PH', { dateStyle: 'long' })}</span>
-        </div>
+        <button
+          onClick={loadPatientPrescriptions}
+          disabled={loading}
+          className="p-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors flex items-center gap-2 text-sm"
+        >
+          <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-[#009DD1]' : ''}`} />
+          <span>Refresh</span>
+        </button>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {[
-          { label: 'Active', count: prescriptions.filter((p) => p.status === 'active').length, color: 'text-emerald-600', bg: 'bg-emerald-50 border-emerald-100' },
-          { label: 'Expired', count: prescriptions.filter((p) => p.status === 'expired').length, color: 'text-rose-600', bg: 'bg-rose-50 border-rose-100' },
-          { label: 'Total', count: prescriptions.length, color: 'text-[#009DD1]', bg: 'bg-[#009DD1]/5 border-[#009DD1]/10' },
-        ].map((s) => (
-          <div key={s.label} className={`rounded-2xl border p-5 ${s.bg} flex items-center gap-4`}>
-            <div className={`text-3xl font-bold ${s.color}`}>{s.count}</div>
-            <div className="text-sm text-slate-600 font-medium">{s.label} Prescriptions</div>
-          </div>
-        ))}
-      </div>
-
-      {/* Filters */}
+      {/* Filter and Search */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input
             type="text"
+            placeholder="Search by medication name or prescribing doctor..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search medication or doctor..."
             className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#009DD1]/30 focus:border-[#009DD1]"
           />
         </div>
         <div className="flex gap-2">
-          {['all', 'active', 'expired'].map((f) => (
+          {['all', 'active', 'completed'].map((f) => (
             <button
               key={f}
               onClick={() => setFilter(f)}
-              className={`px-4 py-2.5 rounded-xl text-sm font-medium border transition-all duration-200 capitalize ${
+              className={`px-4 py-2.5 rounded-xl text-xs font-semibold capitalize transition-colors ${
                 filter === f
-                  ? 'bg-[#01377D] text-white border-[#01377D] shadow-sm'
-                  : 'bg-white text-slate-600 border-slate-200 hover:border-[#009DD1] hover:text-[#009DD1]'
+                  ? 'bg-[#009DD1] text-white'
+                  : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
               }`}
             >
               {f}
@@ -145,120 +125,123 @@ const Prescriptions = () => {
         </div>
       </div>
 
-      {/* List */}
-      <div className="space-y-3">
-        {filtered.length === 0 ? (
-          <div className="text-center py-16 text-slate-400 bg-white rounded-2xl border border-slate-100">
-            <Pill className="w-10 h-10 mx-auto mb-3 opacity-30" />
-            <p className="font-medium">No prescriptions found</p>
-          </div>
-        ) : (
-          filtered.map((p) => {
-            const sc = statusConfig[p.status];
+      {/* Prescriptions List */}
+      {loading ? (
+        <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center">
+          <RefreshCw className="w-6 h-6 animate-spin text-[#009DD1] mx-auto mb-2" />
+          <p className="text-sm text-slate-500">Loading your prescriptions from database...</p>
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center">
+          <Pill className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+          <h3 className="font-semibold text-slate-700">No prescriptions found</h3>
+          <p className="text-xs text-slate-400 mt-1">You have no active prescription records matching your search.</p>
+        </div>
+      ) : (
+        <div className="grid gap-4">
+          {filtered.map((p) => {
+            const sc = statusConfig[p.status] || statusConfig.active;
             return (
-              <div key={p.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 hover:shadow-md transition-all duration-200 hover:border-[#009DD1]/30">
-                <div className="flex items-start justify-between gap-3 flex-wrap">
+              <div
+                key={p.id}
+                className="bg-white rounded-2xl border border-slate-200 p-5 hover:border-[#009DD1]/40 transition-colors shadow-sm"
+              >
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="flex items-start gap-4">
-                    <div className="w-11 h-11 rounded-xl bg-[#009DD1]/10 flex items-center justify-center flex-shrink-0">
-                      <Pill className="w-5 h-5 text-[#009DD1]" />
+                    <div className="w-12 h-12 rounded-xl bg-sky-50 flex items-center justify-center shrink-0">
+                      <Pill className="w-6 h-6 text-[#009DD1]" />
                     </div>
                     <div>
                       <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="font-semibold text-slate-900">{p.medication}</h3>
-                        <span className={`text-xs px-2.5 py-0.5 rounded-full border font-medium ${sc.color}`}>{sc.label}</span>
+                        <h3 className="font-bold text-slate-900 text-base">{p.medication}</h3>
+                        <span className={`text-xs px-2.5 py-0.5 rounded-full font-semibold border ${sc.color}`}>
+                          {sc.label}
+                        </span>
+                        {p.rxNumber && (
+                          <span className="text-xs font-mono text-slate-400">({p.rxNumber})</span>
+                        )}
                       </div>
-                      <p className="text-sm text-slate-500 mt-0.5">{p.dosage}</p>
-                      <p className="text-xs text-slate-400 mt-1 italic">{p.instructions}</p>
+                      <p className="text-xs font-medium text-[#009DD1] mt-0.5">{p.dosage} — {p.frequency}</p>
+                      <p className="text-xs text-slate-500 mt-1">Prescribed by: {p.prescribedBy} on {p.date}</p>
+                      <p className="text-xs text-slate-600 italic mt-1 bg-slate-50 p-2 rounded-lg border border-slate-100">
+                        Instructions: {p.instructions}
+                      </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    {p.status === 'active' && p.refills > 0 && (
-                      <button
-                        onClick={() => setRefillRx(p)}
-                        className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-[#009DD1]/10 text-[#009DD1] hover:bg-[#009DD1] hover:text-white transition-all flex items-center gap-1"
-                      >
-                        <RotateCw className="w-3.5 h-3.5" /> Request Refill
-                      </button>
-                    )}
+
+                  <div className="flex items-center gap-2 self-end sm:self-center">
                     <button
                       onClick={() => setSelectedRx(p)}
-                      className="p-2 rounded-lg text-slate-400 hover:bg-slate-50 hover:text-[#009DD1] transition-colors"
-                      title="View details"
+                      className="p-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 transition-colors"
+                      title="View Details"
                     >
                       <Eye className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => handleDownload(p)}
-                      className="p-2 rounded-lg text-slate-400 hover:bg-slate-50 hover:text-[#009DD1] transition-colors"
-                      title="Download PDF"
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#009DD1] hover:bg-[#01377D] text-white text-xs font-semibold transition-colors"
                     >
-                      <Download className="w-4 h-4" />
+                      <Download className="w-3.5 h-3.5" /> Print Rx
                     </button>
                   </div>
                 </div>
-                <div className="mt-4 pt-3 border-t border-slate-100 flex items-center gap-5 text-xs text-slate-500 flex-wrap">
-                  <span className="flex items-center gap-1"><User className="w-3.5 h-3.5" />{p.prescribedBy}</span>
-                  <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" />{new Date(p.date).toLocaleDateString('en-PH', { dateStyle: 'medium' })}</span>
-                  <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" />{p.refills} refill{p.refills !== 1 ? 's' : ''} remaining</span>
-                </div>
               </div>
             );
-          })
-        )}
-      </div>
+          })}
+        </div>
+      )}
 
-      {/* Details Modal */}
+      {/* View Details Modal */}
       <Dialog open={!!selectedRx} onOpenChange={(open) => !open && setSelectedRx(null)}>
         <DialogContent className="max-w-md bg-white p-6 rounded-2xl">
           <DialogHeader>
             <DialogTitle className="text-lg font-bold text-slate-900 flex items-center gap-2">
-              <FileText className="w-5 h-5 text-[#009DD1]" /> Prescription Details
+              <FileText className="w-5 h-5 text-[#009DD1]" /> Official Prescription Record
             </DialogTitle>
             <DialogDescription className="text-xs text-slate-500">
-              Official e-Prescription information and doctor instructions.
+              Verified clinical prescription issued by licensed healthcare staff.
             </DialogDescription>
           </DialogHeader>
           {selectedRx && (
             <div className="space-y-4 pt-2">
-              <div className="bg-slate-50 p-4 rounded-xl space-y-2">
+              <div className="bg-slate-50 p-4 rounded-xl space-y-2 border border-slate-100 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-xs text-slate-500">RX Number:</span>
+                  <span className="font-mono font-bold text-[#009DD1]">{selectedRx.rxNumber}</span>
+                </div>
                 <div className="flex justify-between">
                   <span className="text-xs text-slate-500">Medication:</span>
-                  <span className="text-sm font-bold text-[#009DD1]">{selectedRx.medication}</span>
+                  <span className="font-bold text-slate-900">{selectedRx.medication}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-xs text-slate-500">Dosage:</span>
+                  <span className="text-slate-700">{selectedRx.dosage}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-xs text-slate-500">Frequency:</span>
+                  <span className="text-slate-700">{selectedRx.frequency}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-xs text-slate-500">Prescribing Doctor:</span>
-                  <span className="text-sm font-semibold text-slate-800">{selectedRx.prescribedBy}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-xs text-slate-500">Dosage / Frequency:</span>
-                  <span className="text-sm text-slate-700">{selectedRx.dosage}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-xs text-slate-500">Duration:</span>
-                  <span className="text-sm text-slate-700">{selectedRx.duration || '30 Days'}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-xs text-slate-500">Refills Left:</span>
-                  <span className="text-sm font-semibold text-slate-800">{selectedRx.refills}</span>
+                  <span className="text-slate-700">{selectedRx.prescribedBy}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-xs text-slate-500">Date Issued:</span>
-                  <span className="text-sm text-slate-700">{selectedRx.date}</span>
+                  <span className="text-slate-700">{selectedRx.date}</span>
                 </div>
-                <div className="pt-2 border-t border-slate-200">
-                  <span className="text-xs text-slate-500 block mb-1">Doctor's Instructions:</span>
-                  <p className="text-xs text-slate-700 italic">{selectedRx.instructions}</p>
+                <div className="border-t border-slate-200 pt-2 mt-2">
+                  <span className="text-xs text-slate-500 block mb-1">Doctor's Special Instructions:</span>
+                  <p className="text-xs text-slate-700 bg-white p-2.5 rounded-lg border border-slate-200 italic">
+                    {selectedRx.instructions}
+                  </p>
                 </div>
               </div>
               <div className="flex justify-end gap-2 pt-2">
                 <button
-                  onClick={() => {
-                    handleDownload(selectedRx);
-                    setSelectedRx(null);
-                  }}
+                  onClick={() => handleDownload(selectedRx)}
                   className="px-4 py-2 rounded-xl bg-[#009DD1] hover:bg-[#01377D] text-white text-xs font-semibold flex items-center gap-1.5"
                 >
-                  <Download className="w-3.5 h-3.5" /> Download e-Rx
+                  <Download className="w-3.5 h-3.5" /> Print Rx
                 </button>
                 <button
                   onClick={() => setSelectedRx(null)}
@@ -271,47 +254,8 @@ const Prescriptions = () => {
           )}
         </DialogContent>
       </Dialog>
-
-      {/* Refill Request Modal */}
-      <Dialog open={!!refillRx} onOpenChange={(open) => !open && setRefillRx(null)}>
-        <DialogContent className="max-w-md bg-white p-6 rounded-2xl">
-          <DialogHeader>
-            <DialogTitle className="text-lg font-bold text-slate-900 flex items-center gap-2">
-              <RotateCw className="w-5 h-5 text-[#009DD1]" /> Request Prescription Refill
-            </DialogTitle>
-            <DialogDescription className="text-xs text-slate-500">
-              Submit an electronic refill request to your doctor.
-            </DialogDescription>
-          </DialogHeader>
-          {refillRx && (
-            <div className="space-y-4 pt-2">
-              <p className="text-sm text-slate-700">
-                Are you sure you want to request a refill for <strong className="text-slate-900">{refillRx.medication}</strong> ({refillRx.refills} refills remaining)?
-              </p>
-              <div className="bg-[#009DD1]/5 border border-[#009DD1]/20 p-3 rounded-xl text-xs text-slate-600">
-                Your doctor ({refillRx.prescribedBy}) will review and approve the refill request. You will be notified once ready.
-              </div>
-              <div className="flex justify-end gap-2 pt-2">
-                <button
-                  onClick={() => setRefillRx(null)}
-                  className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleConfirmRefill}
-                  className="px-4 py-2 rounded-xl bg-[#009DD1] hover:bg-[#01377D] text-white text-xs font-semibold"
-                >
-                  Confirm Request
-                </button>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };
 
 export default Prescriptions;
-
