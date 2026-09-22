@@ -85,6 +85,7 @@ const PatientAuditLogs = lazy(() => import("./pages/patient/AuditLogs"));
 const PatientNotifications = lazy(() => import("./pages/patient/Notifications"));
 const PatientMessages = lazy(() => import("./pages/patient/Messages"));
 const PatientHelp = lazy(() => import("./pages/patient/Help"));
+const PatientHealthDSS = lazy(() => import("./pages/patient/HealthDSS"));
 
 // Wrapper component that conditionally applies Layout
 const RouteWrapper = ({ children, requireLayout = false }) => {
@@ -240,6 +241,7 @@ const App = () => {
             <Route path="/patient/records" element={<PRoute allowedRoles={['patient']} fallback={<PatientPageSkeleton variant="tabs" rows={4} />}><Records /></PRoute>} />
             <Route path="/patient/previous-laboratory" element={<PRoute allowedRoles={['patient']} fallback={<PatientPageSkeleton variant="list" rows={4} />}><PatientPreviousLaboratory /></PRoute>} />
             <Route path="/patient/prescriptions" element={<PRoute allowedRoles={['patient']} fallback={<PatientPageSkeleton variant="list" rows={4} />}><PatientPrescriptions /></PRoute>} />
+            <Route path="/patient/ai-health" element={<PRoute allowedRoles={['patient']} fallback={<PatientPageSkeleton variant="dashboard" rows={4} />}><PatientHealthDSS /></PRoute>} />
             <Route path="/patient/audit-logs" element={<PRoute allowedRoles={['patient']} fallback={<PatientPageSkeleton variant="list" rows={4} />}><PatientAuditLogs /></PRoute>} />
             <Route path="/patient/notifications" element={<PRoute allowedRoles={['patient']} fallback={<PatientPageSkeleton variant="list" rows={4} />}><PatientNotifications /></PRoute>} />
             <Route path="/patient/messages" element={<PRoute allowedRoles={['patient']} fallback={<PatientPageSkeleton variant="dashboard" rows={4} />}><PatientMessages /></PRoute>} />

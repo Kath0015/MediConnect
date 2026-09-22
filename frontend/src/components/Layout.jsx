@@ -147,6 +147,7 @@ export const Layout = ({ children }) => {
         { path: '/patient/records', label: 'Medical Records', icon: FileText },
         { path: '/patient/previous-laboratory', label: 'Laboratory Results', icon: FlaskConical },
         { path: '/patient/prescriptions', label: 'Prescriptions', icon: Pill },
+        { path: '/patient/ai-health', label: 'AI Health Assistant', icon: Sparkles },
         { path: '/patient/audit-logs', label: 'Audit Logs', icon: ScrollText },
         { path: '/patient/notifications', label: 'Notifications', icon: Bell },
         { path: '/patient/messages', label: 'Messages', icon: MessageSquare },

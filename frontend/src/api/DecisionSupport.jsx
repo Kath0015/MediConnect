@@ -27,7 +27,15 @@ export const interpretLaboratory = async (payload) => {
 };
 
 /**
- * 3, 4, 5. Comprehensive Patient Assessment
+ * 3, 4, 5. Patient Self-Assessment (for logged-in patient)
+ */
+export const getMyDSSAssessment = async () => {
+  const response = await api.get('/api/dss/my-assessment');
+  return response.data;
+};
+
+/**
+ * 3, 4, 5. Comprehensive Patient Assessment (by ID)
  * @param {number|string} patientId
  */
 export const getPatientDSSAssessment = async (patientId) => {
@@ -47,6 +55,7 @@ export default {
   getDSSOverview,
   analyzeSymptoms,
   interpretLaboratory,
+  getMyDSSAssessment,
   getPatientDSSAssessment,
   getPredictiveAnalytics,
 };

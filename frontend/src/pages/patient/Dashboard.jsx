@@ -8,7 +8,7 @@ import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
 import { useAuth } from '../../contexts/AuthContext';
 import { fetchPatientDashboardOverview } from '../../api/PatientPortal';
-import { Activity, Calendar, FileText, FileCheck, Clock, ArrowRight, MessageCircle } from 'lucide-react';
+import { Activity, Calendar, FileText, FileCheck, Clock, ArrowRight, MessageCircle, Sparkles } from 'lucide-react';
 import PatientRoleBanner from '../../components/patient/PatientRoleBanner';
 import PatientPageSkeleton from '../../components/patient/PatientPageSkeleton';
 
@@ -307,6 +307,24 @@ export const PatientDashboard = () => {
               <p className="text-sm text-slate-600 mb-4">Request a medical, sick, or fitness certificate</p>
               <div className="flex items-center text-sm font-medium text-violet-700 group-hover:text-violet-800">
                 Request now
+                <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+
+        <Link to="/patient/ai-health" className="group">
+          <Card className="border-teal-200/60 bg-gradient-to-b from-white to-teal-50/40 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md cursor-pointer">
+            <CardContent className="p-6">
+              <div className="flex items-start justify-between mb-3">
+                <div className="grid h-12 w-12 place-items-center rounded-xl bg-teal-100 text-teal-700">
+                  <Sparkles className="h-6 w-6" />
+                </div>
+              </div>
+              <h3 className="font-semibold text-slate-900 mb-1">AI Health Assistant</h3>
+              <p className="text-sm text-slate-600 mb-4">Check symptoms, understand lab tests & get wellness advice</p>
+              <div className="flex items-center text-sm font-medium text-teal-700 group-hover:text-teal-800">
+                Check health now
                 <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
               </div>
             </CardContent>

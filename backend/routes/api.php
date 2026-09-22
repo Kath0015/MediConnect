@@ -162,6 +162,7 @@ Route::middleware(['web', 'auth:sanctum', 'throttle:300,1'])->group(function () 
         Route::get('/overview', [DecisionSupportController::class, 'overview']);
         Route::post('/analyze-symptoms', [DecisionSupportController::class, 'analyzeSymptoms']);
         Route::post('/interpret-labs', [DecisionSupportController::class, 'interpretLaboratory']);
+        Route::get('/my-assessment', [DecisionSupportController::class, 'myAssessment']);
         Route::get('/patient/{patientId}', [DecisionSupportController::class, 'assessPatient']);
         Route::get('/predictive-analytics', [DecisionSupportController::class, 'predictiveAnalytics']);
     });

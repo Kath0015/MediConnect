@@ -101,6 +101,25 @@ class DecisionSupportController extends Controller
     }
 
     /**
+     * Current authenticated patient's own DSS assessment
+     */
+    public function myAssessment(Request $request): JsonResponse
+    {
+        try {
+            $user = $request->user();
+            $patient = $user->patient ?? \App\Models\Patient::where('user_id', $user->id)->first();
+            if (!$patient) {
+                return $this->error('Patient profile not found for this account.', 404);
+            }
+
+            $assessment = $this->dssService->assessPatientDSS($patient->id);
+            return $this->ok('Personal health assessment loaded successfully', $assessment);
+        } catch (\Exception $e) {
+            return $this->error('Failed to load your personal assessment: ' . $e->getMessage(), 500);
+        }
+    }
+
+    /**
      * 4. Predictive Analytics across the clinic
      */
     public function predictiveAnalytics(): JsonResponse
