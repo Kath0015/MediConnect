@@ -6,8 +6,12 @@ use App\Models\Patient;
 use App\Models\PatientVital;
 use App\Models\LabRequest;
 use App\Models\Appointment;
+use App\Models\ClinicSetting;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 
 class DecisionSupportService
 {
@@ -255,6 +259,262 @@ class DecisionSupportService
     ];
 
     /**
+     * Normalize any Google Sheet URL to direct CSV export format
+     */
+    public function normalizeGoogleSheetUrl(string $url): string
+    {
+        $url = trim($url);
+        if (empty($url)) {
+            return '';
+        }
+
+        // Check if standard Google Spreadsheet edit link:
+        // https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/edit...
+        if (preg_match('#docs\.google\.com/spreadsheets/d/([a-zA-Z0-9-_]+)#', $url, $matches)) {
+            $sheetId = $matches[1];
+            $gid = 0;
+            if (preg_match('#[?&#]gid=([0-9]+)#', $url, $gidMatches)) {
+                $gid = $gidMatches[1];
+            }
+            return "https://docs.google.com/spreadsheets/d/{$sheetId}/export?format=csv&gid={$gid}";
+        }
+
+        // Check if publish to web format:
+        // https://docs.google.com/spreadsheets/d/e/{ID}/pubhtml -> pub?output=csv
+        if (str_contains($url, 'docs.google.com/spreadsheets/d/e/') && str_contains($url, 'pubhtml')) {
+            return str_replace('pubhtml', 'pub?output=csv', $url);
+        }
+
+        return $url;
+    }
+
+    /**
+     * Get the active Google Sheet URL from clinic settings or environment
+     */
+    public function getActiveGoogleSheetUrl(): string
+    {
+        $setting = ClinicSetting::first();
+        if (!empty($setting?->dss_google_sheet_url)) {
+            return $setting->dss_google_sheet_url;
+        }
+
+        return env('GOOGLE_SHEET_DSS_URL', '');
+    }
+
+    /**
+     * Fetch, parse and sync raw clinical data from Google Sheet
+     */
+    public function syncGoogleSheetRawData(?string $customUrl = null): array
+    {
+        $targetUrl = $customUrl ?? $this->getActiveGoogleSheetUrl();
+        $normalizedUrl = !empty($targetUrl) ? $this->normalizeGoogleSheetUrl($targetUrl) : '';
+        $rawCsvContent = null;
+        $sourceType = 'default_raw_file';
+
+        if (!empty($normalizedUrl)) {
+            try {
+                $response = Http::timeout(12)->get($normalizedUrl);
+                if ($response->successful() && strlen($response->body()) > 20) {
+                    $rawCsvContent = $response->body();
+                    $sourceType = 'google_sheet_live';
+                } else {
+                    Log::warning("Google Sheet fetch returned status: " . $response->status());
+                }
+            } catch (\Exception $e) {
+                Log::warning("Google Sheet fetch failed: " . $e->getMessage());
+            }
+        }
+
+        // Fallback to local raw CSV file in storage if live fetch was not available
+        if (empty($rawCsvContent)) {
+            $localCsvPath = storage_path('app/dss_google_raw_data.csv');
+            if (file_exists($localCsvPath)) {
+                $rawCsvContent = file_get_contents($localCsvPath);
+                $sourceType = 'local_google_raw_dataset';
+            }
+        }
+
+        if (empty($rawCsvContent)) {
+            Cache::forever('dss_google_sheet_conditions', $this->clinicalConditions);
+            return [
+                'status' => 'fallback',
+                'source_type' => 'built_in_clinical_data',
+                'count' => count($this->clinicalConditions),
+                'synced_at' => now()->toIso8601String(),
+                'url' => $targetUrl,
+            ];
+        }
+
+        // Parse CSV content into structured conditions
+        $parsedConditions = $this->parseRawCsvIntoConditions($rawCsvContent);
+
+        if (empty($parsedConditions)) {
+            $parsedConditions = $this->clinicalConditions;
+        }
+
+        Cache::forever('dss_google_sheet_conditions', $parsedConditions);
+        Cache::forever('dss_google_sheet_meta', [
+            'synced_at' => now()->toIso8601String(),
+            'source_type' => $sourceType,
+            'source_url' => $targetUrl,
+            'count' => count($parsedConditions),
+        ]);
+
+        return [
+            'status' => 'success',
+            'source_type' => $sourceType,
+            'source_url' => $targetUrl,
+            'count' => count($parsedConditions),
+            'synced_at' => now()->toIso8601String(),
+            'sample' => array_values(array_slice($parsedConditions, 0, 3)),
+        ];
+    }
+
+    /**
+     * Get Google Sheet sync metadata
+     */
+    public function getGoogleSheetSyncMeta(): array
+    {
+        $meta = Cache::get('dss_google_sheet_meta');
+        $conditions = $this->getClinicalConditions();
+
+        return [
+            'url' => $this->getActiveGoogleSheetUrl(),
+            'synced_at' => $meta['synced_at'] ?? null,
+            'source_type' => $meta['source_type'] ?? 'local_google_raw_dataset',
+            'total_conditions' => count($conditions),
+            'status' => 'connected',
+        ];
+    }
+
+    /**
+     * Parse raw CSV into structured conditions array
+     */
+    protected function parseRawCsvIntoConditions(string $csvContent): array
+    {
+        $lines = preg_split('/\r\n|\r|\n/', trim($csvContent));
+        if (count($lines) < 2) {
+            return [];
+        }
+
+        $header = str_getcsv(array_shift($lines));
+        $headerMap = [];
+        foreach ($header as $idx => $col) {
+            $cleaned = strtolower(trim(preg_replace('/[^a-zA-Z0-9_]/', '', $col)));
+            $headerMap[$cleaned] = $idx;
+        }
+
+        $conditions = [];
+
+        foreach ($lines as $line) {
+            if (empty(trim($line))) continue;
+            $row = str_getcsv($line);
+
+            $name = $this->getColValue($row, $headerMap, ['condition', 'disease', 'name', 'conditionname', 'diseasename']);
+            if (empty($name)) continue;
+
+            $code = trim(preg_replace('/[^a-z0-9]+/', '_', strtolower(trim($name))), '_');
+            $category = $this->getColValue($row, $headerMap, ['category', 'specialty', 'system']) ?: 'General Medicine';
+            $severity = $this->getColValue($row, $headerMap, ['severity', 'acuity']) ?: 'moderate';
+            
+            // Symptoms
+            $symptomsRaw = $this->getColValue($row, $headerMap, ['symptoms', 'symptomlist', 'presentingsymptoms']) ?: '';
+            $symptoms = array_filter(array_map('trim', preg_split('/[,;|]/', strtolower($symptomsRaw))));
+
+            // Key Symptoms
+            $keyRaw = $this->getColValue($row, $headerMap, ['keysymptoms', 'cardinalsymptoms', 'key_symptoms']) ?: '';
+            $keySymptoms = array_filter(array_map('trim', preg_split('/[,;|]/', strtolower($keyRaw))));
+            if (empty($keySymptoms) && !empty($symptoms)) {
+                $keySymptoms = array_slice($symptoms, 0, 3);
+            }
+
+            // Recommended Labs
+            $labsRaw = $this->getColValue($row, $headerMap, ['recommendedlabs', 'labs', 'diagnostictests', 'tests']) ?: '';
+            $labs = $this->parseLabsList($labsRaw, $category);
+
+            // Specialist
+            $specialist = $this->getColValue($row, $headerMap, ['specialist', 'recommendedspecialist', 'doctor']) ?: 'General Physician';
+
+            // Follow-up Days
+            $followUpRaw = $this->getColValue($row, $headerMap, ['followupdays', 'followup', 'recommendedfollowupdays']) ?: '7';
+            $followUpDays = intval(preg_replace('/[^0-9]/', '', $followUpRaw)) ?: 7;
+
+            // Risk Factors
+            $riskRaw = $this->getColValue($row, $headerMap, ['riskfactors', 'risks', 'associatedriskfactors']) ?: '';
+            $riskFactors = array_filter(array_map('trim', preg_split('/[,;|]/', $riskRaw)));
+
+            $conditions[$code] = [
+                'name' => $name,
+                'category' => $category,
+                'severity' => $severity,
+                'symptoms' => array_values($symptoms),
+                'key_symptoms' => array_values($keySymptoms),
+                'recommended_labs' => $labs,
+                'specialist' => $specialist,
+                'follow_up_days' => $followUpDays,
+                'risk_factors' => array_values($riskFactors),
+            ];
+        }
+
+        return $conditions;
+    }
+
+    protected function getColValue(array $row, array $map, array $possibleNames): ?string
+    {
+        foreach ($possibleNames as $name) {
+            if (isset($map[$name]) && isset($row[$map[$name]])) {
+                return trim($row[$map[$name]]);
+            }
+        }
+        return null;
+    }
+
+    protected function parseLabsList(string $raw, string $defaultCategory): array
+    {
+        if (empty($raw)) return [];
+        $items = preg_split('/[;|\n]/', $raw);
+        $labs = [];
+
+        foreach ($items as $item) {
+            $item = trim($item);
+            if (empty($item)) continue;
+
+            if (str_contains($item, ':')) {
+                [$testName, $rationale] = explode(':', $item, 2);
+                $labs[] = [
+                    'name' => trim($testName),
+                    'category' => $defaultCategory,
+                    'urgency' => 'High',
+                    'rationale' => trim($rationale),
+                ];
+            } else {
+                $labs[] = [
+                    'name' => $item,
+                    'category' => $defaultCategory,
+                    'urgency' => 'Routine',
+                    'rationale' => 'Diagnostic confirmation for ' . $item,
+                ];
+            }
+        }
+
+        return $labs;
+    }
+
+    /**
+     * Get current conditions (from Cache or Google Sheet raw sync)
+     */
+    public function getClinicalConditions(): array
+    {
+        $cached = Cache::get('dss_google_sheet_conditions');
+        if (!empty($cached) && is_array($cached) && count($cached) > 0) {
+            return $cached;
+        }
+
+        $this->syncGoogleSheetRawData();
+        return Cache::get('dss_google_sheet_conditions') ?? $this->clinicalConditions;
+    }
+
+    /**
      * 1. Symptom-Based Decision Support
      * Analyze symptoms, suggest differential conditions, recommend laboratory tests
      */
@@ -268,7 +528,7 @@ class DecisionSupportService
         $allRecommendedTests = [];
         $identifiedRiskFactors = [];
 
-        foreach ($this->clinicalConditions as $code => $condition) {
+        foreach ($this->getClinicalConditions() as $code => $condition) {
             $matchedCount = 0;
             $keyMatchedCount = 0;
             $matchedList = [];

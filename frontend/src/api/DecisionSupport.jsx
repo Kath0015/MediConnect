@@ -51,6 +51,57 @@ export const getPredictiveAnalytics = async () => {
   return response.data;
 };
 
+/**
+ * 5. Doctor DSS Notes & Recommendations for Patient
+ */
+export const getDoctorNotes = async (patientId = null) => {
+  const params = patientId ? { patient_id: patientId } : {};
+  const response = await api.get('/api/dss/doctor-notes', { params });
+  return response.data;
+};
+
+/**
+ * Save / Send a Doctor DSS Note & Suggestion to a Patient
+ */
+export const saveDoctorNote = async (payload) => {
+  const response = await api.post('/api/dss/doctor-notes', payload);
+  return response.data;
+};
+
+/**
+ * Get notes sent by the authenticated doctor
+ */
+export const getDoctorSentNotes = async () => {
+  const response = await api.get('/api/dss/doctor-notes/sent');
+  return response.data;
+};
+
+/**
+ * Get list of clinic doctors to connect with
+ */
+export const getClinicDoctors = async () => {
+  const response = await api.get('/api/dss/doctors');
+  return response.data;
+};
+
+/**
+ * 6. Google Sheet Raw Clinical Data Sync & Settings
+ */
+export const getGoogleSheetSettings = async () => {
+  const response = await api.get('/api/dss/google-sheet-settings');
+  return response.data;
+};
+
+export const syncGoogleSheet = async (url = null) => {
+  const response = await api.post('/api/dss/sync-google-sheet', url ? { url } : {});
+  return response.data;
+};
+
+export const updateGoogleSheetUrl = async (url) => {
+  const response = await api.put('/api/dss/google-sheet-url', { url });
+  return response.data;
+};
+
 export default {
   getDSSOverview,
   analyzeSymptoms,
@@ -58,4 +109,11 @@ export default {
   getMyDSSAssessment,
   getPatientDSSAssessment,
   getPredictiveAnalytics,
+  getDoctorNotes,
+  saveDoctorNote,
+  getDoctorSentNotes,
+  getClinicDoctors,
+  getGoogleSheetSettings,
+  syncGoogleSheet,
+  updateGoogleSheetUrl,
 };

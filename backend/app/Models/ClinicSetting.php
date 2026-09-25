@@ -21,6 +21,7 @@ class ClinicSetting extends Model
         'footer_description',
         'contact_email',
         'contact_phone',
+        'dss_google_sheet_url',
     ];
 
     protected $casts = [

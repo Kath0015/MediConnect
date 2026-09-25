@@ -1,14 +1,20 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useLocation } from 'react-router-dom';
 import { MessageCircle, Send, Search, Plus, Stethoscope, Loader2, HeartPulse, User } from 'lucide-react';
 import { getConversations, getContacts, getMessages, sendMessage } from '../../api/Messages';
 import { toast } from 'sonner';
 
 const PatientMessages = () => {
+  const location = useLocation();
   const [conversations, setConversations] = useState([]);
   const [contacts, setContacts] = useState([]);
-  const [selectedUser, setSelectedUser] = useState(null);
+  const [selectedUser, setSelectedUser] = useState(
+    location.state?.contactId
+      ? { id: location.state.contactId, name: location.state.contactName || 'Doctor', role: 'doctor' }
+      : null
+  );
   const [messages, setMessages] = useState([]);
-  const [input, setInput] = useState('');
+  const [input, setInput] = useState(location.state?.defaultMessage || '');
   const [search, setSearch] = useState('');
   const [loadingConversations, setLoadingConversations] = useState(true);
   const [loadingMessages, setLoadingMessages] = useState(false);
@@ -30,8 +36,12 @@ const PatientMessages = () => {
       const data = res.data || [];
       setConversations(data);
 
-      // Default select first conversation if none selected yet
+      // Select contact from state if passed, or keep prev, or first conversation
       setSelectedUser((prev) => {
+        if (location.state?.contactId) {
+          const match = data.find((c) => c.id === location.state.contactId);
+          return match || prev || { id: location.state.contactId, name: location.state.contactName || 'Doctor', role: 'doctor' };
+        }
         if (prev) {
           const updated = data.find((c) => c.id === prev.id);
           return updated ? { ...prev, ...updated } : prev;

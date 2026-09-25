@@ -15,6 +15,7 @@ use Carbon\Carbon;
 use Spatie\Activitylog\Facades\LogActivity;
 use App\Events\MedCertApproved;
 use App\Events\MedCertRejected;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 
 class MedCertController extends Controller
@@ -296,11 +297,7 @@ class MedCertController extends Controller
     {
         $this->authorize('downloadPdf', $medCert);
 
-        if (!$medCert->pdf_path || !Storage::exists($medCert->pdf_path)) {
-            return response()->json([
-                'message' => 'PDF certificate not available'
-            ], Response::HTTP_NOT_FOUND);
-        }
+        $medCert->load(['patient.user', 'requester', 'approver']);
 
         // Audit download
         activity()
@@ -309,7 +306,16 @@ class MedCertController extends Controller
             ->withProperties(['ip' => request()->ip()])
             ->log('medcert_downloaded');
 
-        return Storage::download($medCert->pdf_path, "medcert-{$medCert->certificate_number}.pdf");
+        // If custom uploaded PDF file exists on storage, download that
+        if ($medCert->pdf_path && Storage::exists($medCert->pdf_path)) {
+            return Storage::download($medCert->pdf_path, "medcert-{$medCert->certificate_number}.pdf");
+        }
+
+        // Dynamically generate official PDF on the fly using DomPDF
+        $pdf = Pdf::loadView('med-certs.pdf', compact('medCert'));
+        $pdf->setPaper('a4', 'portrait');
+
+        return $pdf->download("medcert-{$medCert->certificate_number}.pdf");
     }
 
     public function revoke(Request $request, MedCert $medCert)

@@ -12,19 +12,14 @@ class MedCertPolicy
      */
     public function view(User $user, MedCert $medCert)
     {
-        // Admins can view any medcert
-        if ($user->isAdmin()) {
+        // Admins and clinicians (staff) can view any medcert
+        if ($user->isAdmin() || $user->isClinician()) {
             return true;
         }
 
         // Patients can view their own medcerts
         if ($user->isPatient() && $medCert->patient?->user_id === $user->id) {
             return true;
-        }
-
-        // Clinicians can view medcerts they requested or need to approve
-        if ($user->isClinician()) {
-            return $medCert->requested_by === $user->id || $medCert->status === 'pending';
         }
 
         return false;
@@ -51,7 +46,7 @@ class MedCertPolicy
      */
     public function uploadPdf(User $user, MedCert $medCert)
     {
-        return $user->isAdmin();
+        return $user->isAdmin() || $user->isClinician();
     }
 
     /**

@@ -11,10 +11,19 @@ import {
   X,
   ShieldAlert,
   Info,
-  RefreshCw
+  RefreshCw,
+  MessageSquare,
+  UserCheck,
+  Clock,
+  Phone,
+  Mail,
+  ShieldCheck,
+  ChevronRight,
+  Send
 } from 'lucide-react';
-import { analyzeSymptoms } from '../../api/DecisionSupport';
+import { analyzeSymptoms, getDoctorNotes, getClinicDoctors } from '../../api/DecisionSupport';
 import { useAuth } from '../../contexts/AuthContext';
+import { toast } from 'sonner';
 
 export default function HealthDSS() {
   const navigate = useNavigate();
@@ -25,6 +34,11 @@ export default function HealthDSS() {
   const [severity, setSeverity] = useState('mild');
   const [duration, setDuration] = useState('2 days');
   const [result, setResult] = useState(null);
+
+  // Doctor notes state
+  const [doctorNotes, setDoctorNotes] = useState([]);
+  const [loadingNotes, setLoadingNotes] = useState(true);
+  const [clinicDoctors, setClinicDoctors] = useState([]);
 
   const commonSymptoms = [
     { label: 'Fever or Chills', value: 'fever' },
@@ -43,7 +57,34 @@ export default function HealthDSS() {
 
   useEffect(() => {
     handleAnalyze();
+    loadDoctorNotes();
+    loadClinicDoctors();
   }, []);
+
+  const loadDoctorNotes = async () => {
+    try {
+      setLoadingNotes(true);
+      const res = await getDoctorNotes();
+      if (res?.data) {
+        setDoctorNotes(res.data);
+      }
+    } catch (err) {
+      console.error('Failed to load doctor notes:', err);
+    } finally {
+      setLoadingNotes(false);
+    }
+  };
+
+  const loadClinicDoctors = async () => {
+    try {
+      const res = await getClinicDoctors();
+      if (res?.data) {
+        setClinicDoctors(res.data);
+      }
+    } catch (err) {
+      console.error('Failed to load clinic doctors:', err);
+    }
+  };
 
   const handleAnalyze = async () => {
     if (selectedSymptoms.length === 0) return;
@@ -81,10 +122,40 @@ export default function HealthDSS() {
     setCustomSymptom('');
   };
 
+  const handleConnectToDoctor = (doctor, note = null) => {
+    if (!doctor) return;
+    navigate('/patient/messages', {
+      state: {
+        contactId: doctor.id,
+        contactName: doctor.name,
+        contactRole: 'doctor',
+        defaultMessage: note
+          ? `Hello Dr. ${doctor.name}, I reviewed your note on my Health DSS ("${note.note.slice(0, 60)}...") and would like to ask a follow-up question.`
+          : `Hello Dr. ${doctor.name}, I have checked my symptoms on the Health DSS assistant and would like to consult with you.`
+      }
+    });
+  };
+
+  const formatDate = (dateStr) => {
+    if (!dateStr) return '';
+    try {
+      const d = new Date(dateStr);
+      return d.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (e) {
+      return dateStr;
+    }
+  };
+
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto space-y-6">
       {/* Friendly Header */}
-      <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-3xl p-6 sm:p-8 text-white shadow-xl">
+      <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-700 rounded-3xl p-6 sm:p-8 text-white shadow-xl">
         <div className="space-y-2">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 text-white text-xs font-semibold backdrop-blur-xs">
             <Sparkles className="w-3.5 h-3.5 text-amber-300" />
@@ -104,7 +175,214 @@ export default function HealthDSS() {
         </div>
       </div>
 
-      {/* 2-Column Clean Layout */}
+      {/* ─────────────────────────────────────────────────────────── */}
+      {/* SECTION: DOCTOR'S CLINICAL NOTES & RECOMMENDATIONS          */}
+      {/* ─────────────────────────────────────────────────────────── */}
+      <div className="bg-white rounded-3xl border border-slate-200/80 p-6 shadow-sm space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <div className="p-2 rounded-xl bg-purple-100 text-purple-700">
+                <Stethoscope className="w-5 h-5" />
+              </div>
+              <h2 className="text-lg font-bold text-slate-900">
+                Doctor's Clinical Notes & Suggestions
+              </h2>
+            </div>
+            <p className="text-xs text-slate-500">
+              Personalized guidance, suggested lab evaluations, and clinical advice sent by your doctor.
+            </p>
+          </div>
+
+          <button
+            onClick={loadDoctorNotes}
+            disabled={loadingNotes}
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-blue-600 self-start sm:self-center bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${loadingNotes ? 'animate-spin' : ''}`} />
+            Refresh Notes
+          </button>
+        </div>
+
+        {loadingNotes ? (
+          <div className="py-8 text-center text-slate-400 space-y-2">
+            <RefreshCw className="w-6 h-6 animate-spin mx-auto text-blue-500" />
+            <p className="text-xs">Loading doctor suggestions...</p>
+          </div>
+        ) : doctorNotes.length > 0 ? (
+          <div className="space-y-4">
+            {doctorNotes.map((item) => {
+              const doc = item.doctor || {};
+              const isUrgent = item.urgency_level?.toLowerCase().includes('urgent');
+
+              return (
+                <div
+                  key={item.id}
+                  className="rounded-2xl border border-slate-200 bg-gradient-to-br from-white via-slate-50/50 to-blue-50/20 p-5 shadow-xs transition-all hover:border-blue-200 hover:shadow-md space-y-4"
+                >
+                  {/* Note Header */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+                    <div className="flex items-center gap-3">
+                      <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-purple-600 to-indigo-600 text-white flex items-center justify-center font-bold text-sm shadow-xs">
+                        {doc.name ? doc.name.charAt(0).toUpperCase() : 'D'}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-extrabold text-sm text-slate-900">
+                            Dr. {doc.name || 'Attending Physician'}
+                          </h3>
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                            <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                            Doctor Verified
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-3 text-2xs text-slate-500 mt-0.5">
+                          <span className="flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            {formatDate(item.created_at)}
+                          </span>
+                          {doc.email && (
+                            <span className="flex items-center gap-1">
+                              <Mail className="w-3 h-3" />
+                              {doc.email}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 self-start sm:self-center">
+                      <span
+                        className={`text-2xs font-bold uppercase tracking-wider px-2.5 py-1 rounded-full ${
+                          isUrgent
+                            ? 'bg-red-100 text-red-800 border border-red-200'
+                            : 'bg-blue-100 text-blue-800 border border-blue-200'
+                        }`}
+                      >
+                        {item.urgency_level || 'Clinical Note'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Note Content */}
+                  <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs space-y-2">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                      Doctor's Message & Suggestion:
+                    </p>
+                    <p className="text-sm text-slate-800 leading-relaxed whitespace-pre-line font-medium">
+                      {item.note}
+                    </p>
+                  </div>
+
+                  {/* Conditions & Labs if suggested */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {item.suggested_conditions && item.suggested_conditions.length > 0 && (
+                      <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                        <span className="text-2xs font-bold text-slate-500 uppercase tracking-wide block mb-1.5 flex items-center gap-1">
+                          <Activity className="w-3 h-3 text-blue-600" />
+                          Suggested Medical Considerations
+                        </span>
+                        <div className="flex flex-wrap gap-1.5">
+                          {item.suggested_conditions.map((c, i) => (
+                            <span
+                              key={i}
+                              className="px-2 py-0.5 rounded-md bg-white border border-blue-200 text-blue-800 text-2xs font-semibold"
+                            >
+                              {c}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {item.suggested_labs && item.suggested_labs.length > 0 && (
+                      <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                        <span className="text-2xs font-bold text-slate-500 uppercase tracking-wide block mb-1.5 flex items-center gap-1">
+                          <FlaskConical className="w-3 h-3 text-teal-600" />
+                          Recommended Diagnostic Tests
+                        </span>
+                        <div className="flex flex-wrap gap-1.5">
+                          {item.suggested_labs.map((l, i) => (
+                            <span
+                              key={i}
+                              className="px-2 py-0.5 rounded-md bg-white border border-teal-200 text-teal-800 text-2xs font-semibold"
+                            >
+                              {l}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* CONNECT TO DOCTOR ACTIONS */}
+                  <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-100">
+                    <p className="text-2xs text-slate-500">
+                      Have questions about this clinical recommendation? Connect directly with Dr. {doc.name || 'your doctor'}.
+                    </p>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleConnectToDoctor(doc, item)}
+                        className="px-3.5 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-xs font-bold shadow-xs transition-all flex items-center gap-1.5"
+                      >
+                        <MessageSquare className="w-3.5 h-3.5" />
+                        Message Dr. {doc.name?.split(' ')[0] || 'Doctor'}
+                      </button>
+
+                      <button
+                        onClick={() => navigate('/patient/book-appointment')}
+                        className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5"
+                      >
+                        <Calendar className="w-3.5 h-3.5" />
+                        Book Appointment
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="p-6 rounded-2xl border border-dashed border-slate-300 bg-slate-50/70 text-center space-y-3">
+            <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto">
+              <Stethoscope className="w-6 h-6" />
+            </div>
+            <div className="space-y-1">
+              <h3 className="text-sm font-bold text-slate-800">
+                No Personal Doctor Notes Yet
+              </h3>
+              <p className="text-xs text-slate-500 max-w-md mx-auto">
+                Once a physician reviews your symptoms or clinical records, their personalized notes, suggestions, and diagnostic recommendations will appear right here.
+              </p>
+            </div>
+
+            {clinicDoctors.length > 0 && (
+              <div className="pt-2">
+                <p className="text-2xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
+                  Connect with Available Clinic Doctors:
+                </p>
+                <div className="flex flex-wrap items-center justify-center gap-2">
+                  {clinicDoctors.slice(0, 3).map((doc) => (
+                    <button
+                      key={doc.id}
+                      onClick={() => handleConnectToDoctor(doc)}
+                      className="px-3 py-1.5 rounded-xl border border-blue-200 bg-white hover:bg-blue-50 text-blue-700 text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition-all"
+                    >
+                      <MessageSquare className="w-3 h-3 text-blue-600" />
+                      Dr. {doc.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* ─────────────────────────────────────────────────────────── */}
+      {/* 2-Column Symptom Checker & Test Suggestions Layout         */}
+      {/* ─────────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* LEFT COLUMN: Input & Selection */}
         <div className="lg:col-span-5 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-5">

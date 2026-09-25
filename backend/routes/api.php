@@ -29,9 +29,9 @@ use Illuminate\Http\Request;
 // Public routes that need session/CSRF (Sanctum SPA)
 Route::middleware(['web'])->group(function () {
     // Authentication endpoints - WITH RATE LIMITING
-    // 5 login attempts per minute per IP
+    // 30 login attempts per minute per IP for smoother switching and testing
     Route::post('/auth/login', [AuthController::class, 'login'])
-        ->middleware('throttle:5,1');
+        ->middleware('throttle:30,1');
     
     // 3 registration attempts per minute per IP
     Route::post('/auth/register', [AuthController::class, 'register'])
@@ -165,6 +165,13 @@ Route::middleware(['web', 'auth:sanctum', 'throttle:300,1'])->group(function () 
         Route::get('/my-assessment', [DecisionSupportController::class, 'myAssessment']);
         Route::get('/patient/{patientId}', [DecisionSupportController::class, 'assessPatient']);
         Route::get('/predictive-analytics', [DecisionSupportController::class, 'predictiveAnalytics']);
+        Route::get('/doctor-notes', [DecisionSupportController::class, 'getDoctorNotes']);
+        Route::post('/doctor-notes', [DecisionSupportController::class, 'storeDoctorNote']);
+        Route::get('/doctor-notes/sent', [DecisionSupportController::class, 'getDoctorSentNotes']);
+        Route::get('/doctors', [DecisionSupportController::class, 'getAttendingDoctors']);
+        Route::get('/google-sheet-settings', [DecisionSupportController::class, 'getGoogleSheetSettings']);
+        Route::post('/sync-google-sheet', [DecisionSupportController::class, 'syncGoogleSheet']);
+        Route::put('/google-sheet-url', [DecisionSupportController::class, 'updateGoogleSheetUrl']);
     });
     
     // Role-based routes

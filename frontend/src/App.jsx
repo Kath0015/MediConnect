@@ -229,7 +229,6 @@ const App = () => {
             <Route path="/clinician/messages" element={<PRoute allowedRoles={['clinician']}><ClinicianMessages /></PRoute>} />
             <Route path="/clinician/settings" element={<PRoute allowedRoles={['clinician']}><ClinicianSettings /></PRoute>} />
             <Route path="/clinician/help" element={<PRoute allowedRoles={['clinician']}><ClinicianHelp /></PRoute>} />
-            <Route path="/clinician/dss" element={<PRoute allowedRoles={['clinician']}><ClinicalDSS /></PRoute>} />
             <Route path="/clinician/requests" element={<PRoute allowedRoles={['clinician']}><RequestManagement /></PRoute>} />
             <Route path="/staff/patient-records/:patientId" element={<PRoute allowedRoles={['clinician']}><PatientRecords /></PRoute>} />
 

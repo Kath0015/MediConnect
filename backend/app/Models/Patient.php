@@ -53,6 +53,11 @@ class Patient extends Model
         return $this->hasMany(MedCert::class);
     }
 
+    public function dssNotes()
+    {
+        return $this->hasMany(PatientDssNote::class)->latest();
+    }
+
     // Accessors
     public function getAgeAttribute()
     {

@@ -8,8 +8,8 @@ import { Badge } from '../../components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '../../components/ui/popover';
 import { Calendar as DatePickerCalendar } from '../../components/ui/calendar';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../../components/ui/dialog';
-import { FileBadge, Search, CheckCircle, XCircle, Ban, Loader2, X, CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react';
-import { getMedCerts, approveMedCert, rejectMedCert, markMedCertCompleted, revokeMedCert } from '../../api/ClinicianDashboard';
+import { FileBadge, Search, CheckCircle, XCircle, Ban, Loader2, X, CalendarDays, ChevronLeft, ChevronRight, Download } from 'lucide-react';
+import { getMedCerts, approveMedCert, rejectMedCert, markMedCertCompleted, revokeMedCert, downloadMedCert } from '../../api/ClinicianDashboard';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import StaffRoleBanner from '../../components/staff/StaffRoleBanner';
@@ -29,6 +29,7 @@ export const RequestManagement = () => {
   const [processing, setProcessing] = useState(false);
   const [activeTab, setActiveTab] = useState('pending');
   const [completedId, setCompletedId] = useState(null);
+  const [downloadingId, setDownloadingId] = useState(null);
   const [isPickupPickerOpen, setIsPickupPickerOpen] = useState(false);
   const [pickupCalendarMonth, setPickupCalendarMonth] = useState(new Date());
 
@@ -136,6 +137,28 @@ export const RequestManagement = () => {
       toast.error(err.response?.data?.message || 'Failed to mark as completed');
     } finally {
       setCompletedId(null);
+    }
+  };
+
+  const handleDownload = async (cert) => {
+    try {
+      setDownloadingId(cert.id);
+      const response = await downloadMedCert(cert.id);
+      const blob = new Blob([response.data], { type: response.headers['content-type'] || 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `med-cert-${cert.certificate_number || cert.id}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      toast.success('Medical certificate downloaded successfully');
+    } catch (error) {
+      console.error('Failed to download certificate', error);
+      toast.error('Unable to download certificate');
+    } finally {
+      setDownloadingId(null);
     }
   };
 
@@ -251,7 +274,7 @@ export const RequestManagement = () => {
     return (
       <>
         <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_6px_20px_rgba(15,23,42,0.06)]">
-          <div className="hidden bg-slate-50/80 px-4 py-2 md:grid md:grid-cols-[1.2fr_0.9fr_1fr_1.4fr_120px_120px] md:items-center md:gap-3">
+          <div className="hidden bg-slate-50/80 px-4 py-2 md:grid md:grid-cols-[1.1fr_0.8fr_0.9fr_1.3fr_100px_160px] md:items-center md:gap-3">
             <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Patient</p>
             <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Type</p>
             <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Period</p>
@@ -272,7 +295,7 @@ export const RequestManagement = () => {
 
             return (
               <div key={cert.id} className={index === 0 ? '' : 'border-t border-slate-100'}>
-                <div className="hidden items-center gap-3 px-4 py-3 md:grid md:grid-cols-[1.2fr_0.9fr_1fr_1.4fr_120px_120px]">
+                <div className="hidden items-center gap-3 px-4 py-3 md:grid md:grid-cols-[1.1fr_0.8fr_0.9fr_1.3fr_100px_160px]">
                   <div className="min-w-0">
                     <p className="truncate text-sm font-semibold text-[#01377D]">{cert.patient?.user?.name || 'N/A'}</p>
                     <p className="truncate text-[11px] text-[#009DD1]">{cert.patient?.user?.email || 'No email'}</p>
@@ -289,7 +312,7 @@ export const RequestManagement = () => {
                       {cert.status}
                     </Badge>
                   </div>
-                  <div className="flex justify-end gap-2">
+                  <div className="flex justify-end items-center gap-1.5">
                     {activeTab === 'pending' && (
                       <>
                         <Button
@@ -319,7 +342,7 @@ export const RequestManagement = () => {
                       </>
                     )}
                     {activeTab === 'approved' && (
-                      <div className="flex items-center gap-1.5">
+                      <>
                         <Button
                           size="sm"
                           variant="outline"
@@ -333,6 +356,16 @@ export const RequestManagement = () => {
                         <Button
                           size="sm"
                           variant="outline"
+                          onClick={() => handleDownload(cert)}
+                          disabled={downloadingId === cert.id}
+                          className="h-8 w-8 border-cyan-200 bg-cyan-50 p-0 text-cyan-700 hover:bg-cyan-100"
+                          title="Download Certificate PDF"
+                        >
+                          {downloadingId === cert.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
                           onClick={() => {
                             setSelectedCert(cert);
                             setActionDialog({ open: true, type: 'revoke' });
@@ -342,7 +375,33 @@ export const RequestManagement = () => {
                         >
                           <Ban className="h-4 w-4" />
                         </Button>
-                      </div>
+                      </>
+                    )}
+                    {activeTab === 'completed' && (
+                      <>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleDownload(cert)}
+                          disabled={downloadingId === cert.id}
+                          className="h-8 w-8 border-cyan-200 bg-cyan-50 p-0 text-cyan-700 hover:bg-cyan-100"
+                          title="Download Certificate PDF"
+                        >
+                          {downloadingId === cert.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setSelectedCert(cert);
+                            setActionDialog({ open: true, type: 'revoke' });
+                          }}
+                          className="h-8 w-8 border-purple-200 bg-purple-50 p-0 text-purple-700 hover:bg-purple-100"
+                          title="Revoke certificate"
+                        >
+                          <Ban className="h-4 w-4" />
+                        </Button>
+                      </>
                     )}
                   </div>
                 </div>
@@ -404,6 +463,42 @@ export const RequestManagement = () => {
                           title="Mark as completed"
                         >
                           {completedId === cert.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleDownload(cert)}
+                          disabled={downloadingId === cert.id}
+                          className="h-8 w-8 border-cyan-200 bg-cyan-50 p-0 text-cyan-700 hover:bg-cyan-100"
+                          title="Download Certificate PDF"
+                        >
+                          {downloadingId === cert.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setSelectedCert(cert);
+                            setActionDialog({ open: true, type: 'revoke' });
+                          }}
+                          className="h-8 w-8 border-purple-200 bg-purple-50 p-0 text-purple-700 hover:bg-purple-100"
+                          title="Revoke certificate"
+                        >
+                          <Ban className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    )}
+                    {activeTab === 'completed' && (
+                      <div className="flex items-center gap-1.5">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleDownload(cert)}
+                          disabled={downloadingId === cert.id}
+                          className="h-8 w-8 border-cyan-200 bg-cyan-50 p-0 text-cyan-700 hover:bg-cyan-100"
+                          title="Download Certificate PDF"
+                        >
+                          {downloadingId === cert.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
                         </Button>
                         <Button
                           size="sm"
