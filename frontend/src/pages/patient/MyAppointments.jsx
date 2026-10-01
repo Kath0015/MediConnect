@@ -400,7 +400,7 @@ const MyAppointments = () => {
 
       {/* Details Modal */}
       <Dialog open={detailsModal.open} onOpenChange={(open) => setDetailsModal({ ...detailsModal, open })}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-white border border-slate-200">
           <DialogHeader>
             <DialogTitle>Appointment Details</DialogTitle>
             <DialogDescription>
@@ -507,7 +507,7 @@ const MyAppointments = () => {
 
       {/* Cancel Dialog */}
       <Dialog open={cancelDialog.open} onOpenChange={(open) => setCancelDialog({ ...cancelDialog, open })}>
-        <DialogContent>
+        <DialogContent className="bg-white border border-slate-200">
           <DialogHeader>
             <DialogTitle>Cancel Appointment</DialogTitle>
             <DialogDescription>
@@ -557,7 +557,7 @@ const MyAppointments = () => {
 
       {/* Message Modal */}
       <Dialog open={messageModal.open} onOpenChange={(open) => setMessageModal({ ...messageModal, open })}>
-        <DialogContent>
+        <DialogContent className="bg-white border border-slate-200">
           <DialogHeader>
             <DialogTitle>Contact Staff</DialogTitle>
             <DialogDescription>

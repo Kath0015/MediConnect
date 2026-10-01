@@ -85,7 +85,8 @@ const DoctorAppointments = () => {
       await loadAppointments();
     } catch (err) {
       console.error('Failed to complete appointment:', err);
-      toast.error('Failed to complete appointment');
+      const errorMsg = err.response?.data?.message || 'Failed to complete appointment';
+      toast.error(errorMsg);
     }
   };
 

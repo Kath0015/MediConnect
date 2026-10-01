@@ -30,7 +30,15 @@ export const confirmAppointment = async (id) => {
 };
 
 export const rejectAppointment = async (id, reason) => {
-    return api.post(`/api/appointments/${id}/reject`, { rejection_reason: reason });
+    return api.post(`/api/appointments/${id}/reject`, { reason });
+};
+
+export const completeAppointment = async (id) => {
+    return api.post(`/api/appointments/${id}/complete`);
+};
+
+export const markNoShow = async (id) => {
+    return api.post(`/api/appointments/${id}/no_show`);
 };
 
 export const getAppointmentCalendar = async (params = {}) => {

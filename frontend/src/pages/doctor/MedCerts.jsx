@@ -47,7 +47,7 @@ const DoctorMedCerts = () => {
   const handleDownloadCert = async (cert) => {
     try {
       toast.info(`Preparing Medical Certificate for ${cert.patient}...`);
-      window.open(`http://localhost:8000/api/med-certs/${cert.id}/download`, '_blank');
+      window.open(`${window.location.origin}/api/med-certs/${cert.id}/download`, '_blank');
     } catch (err) {
       toast.error('Failed to download certificate PDF');
     }

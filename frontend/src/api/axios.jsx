@@ -1,23 +1,46 @@
 import axios from 'axios';
 
+const apiBaseURL = import.meta.env.VITE_API_URL
+  || (import.meta.env.PROD ? window.location.origin : 'http://localhost:8000');
+
 const api = axios.create({
-  baseURL: 'http://localhost:8000',
+  baseURL: apiBaseURL,
   headers: {
     Accept: 'application/json',
     'Content-Type': 'application/json',
   },
   withCredentials: true,
   withXSRFToken: true,
-  timeout: 30000, // 30 seconds to avoid false timeouts on slower local backend
+  timeout: 30000,
 });
 
-// Add request interceptor to attach CSRF token if available
 api.interceptors.request.use((config) => {
-  const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+  const token = localStorage.getItem('auth_token');
+
   if (token) {
-    config.headers['X-CSRF-TOKEN'] = token;
+    config.headers.Authorization = `Bearer ${token}`;
   }
+
+  const csrfToken = document
+    .querySelector('meta[name="csrf-token"]')
+    ?.getAttribute('content');
+
+  if (csrfToken) {
+    config.headers['X-CSRF-TOKEN'] = csrfToken;
+  }
+
   return config;
 });
+
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('auth_token');
+    }
+
+    return Promise.reject(error);
+  },
+);
 
 export default api;

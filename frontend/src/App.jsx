@@ -2,6 +2,7 @@ import React, { useEffect, Suspense, lazy } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { BrandingProvider } from "./contexts/BrandingContext";
+import { NotificationProvider } from "./contexts/NotificationContext";
 import "./App.css";
 import { Layout } from './components/Layout';
 import { ProtectedRoute } from './components/ProtectedRoute';
@@ -148,7 +149,8 @@ const App = () => {
     <Router>
       <BrandingProvider>
         <AuthProvider>
-          <Routes>
+          <NotificationProvider>
+            <Routes>
             {/* Public routes */}
             <Route path="/" element={<Home />} />
 
@@ -186,14 +188,14 @@ const App = () => {
 
             {/* ── ADMIN ROUTES ──────────────────────────────────────── */}
             <Route path="/admin/dashboard" element={<PRoute allowedRoles={['admin']} fallback={<AdminPageSkeleton variant="dashboard" rows={4} />}><AdminDashboard /></PRoute>} />
-            <Route path="/admin/appointments" element={<PRoute allowedRoles={['admin']} fallback={<AdminPageSkeleton variant="table" rows={5} />}><Appointments /></PRoute>} />
+            <Route path="/admin/appointments" element={<PRoute allowedRoles={['admin', 'clinician']} fallback={<AdminPageSkeleton variant="table" rows={5} />}><Appointments /></PRoute>} />
             <Route path="/admin/patients" element={<PRoute allowedRoles={['admin']} fallback={<AdminPageSkeleton variant="table" rows={5} />}><AdminPatients /></PRoute>} />
             <Route path="/admin/doctors" element={<PRoute allowedRoles={['admin']} fallback={<AdminPageSkeleton variant="table" rows={5} />}><AdminDoctors /></PRoute>} />
             <Route path="/admin/clinicians" element={<PRoute allowedRoles={['admin']} fallback={<AdminPageSkeleton variant="table" rows={5} />}><AdminClinicians /></PRoute>} />
             <Route path="/admin/medical-records" element={<PRoute allowedRoles={['admin']} fallback={<AdminPageSkeleton variant="table" rows={5} />}><AdminMedicalRecords /></PRoute>} />
             <Route path="/admin/laboratory" element={<PRoute allowedRoles={['admin']} fallback={<AdminPageSkeleton variant="table" rows={5} />}><AdminLaboratory /></PRoute>} />
             <Route path="/admin/prescriptions" element={<PRoute allowedRoles={['admin']} fallback={<AdminPageSkeleton variant="table" rows={5} />}><AdminPrescriptions /></PRoute>} />
-            <Route path="/admin/medcerts" element={<PRoute allowedRoles={['admin']} fallback={<AdminPageSkeleton variant="table" rows={5} />}><MedCerts /></PRoute>} />
+            <Route path="/admin/medcerts" element={<PRoute allowedRoles={['admin', 'clinician']} fallback={<AdminPageSkeleton variant="table" rows={5} />}><MedCerts /></PRoute>} />
             <Route path="/admin/billing" element={<PRoute allowedRoles={['admin']} fallback={<AdminPageSkeleton variant="charts" rows={3} />}><AdminBilling /></PRoute>} />
             <Route path="/admin/reports" element={<PRoute allowedRoles={['admin']} fallback={<AdminPageSkeleton variant="charts" rows={3} />}><Reports /></PRoute>} />
             <Route path="/admin/notifications" element={<PRoute allowedRoles={['admin']} fallback={<AdminPageSkeleton variant="list" rows={5} />}><AdminNotifications /></PRoute>} />
@@ -287,6 +289,7 @@ const App = () => {
               }}
             />
           </div>
+        </NotificationProvider>
         </AuthProvider>
       </BrandingProvider>
     </Router>

@@ -4,17 +4,18 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/ca
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Badge } from '../../components/ui/badge';
-import { Calendar as CalendarIcon, Search, Filter, ChevronLeft, ChevronRight, Sparkles, ChevronDown, Check, X, Loader2, Layers3, Clock3, CheckCircle2, XCircle } from 'lucide-react';
+import { Calendar as CalendarIcon, Search, Filter, ChevronLeft, ChevronRight, Sparkles, ChevronDown, Check, X, Loader2, Layers3, Clock3, CheckCircle2, XCircle, Eye, Stethoscope } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { Label } from '../../components/ui/label';
 import { Calendar as DatePickerCalendar } from '../../components/ui/calendar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { getAllAppointments } from '../../api/AdminDashboard';
-import { updateAppointment } from '../../api/Appointments';
+import { updateAppointment, confirmAppointment, rejectAppointment, completeAppointment, markNoShow } from '../../api/Appointments';
 import { getClinicMeta } from '../../api/Clinic';
 import { toast } from 'sonner';
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval } from 'date-fns';
 import AdminPageSkeleton from '../../components/admin/AdminPageSkeleton';
+import DoctorAvailability from '../../components/DoctorAvailability';
 
 const DEFAULT_OPEN = '08:00';
 const DEFAULT_CLOSE = '17:00';
@@ -95,6 +96,9 @@ export const Appointments = () => {
   const [rescheduleTime, setRescheduleTime] = useState('');
   const [rescheduleSubmitting, setRescheduleSubmitting] = useState(false);
   const [rescheduleMonth, setRescheduleMonth] = useState(new Date());
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const [selectedAppointment, setSelectedAppointment] = useState(null);
+  const [assigningDoctor, setAssigningDoctor] = useState(false);
   const filterMenuRef = useRef(null);
 
   const STATUS_OPTIONS = useMemo(() => ([
@@ -521,6 +525,69 @@ export const Appointments = () => {
     }
   };
 
+  // Handle viewing appointment details
+  const handleViewDetails = (appointment) => {
+    setSelectedAppointment(appointment);
+    setDetailModalOpen(true);
+  };
+
+  // Handle appointment status changes
+  const handleAppointmentStatusChange = async (appointment, newStatus) => {
+    try {
+      setAssigningDoctor(true);
+      
+      switch(newStatus) {
+        case 'confirmed':
+          await confirmAppointment(appointment.id);
+          toast.success('Appointment confirmed');
+          break;
+        case 'completed':
+          await completeAppointment(appointment.id);
+          toast.success('Appointment marked as completed');
+          break;
+        case 'rejected':
+          await rejectAppointment(appointment.id);
+          toast.success('Appointment rejected');
+          break;
+        case 'no_show':
+          await markNoShow(appointment.id);
+          toast.success('Appointment marked as no-show');
+          break;
+        default:
+          return;
+      }
+      
+      await loadAppointments();
+      setDetailModalOpen(false);
+    } catch (err) {
+      console.error('Failed to update appointment:', err);
+      const errorMsg = err.response?.data?.message || err.message || 'Failed to update appointment';
+      toast.error(errorMsg);
+    } finally {
+      setAssigningDoctor(false);
+    }
+  };
+
+  // Handle assigning doctor
+  const handleAssignDoctor = async (doctor) => {
+    if (!selectedAppointment) return;
+    
+    try {
+      setAssigningDoctor(true);
+      await updateAppointment(selectedAppointment.id, {
+        clinician_id: doctor.id,
+      });
+      toast.success(`Dr. ${doctor.name} assigned to this appointment`);
+      await loadAppointments();
+      setDetailModalOpen(false);
+    } catch (err) {
+      console.error('Failed to assign doctor:', err);
+      toast.error('Failed to assign doctor');
+    } finally {
+      setAssigningDoctor(false);
+    }
+  };
+
   const filteredAppointments = appointments.filter((apt) => {
     const query = searchTerm.toLowerCase();
     const name = apt.patient?.user?.name?.toLowerCase() || '';
@@ -773,7 +840,17 @@ export const Appointments = () => {
                           {appointment.created_at ? format(new Date(appointment.created_at), 'PP') : 'N/A'}
                         </div>
 
-                        <div className="mt-2 flex justify-end md:mt-0">
+                        <div className="mt-2 flex items-center gap-2 justify-end md:mt-0">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleViewDetails(appointment)}
+                            className="h-8 border-cyan-200 bg-cyan-50 text-cyan-700 hover:bg-cyan-100"
+                          >
+                            <Eye className="w-4 h-4 mr-1" />
+                            Details
+                          </Button>
                           {canReschedule(appointment) ? (
                             <Button
                               type="button"
@@ -829,6 +906,148 @@ export const Appointments = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Appointment Detail Modal */}
+      <Dialog open={detailModalOpen} onOpenChange={setDetailModalOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-white">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Stethoscope className="w-5 h-5 text-[#009DD1]" />
+              Appointment Details
+            </DialogTitle>
+            <DialogDescription>View and manage appointment details and assign physicians</DialogDescription>
+          </DialogHeader>
+
+          {selectedAppointment && (
+            <div className="space-y-4">
+              {/* Patient Info */}
+              <div className="grid grid-cols-2 gap-3 p-4 bg-slate-50 rounded-lg border border-slate-200">
+                <div>
+                  <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Patient</p>
+                  <p className="mt-1 text-sm font-semibold text-slate-900">
+                    {selectedAppointment.patient?.user?.name || 'N/A'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Email</p>
+                  <p className="mt-1 text-sm text-slate-700">
+                    {selectedAppointment.patient?.user?.email || 'N/A'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Appointment Type</p>
+                  <p className="mt-1 text-sm text-slate-700">
+                    {resolveAppointmentType(selectedAppointment) || 'N/A'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide">ID</p>
+                  <p className="mt-1 text-sm text-slate-700">#{selectedAppointment.id}</p>
+                </div>
+              </div>
+
+              {/* Date & Time */}
+              <div className="grid grid-cols-2 gap-3 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <div>
+                  <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide">Date</p>
+                  <p className="mt-1 text-sm font-semibold text-blue-900">
+                    {getStartDate(selectedAppointment) ? format(getStartDate(selectedAppointment), 'PPP') : 'N/A'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide">Time</p>
+                  <p className="mt-1 text-sm text-blue-900">
+                    {getStartDate(selectedAppointment) ? format(getStartDate(selectedAppointment), 'h:mm a') : 'N/A'}
+                    {getEndDate(selectedAppointment) ? ` – ${format(getEndDate(selectedAppointment), 'h:mm a')}` : ''}
+                  </p>
+                </div>
+              </div>
+
+              {/* Current Status */}
+              <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
+                <p className="text-xs font-semibold text-purple-700 uppercase tracking-wide mb-2">Current Status</p>
+                <div className="flex items-center gap-2">
+                  <Badge className={`${getStatusBadgeVariant(selectedAppointment.status)}`}>
+                    {formatStatus(selectedAppointment.status)}
+                  </Badge>
+                  <span className="text-xs text-purple-600">
+                    {selectedAppointment.updated_at 
+                      ? `Updated ${format(new Date(selectedAppointment.updated_at), 'PP')}` 
+                      : ''}
+                  </span>
+                </div>
+              </div>
+
+              {/* Status Action Buttons */}
+              <div className="space-y-3">
+                <p className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Change Status</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    onClick={() => handleAppointmentStatusChange(selectedAppointment, 'confirmed')}
+                    disabled={assigningDoctor || selectedAppointment.status === 'confirmed'}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white text-sm"
+                  >
+                    {assigningDoctor ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Check className="w-4 h-4 mr-2" />}
+                    Confirmed
+                  </Button>
+                  <Button
+                    onClick={() => handleAppointmentStatusChange(selectedAppointment, 'completed')}
+                    disabled={assigningDoctor || selectedAppointment.status === 'completed'}
+                    className="bg-blue-600 hover:bg-blue-700 text-white text-sm"
+                  >
+                    {assigningDoctor ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <CheckCircle2 className="w-4 h-4 mr-2" />}
+                    Completed
+                  </Button>
+                  <Button
+                    onClick={() => handleAppointmentStatusChange(selectedAppointment, 'rejected')}
+                    disabled={assigningDoctor || selectedAppointment.status === 'rejected'}
+                    className="bg-rose-600 hover:bg-rose-700 text-white text-sm"
+                  >
+                    {assigningDoctor ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <X className="w-4 h-4 mr-2" />}
+                    Reject
+                  </Button>
+                  <Button
+                    onClick={() => handleAppointmentStatusChange(selectedAppointment, 'no_show')}
+                    disabled={assigningDoctor || selectedAppointment.status === 'no_show'}
+                    className="bg-slate-600 hover:bg-slate-700 text-white text-sm"
+                  >
+                    {assigningDoctor ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <AlertCircle className="w-4 h-4 mr-2" />}
+                    No-show
+                  </Button>
+                </div>
+              </div>
+
+              {/* Doctor Availability */}
+              <div className="border-t pt-4">
+                <DoctorAvailability 
+                  appointment={selectedAppointment}
+                  onAssignDoctor={handleAssignDoctor}
+                />
+              </div>
+
+              {/* Currently Assigned Doctor */}
+              {selectedAppointment.clinician_id && (
+                <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
+                  <p className="text-xs font-semibold text-emerald-700 mb-1">✓ Physician Assigned</p>
+                  <p className="text-sm text-emerald-900">
+                    Doctor ID: {selectedAppointment.clinician_id}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={() => setDetailModalOpen(false)}
+            >
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={rescheduleDialogOpen} onOpenChange={handleRescheduleDialogChange}>
         <DialogContent className="max-w-3xl bg-white">

@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useBranding } from '../contexts/BrandingContext';
+import { useNotifications } from '../contexts/NotificationContext';
 import { Button } from './ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
 import {
@@ -55,6 +56,7 @@ import {
 export const Layout = ({ children }) => {
   const { user, logout, loading, isAdmin, isClinician, isPatient, isDoctor } = useAuth();
   const { branding } = useBranding();
+  const { unreadCount } = useNotifications();
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -349,6 +351,8 @@ export const Layout = ({ children }) => {
               {navItems.map((item) => {
                 const Icon = item.icon;
                 const isActive = location.pathname === item.path;
+                const isNotifications = item.label === 'Notifications' && unreadCount > 0;
+                
                 return (
                   <Link
                     key={item.path}
@@ -359,7 +363,7 @@ export const Layout = ({ children }) => {
                     <Button
                       variant="ghost"
                       title={isSidebarCollapsed ? item.label : undefined}
-                      className={`group mb-1 gap-3 rounded-xl text-sm transition-all duration-200 ${
+                      className={`group mb-1 gap-3 rounded-xl text-sm transition-all duration-200 relative ${
                         isActive
                           ? `bg-gradient-to-r ${sidebarAccent} text-white shadow-sm`
                           : 'text-slate-700 hover:bg-cyan-100/70 hover:text-[#01377D]'
@@ -370,13 +374,16 @@ export const Layout = ({ children }) => {
                       }`}
                     >
                       <span
-                        className={`grid h-7 w-7 place-items-center rounded-lg transition-all duration-200 ${
+                        className={`grid h-7 w-7 place-items-center rounded-lg transition-all duration-200 relative ${
                           isActive
                             ? 'bg-white/15 text-white'
                             : 'bg-white text-slate-600 group-hover:scale-105 group-hover:bg-cyan-50 group-hover:text-[#01377D] group-hover:shadow-sm'
                         }`}
                       >
                         <Icon className="h-4 w-4 shrink-0" />
+                        {isNotifications && (
+                          <span className="absolute top-0 right-0 w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                        )}
                       </span>
                       <span
                         className={`overflow-hidden whitespace-nowrap text-left transition-all duration-200 ${
@@ -385,6 +392,11 @@ export const Layout = ({ children }) => {
                       >
                         {item.label}
                       </span>
+                      {isNotifications && (
+                        <span className="ml-auto inline-flex items-center justify-center h-5 w-5 rounded-full bg-red-500 text-white text-xs font-bold animate-pulse">
+                          {unreadCount}
+                        </span>
+                      )}
                     </Button>
                   </Link>
                 );

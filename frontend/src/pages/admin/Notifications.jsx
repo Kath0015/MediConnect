@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
-import { Bell, Check, X, CheckCheck } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Bell, CheckCheck } from 'lucide-react';
 import { toast } from 'sonner';
+import NotificationItem from '../../components/NotificationItem';
+import { useNotifications } from '../../contexts/NotificationContext';
 
 const initialNotifs = [
   { id: 1, title: 'New Appointment Booked', message: 'Maria Santos booked an appointment with Dr. Santos for Aug 20.', date: '2026-08-18', time: '09:00 AM', type: 'appointment', read: false },
@@ -9,104 +11,82 @@ const initialNotifs = [
   { id: 4, title: 'System Backup Complete', message: 'Daily system backup completed successfully.', date: '2026-08-18', time: '02:00 AM', type: 'system', read: true },
 ];
 
-const typeColors = {
-  appointment: 'bg-[#009DD1]/10 text-[#009DD1]',
-  user: 'bg-[#26B170]/10 text-[#26B170]',
-  lab: 'bg-[#7C3AED]/10 text-[#7C3AED]',
-  system: 'bg-slate-100 text-slate-600',
+const typeConfig = {
+  appointment: { icon: Bell, bg: 'bg-[#009DD1]/10' },
+  user: { icon: Bell, bg: 'bg-[#26B170]/10' },
+  lab: { icon: Bell, bg: 'bg-[#7C3AED]/10' },
+  system: { icon: Bell, bg: 'bg-slate-100' },
 };
 
 const AdminNotifications = () => {
   const [notifs, setNotifs] = useState(initialNotifs);
+  const { updateUnreadCount } = useNotifications();
+  
   const unread = notifs.filter((n) => !n.read).length;
+
+  useEffect(() => {
+    updateUnreadCount(unread);
+  }, [unread, updateUnreadCount]);
 
   const handleMarkAllRead = () => {
     setNotifs((n) => n.map((x) => ({ ...x, read: true })));
-    toast.success('All notifications marked as read');
+    toast.success('All marked as read');
   };
 
   const handleMarkRead = (id) => {
     setNotifs((prev) => prev.map((x) => (x.id === id ? { ...x, read: true } : x)));
-    toast.success('Notification marked as read');
   };
 
   const handleDismiss = (id) => {
     setNotifs((prev) => prev.filter((x) => x.id !== id));
-    toast.info('Notification dismissed');
   };
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-            <Bell className="w-6 h-6 text-[#009DD1]" /> Notifications{' '}
-            {unread > 0 && (
-              <span className="bg-[#009DD1] text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">
-                {unread}
-              </span>
-            )}
-          </h1>
-          <p className="text-slate-500 mt-1 text-sm">System-wide clinical alerts and activity logs.</p>
-        </div>
+    <div className="space-y-4">
+      {/* Compact Header */}
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+          <Bell className="w-5 h-5 text-[#009DD1]" />
+          Notifications
+          {unread > 0 && (
+            <span className="ml-1 bg-red-500 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center animate-pulse">
+              {unread}
+            </span>
+          )}
+        </h1>
         {unread > 0 && (
           <button
             onClick={handleMarkAllRead}
-            className="flex items-center gap-2 text-sm font-medium text-[#009DD1] border border-[#009DD1]/30 rounded-xl px-4 py-2 hover:bg-[#009DD1]/5 transition-colors"
+            className="flex items-center gap-1 text-xs font-medium text-cyan-600 hover:text-cyan-700 transition-colors bg-cyan-50 hover:bg-cyan-100 rounded-lg px-3 py-1.5"
           >
-            <CheckCheck className="w-4 h-4" /> Mark all read
+            <CheckCheck className="w-3 h-3" />
+            Mark all
           </button>
         )}
       </div>
 
-      <div className="space-y-3">
+      {/* Compact notifications list */}
+      <div className="space-y-2">
         {notifs.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-slate-100 p-8 text-center text-slate-400">
-            No active notifications.
+          <div className="text-center py-8 bg-white rounded-lg border border-slate-100 text-slate-400">
+            <Bell className="w-8 h-8 mx-auto mb-2 opacity-20" />
+            <p className="text-sm font-medium">No notifications</p>
           </div>
         ) : (
-          notifs.map((n) => (
-            <div
-              key={n.id}
-              className={`bg-white rounded-2xl border shadow-sm p-5 flex gap-4 transition-all ${
-                !n.read ? 'border-[#009DD1]/30 bg-sky-50/20' : 'border-slate-100'
-              }`}
-            >
-              <div className={`w-10 h-10 rounded-xl ${typeColors[n.type]} flex items-center justify-center flex-shrink-0`}>
-                <Bell className="w-4 h-4" />
-              </div>
-              <div className="flex-1">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-sm font-semibold text-slate-900">{n.title}</h3>
-                    {!n.read && <span className="w-2 h-2 rounded-full bg-[#009DD1]" />}
-                  </div>
-                  <div className="flex gap-1">
-                    {!n.read && (
-                      <button
-                        onClick={() => handleMarkRead(n.id)}
-                        className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-50 hover:text-emerald-600 transition-colors"
-                        title="Mark read"
-                      >
-                        <Check className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                    <button
-                      onClick={() => handleDismiss(n.id)}
-                      className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-50 hover:text-rose-500 transition-colors"
-                      title="Dismiss"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
-                <p className="text-sm text-slate-500 mt-1">{n.message}</p>
-                <p className="text-xs text-slate-400 mt-2">
-                  {n.date} · {n.time}
-                </p>
-              </div>
-            </div>
-          ))
+          notifs.map((n) => {
+            const tc = typeConfig[n.type];
+            const Icon = tc.icon;
+            return (
+              <NotificationItem
+                key={n.id}
+                notification={n}
+                onMarkRead={handleMarkRead}
+                onDismiss={handleDismiss}
+                icon={Icon}
+                colorClass={tc.bg}
+              />
+            );
+          })
         )}
       </div>
     </div>
