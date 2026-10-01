@@ -6,12 +6,11 @@ import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Textarea } from '../../components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
-import { ArrowLeft, Calendar, Clock, User, FileText, AlertCircle, Loader2, X } from 'lucide-react';
+import { ArrowLeft, Calendar, Clock, FileText, AlertCircle, Loader2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { useBranding } from '../../contexts/BrandingContext';
 import { createAppointment } from '../../api/Appointments';
 import { getClinicMeta } from '../../api/Clinic';
-import api from '../../api/axios';
 
 const BookAppointment = () => {
   const navigate = useNavigate();
@@ -19,7 +18,6 @@ const BookAppointment = () => {
   const [loading, setLoading] = useState(false);
   const [loadingConfig, setLoadingConfig] = useState(true);
   const [appointmentTypes, setAppointmentTypes] = useState([]);
-  const [physicians, setPhysicians] = useState([]);
   const [timeSlots, setTimeSlots] = useState([]);
   const [selectedLaboratoryTests, setSelectedLaboratoryTests] = useState([]);
 
@@ -27,7 +25,6 @@ const BookAppointment = () => {
     preferred_date: '',
     preferred_time: '',
     appointment_type_id: '',
-    physician_id: '',
     reason: '',
   });
 
@@ -91,19 +88,6 @@ const BookAppointment = () => {
           { id: 1, name: 'Consultation', is_active: true },
           { id: 2, name: 'Laboratory', is_active: true }
         ]);
-      }
-
-      // Load physicians (doctors and clinicians)
-      try {
-        const usersResponse = await api.get('/api/users');
-        const allUsers = usersResponse?.data?.data || usersResponse?.data || [];
-        const staffUsers = allUsers.filter(u => 
-          u.roles?.some(r => ['doctor', 'clinician'].includes(r.name?.toLowerCase()))
-        );
-        setPhysicians(staffUsers);
-      } catch (error) {
-        console.warn('Failed to load physicians:', error);
-        setPhysicians([]);
       }
 
       // Generate time slots (8 AM to 5 PM, 30-min intervals)
@@ -202,11 +186,6 @@ const BookAppointment = () => {
         time: formData.preferred_time,
         reason: formData.reason.trim(),
       };
-
-      // Add physician if selected
-      if (formData.physician_id) {
-        appointmentData.clinician_id = parseInt(formData.physician_id);
-      }
 
       // Add laboratory tests if applicable
       if (isLaboratoryType()) {
@@ -364,29 +343,6 @@ const BookAppointment = () => {
                     </SelectContent>
                   </Select>
                 </div>
-              </div>
-
-              {/* Preferred Physician */}
-              <div className="space-y-2">
-                <Label htmlFor="physician" className="text-slate-700 font-medium flex items-center gap-1">
-                  <User className="w-4 h-4 text-slate-500" />
-                  Preferred Physician
-                </Label>
-                <Select
-                  value={formData.physician_id}
-                  onValueChange={(value) => handleChange('physician_id', value)}
-                >
-                  <SelectTrigger className="border-slate-300">
-                    <SelectValue placeholder="Select preferred physician" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {physicians.map((physician) => (
-                      <SelectItem key={physician.id} value={String(physician.id)}>
-                        {physician.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
               </div>
 
               {/* Laboratory Services Section - Shown only when Laboratory is selected */}

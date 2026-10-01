@@ -16,6 +16,33 @@ class StoreAppointmentRequest extends FormRequest
         return true; // Access control enforced inside the controller guards
     }
 
+    protected function prepareForValidation()
+    {
+        // Convert date and time fields to start_time and end_time
+        if ($this->has('date') && $this->has('time')) {
+            $date = $this->input('date');
+            $time = $this->input('time');
+            
+            // Combine date and time into ISO datetime format
+            $startDateTime = $date . ' ' . $time . ':00';
+            
+            // Get appointment type to determine duration
+            $appointmentTypeId = $this->input('appointment_type_id');
+            $appointmentType = AppointmentType::find($appointmentTypeId);
+            $durationMinutes = $appointmentType?->estimated_minutes ?? 30;
+            
+            // Create Carbon instances and merge into request
+            $start = Carbon::createFromFormat('Y-m-d H:i:s', $startDateTime);
+            $end = $start->copy()->addMinutes($durationMinutes);
+            
+            $this->merge([
+                'start_time' => $start->toDateTimeString(),
+                'end_time' => $end->toDateTimeString(),
+                'title' => $this->input('reason') ?? 'Appointment',
+            ]);
+        }
+    }
+
     public function rules(): array
     {
         return [
