@@ -3,8 +3,9 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
-import { Calendar as CalendarIcon, Clock, ChevronLeft, ChevronRight, Loader2, Check, X } from 'lucide-react';
+import { Calendar as CalendarIcon, Clock, ChevronLeft, ChevronRight, Loader2, Check, X, ChevronDown } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '../../components/ui/dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger, DropdownMenuItem } from '../../components/ui/dropdown-menu';
 import { Textarea } from '../../components/ui/textarea';
 import { Label } from '../../components/ui/label';
 import { getClinicianAppointments, updateAppointmentStatus, cancelAppointment, rejectAppointment, confirmAppointment } from '../../api/ClinicianDashboard';
@@ -70,6 +71,8 @@ export const Schedule = () => {
   const [rejectReason, setRejectReason] = useState('');
   const [selectedAppointment, setSelectedAppointment] = useState(null);
   const [updatingStatusId, setUpdatingStatusId] = useState(null);
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const [detailAppointment, setDetailAppointment] = useState(null);
   const monthCacheRef = useRef(new Map());
   const activeRequestRef = useRef(0);
 
@@ -621,6 +624,31 @@ export const Schedule = () => {
                               </Button>
                             )}
                             
+                            {status === 'confirmed' && !isWithin30Min && !isToday(selectedDate) && (
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button 
+                                    size="sm"
+                                    variant="outline"
+                                    className="border-blue-300 text-blue-700 hover:bg-blue-50 text-xs"
+                                  >
+                                    Actions <ChevronDown className="w-3 h-3 ml-1" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-40">
+                                  <DropdownMenuItem onClick={() => handleCompleteAppointment(appointment.id)}>
+                                    Complete
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => handleMarkNoShow(appointment.id)}>
+                                    Mark No-show
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => openRejectDialog(appointment)}>
+                                    Reject
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            )}
+                            
                             {status === 'in_progress' && (
                               <Button 
                                 size="sm" 
@@ -691,208 +719,4 @@ export const Schedule = () => {
                             {getAppointmentTypeLabel(appointment)} • {' '}
                             {appointment.start_time ? format(new Date(appointment.start_time), 'h:mm a') : 'N/A'}
                           </p>
-                          {appointment.description && (
-                            <p className="text-xs text-gray-500 mt-1">
-                              {appointment.description}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Button 
-                          size="sm"
-                          variant="outline"
-                          onClick={() => openRejectDialog(appointment)}
-                          disabled={confirmingId === appointment.id || rejectingId === appointment.id}
-                          className="border-red-300 text-red-600 hover:bg-red-50"
-                        >
-                          <X className="w-4 h-4 mr-2" />
-                          Reject
-                        </Button>
-                        <Button 
-                          size="sm"
-                          onClick={() => confirmAppointmentHandler(appointment.id)}
-                          disabled={confirmingId === appointment.id || rejectingId === appointment.id}
-                          className="bg-[#009DD1] hover:bg-[#01377D] text-white"
-                        >
-                          {confirmingId === appointment.id ? (
-                            <>
-                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                              Confirming...
-                            </>
-                          ) : (
-                            <>
-                              <Check className="w-4 h-4 mr-2" />
-                              Confirm
-                            </>
-                          )}
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Upcoming Appointments */}
-          <Card className={cardClass}>
-            <CardHeader>
-              <CardTitle className="text-[#01377D]">Upcoming Appointments</CardTitle>
-              <CardDescription className="text-[#009DD1]">Next scheduled appointments</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {upcomingAppointments.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  <CalendarIcon className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-                  <p>No upcoming appointments</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {upcomingAppointments.map((appointment) => {
-                    const appointmentTime = new Date(appointment.start_time);
-                    const now = new Date();
-                    const isPast = appointmentTime < now;
-                    const isWithin30Min = appointmentTime - now <= 30 * 60 * 1000 && appointmentTime > now;
-                    const status = appointment.status?.toLowerCase();
-                    
-                    return (
-                      <div key={appointment.id} className="flex flex-col gap-3 rounded-xl border border-slate-200 p-4 transition-colors hover:bg-slate-50 sm:flex-row sm:items-center sm:justify-between">
-                        <div className="flex items-center gap-4 flex-1">
-                          <div className="text-center min-w-[60px]">
-                            <p className="text-xs text-gray-500">
-                              {appointment.start_time ? format(new Date(appointment.start_time), 'EEE') : 'N/A'}
-                            </p>
-                            <p className="text-lg font-bold text-[#01377D]">
-                              {appointment.start_time ? format(new Date(appointment.start_time), 'd') : ''}
-                            </p>
-                          </div>
-                          <div className="h-12 w-px bg-slate-200"></div>
-                          <div className="flex-1">
-                            <p className="font-medium text-[#01377D]">
-                              {appointment.patient?.user?.name || 'Unknown Patient'}
-                            </p>
-                            <p className="text-sm text-gray-600">
-                              {getAppointmentTypeLabel(appointment)} • {' '}
-                              {appointment.start_time ? format(new Date(appointment.start_time), 'h:mm a') : 'N/A'}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <Badge variant="outline" className={getStatusBadgeVariant(appointment.status)}>
-                            {formatStatusLabel(appointment.status)}
-                          </Badge>
-                          
-                          {status === 'confirmed' && (isWithin30Min || isToday(appointmentTime)) && (
-                            <Button 
-                              size="sm" 
-                              onClick={() => handleStartAppointment(appointment.id)}
-                              disabled={updatingStatusId === appointment.id}
-                              className="bg-blue-600 hover:bg-blue-700 text-white"
-                            >
-                              {updatingStatusId === appointment.id ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Start'}
-                            </Button>
-                          )}
-                          
-                          {status === 'in_progress' && (
-                            <Button 
-                              size="sm" 
-                              onClick={() => handleCompleteAppointment(appointment.id)}
-                              disabled={updatingStatusId === appointment.id}
-                              className="bg-green-600 hover:bg-green-700 text-white"
-                            >
-                              {updatingStatusId === appointment.id ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Complete'}
-                            </Button>
-                          )}
-                          
-                          {(status === 'confirmed' || status === 'in_progress') && isPast && (
-                            <Button 
-                              size="sm" 
-                              onClick={() => handleMarkNoShow(appointment.id)}
-                              disabled={updatingStatusId === appointment.id}
-                              variant="outline"
-                              className="border-orange-300 text-orange-700 hover:bg-orange-50"
-                            >
-                              {updatingStatusId === appointment.id ? <Loader2 className="w-3 h-3 animate-spin" /> : 'No-Show'}
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-      </>
-
-      {/* Reject Appointment Dialog */}
-      <Dialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
-        <DialogContent className="sm:max-w-[500px] bg-white">
-          <DialogHeader>
-            <DialogTitle className="text-[#01377D]">Reject Appointment</DialogTitle>
-            <DialogDescription>
-              Please provide a reason for rejecting this appointment. The patient will be notified to reschedule.
-            </DialogDescription>
-          </DialogHeader>
-          
-          {selectedAppointment && (
-            <div className="bg-blue-50 p-3 rounded-lg mb-4 border border-[#97E7F5]">
-              <p className="text-sm font-medium text-[#01377D]">
-                {selectedAppointment.patient?.user?.name || 'Unknown Patient'}
-              </p>
-              <p className="text-xs text-gray-600">
-                {selectedAppointment.start_time ? format(new Date(selectedAppointment.start_time), 'EEEE, MMMM d, yyyy • h:mm a') : 'N/A'}
-              </p>
-              <p className="text-xs text-gray-600">
-                {getAppointmentTypeLabel(selectedAppointment)}
-              </p>
-            </div>
-          )}
-
-          <div className="space-y-2">
-            <Label htmlFor="reject-reason" className="text-[#01377D]">Reason for Rejection *</Label>
-            <Textarea
-              id="reject-reason"
-              placeholder="e.g., Time slot no longer available, need to reschedule to different date..."
-              value={rejectReason}
-              onChange={(e) => setRejectReason(e.target.value)}
-              className="min-h-[100px] border-[#97E7F5] focus:border-[#009DD1]"
-            />
-          </div>
-
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setShowRejectDialog(false);
-                setSelectedAppointment(null);
-                setRejectReason('');
-              }}
-              disabled={rejectingId}
-              className="border-[#97E7F5]"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleRejectAppointment}
-              disabled={!rejectReason.trim() || rejectingId}
-              className="bg-red-600 hover:bg-red-700 text-white"
-            >
-              {rejectingId ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Rejecting...
-                </>
-              ) : (
-                'Reject Appointment'
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
-};
-
-export default Schedule;
+                          {appointm
