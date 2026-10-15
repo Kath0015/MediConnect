@@ -67,7 +67,7 @@ export const Signup = () => {
         toast.success('Account created successfully! Please login to continue.');
         navigate('/auth/login', { state: { email: formData.email } });
       } else {
-        toast.error('Registration failed. Please try again.');
+        toast.error(result.error || 'Registration failed. Please try again.');
       }
     } catch (error) {
       toast.error(error.message || 'Signup failed. Please try again.');

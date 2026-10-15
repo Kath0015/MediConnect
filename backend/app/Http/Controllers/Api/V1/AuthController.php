@@ -204,9 +204,13 @@ class AuthController extends Controller
 
         } catch (\Illuminate\Validation\ValidationException $e) {
             return $this->error('Validation failed', 422, $e->errors());
-        } catch (\Exception $e) {
-            Log::error('Registration failed: ' . $e->getMessage());
-            return $this->error('Registration failed: ' . $e->getMessage(), 500);
+        } catch (\Throwable $e) {
+            Log::error('Registration failed due to an internal error.', [
+                'exception' => $e,
+                'email' => $request->input('email'),
+            ]);
+
+            return $this->error('We cannot create your account right now. Please try again later.', 503);
         }
     }
 
