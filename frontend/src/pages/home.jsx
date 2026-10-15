@@ -148,6 +148,7 @@ const displayBrandLabel = displayBrand || 'Pareñas Medical Clinic';
 const displayShortBrandLabel = displayShortBrand || 'Pareñas Medical Clinic';
   const displaySystemTitle = branding.systemTitle;
   const displaySystemSubtitle = branding.systemSubtitle;
+const contactPhone = branding.contactPhone || '09995014626';
 
   const scrollToSection = (id) => {
     const element = document.getElementById(id);
@@ -389,7 +390,15 @@ const displayShortBrandLabel = displayShortBrand || 'Pareñas Medical Clinic';
             </div>
             <div>
               <h3 className="font-semibold mb-4">Contact</h3>
-              <ul className="space-y-2 text-[#97E7F5]"><li>{displaySystemSubtitle}</li><li>{branding.contactEmail}</li><li>{branding.contactPhone}</li></ul>
+              <ul className="space-y-2 text-[#97E7F5]">
+                <li>{displaySystemSubtitle}</li>
+                <li>{branding.contactEmail}</li>
+                <li>
+                  <a href={`tel:${contactPhone}`} className="hover:text-[#d2ffb6]">
+                    {contactPhone}
+                  </a>
+                </li>
+              </ul>
             </div>
           </div>
           <div className="border-t border-[#009DD1] mt-8 pt-8 text-center text-[#97E7F5]"><p>© 2026 Pareñas Medical Clinic. All rights reserved.</p></div>

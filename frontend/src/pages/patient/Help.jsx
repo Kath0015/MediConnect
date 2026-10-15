@@ -110,8 +110,8 @@ const Help = () => {
             <Phone className="w-6 h-6 text-[#26B170]" />
           </div>
           <p className="font-semibold text-slate-800 text-sm">Call Us</p>
-          <a href="tel:0441234567" className="text-sm mt-1 font-medium text-[#26B170] block hover:underline">
-            (044) 123-4567
+          <a href="tel:09995014626" className="text-sm mt-1 font-medium text-[#26B170] block hover:underline">
+            09995014626
           </a>
           <p className="text-xs text-slate-400 mt-1">Mon–Fri, 8AM–5PM</p>
         </div>
