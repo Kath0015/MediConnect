@@ -3,11 +3,11 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
-import { Calendar as CalendarIcon, Clock, ChevronLeft, ChevronRight, Loader2, Check, X } from 'lucide-react';
+import { Calendar as CalendarIcon, Clock, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '../../components/ui/dialog';
 import { Textarea } from '../../components/ui/textarea';
 import { Label } from '../../components/ui/label';
-import { getClinicianAppointments, updateAppointmentStatus, cancelAppointment, rejectAppointment, confirmAppointment } from '../../api/ClinicianDashboard';
+import { getClinicianAppointments, updateAppointmentStatus, rejectAppointment, confirmAppointment } from '../../api/ClinicianDashboard';
 import { getClinicMeta } from '../../api/Clinic';
 import { toast } from 'sonner';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, startOfWeek, endOfWeek } from 'date-fns';
@@ -230,6 +230,44 @@ export const Schedule = () => {
     updateStatus(appointmentId, 'no_show', 'Marked as no-show');
   };
 
+  const handleStatusSelection = (appointment, nextStatus) => {
+    if (!nextStatus) return;
+    if (nextStatus === 'confirm') {
+      confirmAppointmentHandler(appointment.id);
+    } else if (nextStatus === 'reject') {
+      openRejectDialog(appointment);
+    } else if (nextStatus === 'in_progress') {
+      handleStartAppointment(appointment.id);
+    } else if (nextStatus === 'completed') {
+      handleCompleteAppointment(appointment.id);
+    } else if (nextStatus === 'no_show') {
+      handleMarkNoShow(appointment.id);
+    }
+  };
+
+  const getStatusOptions = (appointment, isPast, isWithin30Min, isAppointmentToday) => {
+    const status = appointment.status?.toLowerCase();
+    if (status === 'scheduled') {
+      return [
+        { value: 'confirm', label: 'Confirm' },
+        { value: 'reject', label: 'Reject' },
+      ];
+    }
+    if (status === 'confirmed') {
+      return [
+        { value: 'in_progress', label: 'Start appointment', disabled: !(isWithin30Min || isAppointmentToday) },
+        { value: 'no_show', label: 'Mark no-show', disabled: !isPast },
+      ];
+    }
+    if (status === 'in_progress') {
+      return [
+        { value: 'completed', label: 'Complete appointment' },
+        { value: 'no_show', label: 'Mark no-show', disabled: !isPast },
+      ];
+    }
+    return [];
+  };
+
   const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const currentMonth = format(currentDate, 'MMMM yyyy');
 
@@ -435,7 +473,7 @@ export const Schedule = () => {
     <div className="space-y-6">
       <StaffRoleBanner
         title="Schedule"
-        subtitle="Monitor upcoming visits, confirm pending appointments, and manage daily operations."
+        subtitle="Review requests and manage each appointment from waiting for approval through completion."
         primaryAction={{ label: 'Request Management', to: '/clinician/requests' }}
       />
 
@@ -610,6 +648,26 @@ export const Schedule = () => {
                           
                           {/* Action Buttons */}
                           <div className="flex gap-2 flex-wrap pt-1">
+                            {getStatusOptions(appointment, isPast, isWithin30Min, isToday(selectedDate)).length > 0 && (
+                              <select
+                                aria-label={`Change status for ${appointment.patient?.user?.name || 'appointment'}`}
+                                defaultValue=""
+                                onChange={(event) => {
+                                  handleStatusSelection(appointment, event.target.value);
+                                  event.target.value = '';
+                                }}
+                                disabled={updatingStatusId === appointment.id || confirmingId === appointment.id || rejectingId === appointment.id}
+                                className="h-9 rounded-md border border-slate-300 bg-white px-2 text-xs font-medium text-[#01377D] focus:outline-none focus:ring-2 focus:ring-[#009DD1]"
+                              >
+                                <option value="">Change status</option>
+                                {getStatusOptions(appointment, isPast, isWithin30Min, isToday(selectedDate)).map((option) => (
+                                  <option key={option.value} value={option.value} disabled={option.disabled}>
+                                    {option.label}{option.disabled ? ' (not available yet)' : ''}
+                                  </option>
+                                ))}
+                              </select>
+                            )}
+
                             {status === 'confirmed' && (isWithin30Min || isToday(selectedDate)) && (
                               <Button 
                                 size="sm" 
@@ -699,34 +757,23 @@ export const Schedule = () => {
                         </div>
                       </div>
                       <div className="flex flex-wrap items-center gap-2">
-                        <Button 
-                          size="sm"
-                          variant="outline"
-                          onClick={() => openRejectDialog(appointment)}
+                        <select
+                          aria-label={`Change status for ${appointment.patient?.user?.name || 'appointment'}`}
+                          defaultValue=""
+                          onChange={(event) => {
+                            handleStatusSelection(appointment, event.target.value);
+                            event.target.value = '';
+                          }}
                           disabled={confirmingId === appointment.id || rejectingId === appointment.id}
-                          className="border-red-300 text-red-600 hover:bg-red-50"
+                          className="h-9 rounded-md border border-slate-300 bg-white px-2 text-xs font-medium text-[#01377D] focus:outline-none focus:ring-2 focus:ring-[#009DD1]"
                         >
-                          <X className="w-4 h-4 mr-2" />
-                          Reject
-                        </Button>
-                        <Button 
-                          size="sm"
-                          onClick={() => confirmAppointmentHandler(appointment.id)}
-                          disabled={confirmingId === appointment.id || rejectingId === appointment.id}
-                          className="bg-[#009DD1] hover:bg-[#01377D] text-white"
-                        >
-                          {confirmingId === appointment.id ? (
-                            <>
-                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                              Confirming...
-                            </>
-                          ) : (
-                            <>
-                              <Check className="w-4 h-4 mr-2" />
-                              Confirm
-                            </>
-                          )}
-                        </Button>
+                          <option value="">Change status</option>
+                          {getStatusOptions(appointment, false, false, false).map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
                       </div>
                     </div>
                   ))}
@@ -739,7 +786,7 @@ export const Schedule = () => {
           <Card className={cardClass}>
             <CardHeader>
               <CardTitle className="text-[#01377D]">Upcoming Appointments</CardTitle>
-              <CardDescription className="text-[#009DD1]">Next scheduled appointments</CardDescription>
+              <CardDescription className="text-[#009DD1]">Use Change status to manage the visit. Start is available on the appointment date; Complete is available after the visit starts.</CardDescription>
             </CardHeader>
             <CardContent>
               {upcomingAppointments.length === 0 ? (
@@ -782,6 +829,25 @@ export const Schedule = () => {
                           <Badge variant="outline" className={getStatusBadgeVariant(appointment.status)}>
                             {formatStatusLabel(appointment.status)}
                           </Badge>
+                          {getStatusOptions(appointment, isPast, isWithin30Min, isToday(appointmentTime)).length > 0 && (
+                            <select
+                              aria-label={`Change status for ${appointment.patient?.user?.name || 'appointment'}`}
+                              defaultValue=""
+                              onChange={(event) => {
+                                handleStatusSelection(appointment, event.target.value);
+                                event.target.value = '';
+                              }}
+                              disabled={updatingStatusId === appointment.id || confirmingId === appointment.id || rejectingId === appointment.id}
+                              className="h-9 rounded-md border border-slate-300 bg-white px-2 text-xs font-medium text-[#01377D] focus:outline-none focus:ring-2 focus:ring-[#009DD1]"
+                            >
+                              <option value="">Change status</option>
+                              {getStatusOptions(appointment, isPast, isWithin30Min, isToday(appointmentTime)).map((option) => (
+                                <option key={option.value} value={option.value} disabled={option.disabled}>
+                                  {option.label}{option.disabled ? ' (not available yet)' : ''}
+                                </option>
+                              ))}
+                            </select>
+                          )}
                           
                           {status === 'confirmed' && (isWithin30Min || isToday(appointmentTime)) && (
                             <Button 

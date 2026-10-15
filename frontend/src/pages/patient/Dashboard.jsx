@@ -50,7 +50,8 @@ const getStatusStyles = (status = '') => {
 const formatStatusLabel = (status = '') => {
   const key = (status || '').toLowerCase();
   if (key === 'scheduled') return 'Waiting for approval';
-  if (key === 'in_progress') return 'In progress';
+  if (key === 'in_progress') return 'Visit in progress';
+  if (key === 'no_show') return 'Missed appointment';
   return titleCase(key || status);
 };
 

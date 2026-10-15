@@ -164,17 +164,17 @@ const MyAppointments = () => {
     const statusLower = (status || '').toLowerCase();
     switch (statusLower) {
       case 'scheduled':
-        return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-300">Pending</Badge>;
+        return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-300">Waiting for approval</Badge>;
       case 'confirmed':
         return <Badge className="bg-green-100 text-green-800 border-green-300">Confirmed</Badge>;
       case 'in_progress':
-        return <Badge className="bg-blue-100 text-blue-800 border-blue-300">In Progress</Badge>;
+        return <Badge className="bg-blue-100 text-blue-800 border-blue-300">Visit in progress</Badge>;
       case 'completed':
         return <Badge className="bg-gray-100 text-gray-800 border-gray-300">Completed</Badge>;
       case 'cancelled':
         return <Badge className="bg-red-100 text-red-800 border-red-300">Cancelled</Badge>;
       case 'no_show':
-        return <Badge className="bg-orange-100 text-orange-800 border-orange-300">No Show</Badge>;
+        return <Badge className="bg-orange-100 text-orange-800 border-orange-300">Missed appointment</Badge>;
       case 'rejected':
         return <Badge className="bg-red-100 text-red-800 border-red-300">Rejected</Badge>;
       default:

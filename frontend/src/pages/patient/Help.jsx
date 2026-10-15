@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { HelpCircle, ChevronDown, ChevronUp, MessageCircle, Phone, Mail, Search, Send, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../../components/ui/dialog';
 
 const faqs = [
-  { id: 1, q: 'How do I book an appointment?', a: 'Go to "My Appointments" in the sidebar, then click "Book New Appointment". Select your preferred doctor, date, and time slot, then confirm.' },
+  { id: 1, q: 'How do I book an appointment?', a: 'Go to "My Appointments" in the sidebar, then click "Book New Appointment". Select the appointment type, date, time, and reason for your visit, then submit your request. Clinic staff will review and confirm it.' },
   { id: 2, q: 'How do I view my laboratory results?', a: 'Navigate to "Laboratory Results" in the sidebar. Your lab results will appear here once they have been processed and uploaded by the clinic staff.' },
-  { id: 3, q: 'Can I cancel or reschedule my appointment?', a: 'Yes. Go to "My Appointments", find the appointment you wish to cancel or reschedule, and use the options menu. Cancellations must be made at least 24 hours before the scheduled time.' },
+  { id: 3, q: 'Can I cancel or reschedule my appointment?', a: 'You can cancel an appointment from "My Appointments". Cancellations must be made at least 24 hours before the scheduled time. To reschedule, cancel the existing request and submit a new appointment request.' },
+  { id: 8, q: 'What do my appointment statuses mean?', a: 'Waiting for approval means clinic staff are reviewing your request. Confirmed means the clinic accepted it. In progress means your visit has started. Completed means your visit is finished. Rejected means staff could not accept the request, while Cancelled means an accepted appointment was cancelled.' },
   { id: 4, q: 'How do I request a medical certificate?', a: 'Go to your profile or use the "Request Certificate" option. Fill in the purpose, and the clinic will process your request within 1-3 working days.' },
   { id: 5, q: 'I forgot my password. What should I do?', a: 'On the login page, click "Forgot Password". Enter your registered email address and follow the instructions sent to your inbox to reset your password.' },
   { id: 6, q: 'How do I update my personal information?', a: 'Click "Profile Settings" in the sidebar or click your name at the top of the sidebar. From there you can update your contact information, address, and other details.' },
@@ -15,7 +15,6 @@ const faqs = [
 ];
 
 const Help = () => {
-  const navigate = useNavigate();
   const [openId, setOpenId] = useState(null);
   const [search, setSearch] = useState('');
   const [isContactOpen, setIsContactOpen] = useState(false);
@@ -204,4 +203,3 @@ const Help = () => {
 };
 
 export default Help;
-
