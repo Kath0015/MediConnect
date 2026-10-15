@@ -168,7 +168,11 @@ export function AuthProvider({ children }) {
       const response = await updateProfileAPI(payload);
       const userData = response.data.data?.user || response.data.user || response.data;
       const normalizedUser = normalizeUser(userData);
-      if (normalizedUser) setUser(normalizedUser);
+      if (normalizedUser?.role) {
+        setUser(normalizedUser);
+      } else if (user) {
+        setUser(normalizeUser({ ...user, ...userData }));
+      }
       return response;
     } catch (error) {
       console.error('Profile update failed:', error);

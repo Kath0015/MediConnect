@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getAppointments, cancelAppointment } from '../../api/Appointments';
-import { sendMessage } from '../../api/Messages';
+import { getContacts, sendMessage } from '../../api/Messages';
 import { useNavigate } from 'react-router-dom';
 import PatientRoleBanner from '../../components/patient/PatientRoleBanner';
 
@@ -139,9 +139,20 @@ const MyAppointments = () => {
       setMessageModal(prev => ({ ...prev, sending: true }));
       
       // Get staff/clinician ID from appointment
-      const staffId = messageModal.appointment.clinician_id || messageModal.appointment.doctor_id;
+      let staffId = messageModal.appointment.clinician_id || messageModal.appointment.doctor_id;
       if (!staffId) {
-        toast.error('Staff member not found for this appointment');
+        const contactsResponse = await getContacts();
+        const contacts = Array.isArray(contactsResponse?.data)
+          ? contactsResponse.data
+          : contactsResponse?.data?.data || [];
+        const staffContact = contacts.find((contact) =>
+          ['clinician', 'doctor', 'admin'].includes((contact.role_key || '').toLowerCase())
+        );
+        staffId = staffContact?.id;
+      }
+
+      if (!staffId) {
+        toast.error('No clinic staff are currently available. Please try again later.');
         return;
       }
 

@@ -26,6 +26,10 @@ export const Profile = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
+  if (!user) {
+    return null;
+  }
+
   // Initialize form with user data
   useEffect(() => {
     if (user) {

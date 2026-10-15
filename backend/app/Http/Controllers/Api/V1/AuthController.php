@@ -356,15 +356,18 @@ class AuthController extends Controller
     public function updateProfile(Request $request): \Illuminate\Http\JsonResponse
     {
         try {
+            $user = $request->user();
             $validated = $request->validate([
                 'name' => 'sometimes|string|max:255',
+                'email' => 'sometimes|email|max:255|unique:users,email,' . $user->id,
                 'phone' => 'sometimes|string|max:20',
                 'date_of_birth' => 'sometimes|date',
                 'address' => 'sometimes|string|max:500',
             ]);
 
-            $user = $request->user();
             $user->update($validated);
+            $user->load(['roles:id,name', 'patient']);
+            $user->setAttribute('role', $user->roles()->first()->name ?? 'patient');
 
             return $this->ok('Profile updated successfully', $user);
         } catch (\Exception $e) {
