@@ -103,7 +103,9 @@ export function AuthProvider({ children }) {
       if (error.response) {
         const { data, status } = error.response;
 
-        if (data && typeof data === 'object') {
+        if (status >= 500) {
+          errorMessage = 'We cannot create your account right now. Please try again later.';
+        } else if (data && typeof data === 'object') {
           if (data.message) {
             errorMessage = data.message;
           } else if (data.errors) {
@@ -116,7 +118,9 @@ export function AuthProvider({ children }) {
           errorMessage = String(data);
         }
 
-        errorMessage = `Status ${status}: ${errorMessage}`;
+        if (status < 500) {
+          errorMessage = `Status ${status}: ${errorMessage}`;
+        }
       } else if (error.request) {
         errorMessage = 'No response from server. Please check your connection.';
       } else {
