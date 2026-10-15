@@ -9,6 +9,7 @@ use App\Mail\SendOTPMail;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 use Exception;
 
@@ -30,14 +31,13 @@ class RegistrationService
     const OTP_LENGTH = 7;
 
     /**
-     * Generate a 7-character OTP with uppercase, lowercase, and numbers
+     * Generate a 7-character OTP with uppercase letters and numbers.
      */
     public function generateOTP(): string
     {
         $uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-        $lowercase = 'abcdefghijklmnopqrstuvwxyz';
         $numbers = '0123456789';
-        $allChars = $uppercase . $lowercase . $numbers;
+        $allChars = $uppercase . $numbers;
 
         $otp = '';
         $length = strlen($allChars);
@@ -111,6 +111,11 @@ class RegistrationService
                 'resend_available_at' => now()->addMinutes(self::RESEND_COOLDOWN_MINUTES),
             ];
         } catch (Exception $e) {
+            Log::error('Patient OTP email delivery failed.', [
+                'email' => $email,
+                'exception' => $e,
+            ]);
+
             return [
                 'success' => false,
                 'message' => 'Failed to send OTP. Please try again.',
@@ -155,7 +160,7 @@ class RegistrationService
         }
 
         // Check if OTP code matches exactly
-        if ($otpRecord->code !== $otp) {
+        if (strtoupper((string) $otpRecord->code) !== strtoupper($otp)) {
             return [
                 'success' => false,
                 'message' => 'Invalid OTP. Please check the code sent to your email.',
