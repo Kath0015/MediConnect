@@ -2,17 +2,12 @@
 
 namespace App\Mail;
 
-use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
-use Illuminate\Queue\SerializesModels;
 
-class SendOTPMail extends Mailable implements ShouldQueue
+class SendOTPMail extends Mailable
 {
-    use Queueable, SerializesModels;
-
     public function __construct(
         public string $email,
         public string $otp,
