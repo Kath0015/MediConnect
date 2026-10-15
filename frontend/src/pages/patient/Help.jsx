@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { HelpCircle, ChevronDown, ChevronUp, MessageCircle, Phone, Mail, Search, Send, CheckCircle2 } from 'lucide-react';
+import { HelpCircle, ChevronDown, ChevronUp, MessageCircle, Phone, Mail, MapPin, Search, Send, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../../components/ui/dialog';
 
@@ -128,7 +128,15 @@ const Help = () => {
           <p className="text-xs text-slate-400 mt-1">Click to send ticket</p>
         </div>
 
-
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 text-center">
+          <div className="w-12 h-12 rounded-xl bg-[#7C3AED]/10 flex items-center justify-center mx-auto mb-3">
+            <MapPin className="w-6 h-6 text-[#7C3AED]" />
+          </div>
+          <p className="font-semibold text-slate-800 text-sm">Clinic Location</p>
+          <p className="text-sm mt-1 font-medium text-[#7C3AED] leading-relaxed">
+            Lomboy St., Brgy Paclasan, Roxas Oriental Mindoro, 5212
+          </p>
+        </div>
       </div>
 
       {/* Contact Support Dialog */}

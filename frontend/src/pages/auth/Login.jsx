@@ -254,7 +254,8 @@ export const Login = () => {
               <ul className="space-y-2 text-[#97E7F5]">
                 <li>{displaySystemSubtitle}</li>
                 <li>{branding.contactEmail}</li>
-                <li>{branding.contactPhone}</li>
+                <li>{branding.contactPhone || '09995014626'}</li>
+                <li>Lomboy St., Brgy Paclasan, Roxas Oriental Mindoro, 5212</li>
               </ul>
             </div>
           </div>

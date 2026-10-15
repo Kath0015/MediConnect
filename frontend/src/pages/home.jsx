@@ -149,6 +149,7 @@ const displayShortBrandLabel = displayShortBrand || 'Pareñas Medical Clinic';
   const displaySystemTitle = branding.systemTitle;
   const displaySystemSubtitle = branding.systemSubtitle;
 const contactPhone = branding.contactPhone || '09995014626';
+const clinicAddress = 'Lomboy St., Brgy Paclasan, Roxas Oriental Mindoro, 5212';
 
   const scrollToSection = (id) => {
     const element = document.getElementById(id);
@@ -398,6 +399,7 @@ const contactPhone = branding.contactPhone || '09995014626';
                     {contactPhone}
                   </a>
                 </li>
+                <li>{clinicAddress}</li>
               </ul>
             </div>
           </div>
