@@ -212,31 +212,40 @@ class AuthController extends Controller
 
     public function login(LoginUserRequest $request): \Illuminate\Http\JsonResponse
     {
-        $credentials = $request->only('email', 'password');
-        
-        if (!Auth::attempt($credentials)) {
-            return $this->error('Invalid credentials', 401);
+        try {
+            $credentials = $request->only('email', 'password');
+
+            if (!Auth::attempt($credentials)) {
+                return $this->error('This account does not exist or the password is incorrect.', 401);
+            }
+
+            /** @var \App\Models\User $user */
+            $user = Auth::user();
+
+            if (!$user->is_active) {
+                Auth::guard('web')->logout();
+                return $this->error('Your account has been deactivated. Please contact an administrator.', 403);
+            }
+
+            $user->load('roles:id,name');
+            $role = $user->roles()->first()->name ?? 'patient';
+            $user->setAttribute('role', $role);
+
+            $token = $user->createToken('auth_token', ['*'], now()->addDay())->plainTextToken;
+
+            return $this->ok('Login successful', [
+                'access_token' => $token,
+                'token_type' => 'Bearer',
+                'user' => $user,
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Login failed due to an internal error.', [
+                'exception' => $e,
+                'email' => $request->input('email'),
+            ]);
+
+            return $this->error('We cannot complete login right now. Please try again later.', 503);
         }
-
-        /** @var \App\Models\User $user */
-        $user = Auth::user();
-
-        if (!$user->is_active) {
-            Auth::guard('web')->logout();
-            return $this->error('Your account has been deactivated. Please contact an administrator.', 403);
-        }
-
-        $user->load('roles:id,name');
-        $role = $user->roles()->first()->name ?? 'patient';
-        $user->setAttribute('role', $role);
-
-        $token = $user->createToken('auth_token', ['*'], now()->addDay())->plainTextToken;
-
-        return $this->ok('Login successful', [
-            'access_token' => $token,
-            'token_type' => 'Bearer',
-            'user' => $user,
-        ]);
     }
 
     public function logout(Request $request)
