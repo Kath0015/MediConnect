@@ -175,6 +175,18 @@ class ClinicController extends Controller
         }
     }
 
+    public function saveScheduleSettings(Request $request)
+    {
+        $request->replace($request->only([
+            'open_time',
+            'close_time',
+            'working_days',
+            'appointment_interval',
+        ]));
+
+        return $this->saveSettings($request);
+    }
+
     public function listClosures()
     {
         try {

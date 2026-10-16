@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { HelpCircle, ChevronDown, ChevronUp, Search, Mail, Send, Phone, MessageCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../../components/ui/dialog';
+import { sendSupportRequest } from '../../api/Messages';
 
 const faqs = [
   { id: 1, q: 'How do I check-in an arriving patient?', a: 'Go to "Patient Check-In" from the sidebar, locate the patient in today\'s queue, and click "Check-In Now". You can also update their arrival time.' },
@@ -19,6 +20,7 @@ const ClinicianHelp = () => {
     category: 'System Support',
     message: '',
   });
+  const [sending, setSending] = useState(false);
 
   const filtered = faqs.filter(
     (f) =>
@@ -26,15 +28,26 @@ const ClinicianHelp = () => {
       f.a.toLowerCase().includes(search.toLowerCase())
   );
 
-  const handleSubmitTicket = (e) => {
+  const handleSubmitTicket = async (e) => {
     e.preventDefault();
+    if (sending) return;
     if (!ticket.subject.trim() || !ticket.message.trim()) {
       toast.error('Please enter both subject and message');
       return;
     }
-    toast.success('Internal support inquiry submitted to IT Admin!');
-    setIsContactOpen(false);
-    setTicket({ subject: '', category: 'System Support', message: '' });
+
+    setSending(true);
+    try {
+      await sendSupportRequest(ticket);
+      toast.success('Internal support inquiry submitted to IT Admin!');
+      setIsContactOpen(false);
+      setTicket({ subject: '', category: 'System Support', message: '' });
+    } catch (error) {
+      console.error('Failed to submit support inquiry:', error);
+      toast.error(error.response?.data?.message || 'Failed to submit support inquiry');
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
@@ -140,9 +153,10 @@ const ClinicianHelp = () => {
               </button>
               <button
                 type="submit"
+                disabled={sending}
                 className="px-4 py-2 rounded-xl bg-[#26B170] hover:bg-[#1a8a55] text-white text-xs font-semibold flex items-center gap-1.5"
               >
-                <Send className="w-3.5 h-3.5" /> Submit Request
+                <Send className="w-3.5 h-3.5" /> {sending ? 'Sending...' : 'Submit Request'}
               </button>
             </div>
           </form>
@@ -153,4 +167,3 @@ const ClinicianHelp = () => {
 };
 
 export default ClinicianHelp;
-

@@ -280,6 +280,60 @@ class MessageController extends Controller
     }
 
     /**
+     * Send a help request to an active administrator.
+     */
+    public function sendSupportRequest(Request $request)
+    {
+        $validated = $request->validate([
+            'category' => 'required|string|max:100',
+            'subject' => 'required|string|max:255',
+            'message' => 'required|string|max:5000',
+        ]);
+
+        $sender = $request->user();
+        $administrator = User::where('is_active', true)
+            ->whereHas('roles', fn ($query) => $query->where('name', 'admin'))
+            ->orderBy('id')
+            ->first();
+
+        if (!$administrator) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No active administrator is available to receive support requests.',
+            ], 503);
+        }
+
+        if (!$this->messageRoutingService->canMessage($sender, $administrator)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You are not authorized to contact an administrator.',
+            ], 403);
+        }
+
+        $message = Message::create([
+            'sender_id' => $sender->id,
+            'receiver_id' => $administrator->id,
+            'message' => sprintf(
+                "[Support Request] %s\nCategory: %s\n\n%s",
+                trim($validated['subject']),
+                trim($validated['category']),
+                trim($validated['message'])
+            ),
+            'is_read' => false,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Support request sent to the administrator.',
+            'data' => [
+                'id' => $message->id,
+                'receiver_id' => $administrator->id,
+                'created_at' => $message->created_at,
+            ],
+        ], 201);
+    }
+
+    /**
      * Get total unread message count for the authenticated user.
      */
     public function unreadCount(Request $request)

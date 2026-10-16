@@ -24,7 +24,7 @@ class AdminController extends Controller
         try {
             // Eager-load patient relationship so we can return patient-specific fields
             $users = User::with('patient', 'roles')
-                ->select('id', 'name', 'email', 'phone', 'date_of_birth', 'is_active', 'created_at', 'updated_at')
+                ->select('id', 'name', 'email', 'phone', 'is_active', 'created_at', 'updated_at')
                 ->get()
                 ->map(function ($user) {
                     $roleName = 'patient'; // default role
@@ -63,6 +63,48 @@ class AdminController extends Controller
         } catch (\Exception $e) {
             Log::error('Failed to retrieve users: ' . $e->getMessage());
             return $this->error('Failed to retrieve users: ' . $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Create a doctor or clinician account for clinic staff.
+     */
+    public function createStaffUser(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', 'max:255', 'unique:users,email'],
+            'phone' => ['nullable', 'string', 'max:20'],
+            'role' => ['required', 'in:doctor,clinician'],
+            'password' => ['required', 'confirmed', \Illuminate\Validation\Rules\Password::defaults()],
+        ]);
+
+        try {
+            $user = User::create([
+                'name' => trim($validated['name']),
+                'email' => strtolower(trim($validated['email'])),
+                'phone' => $validated['phone'] ?? null,
+                'password' => Hash::make($validated['password']),
+                'is_active' => true,
+            ]);
+
+            Role::firstOrCreate(['name' => $validated['role']]);
+            $user->assignRole($validated['role']);
+
+            return $this->success('Staff account created successfully', [
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'phone' => $user->phone,
+                    'role' => $validated['role'],
+                    'is_active' => $user->is_active,
+                    'created_at' => $user->created_at?->toISOString(),
+                ],
+            ], 201);
+        } catch (\Exception $e) {
+            Log::error('Failed to create staff account: ' . $e->getMessage());
+            return $this->error('Failed to create staff account. Please try again.', 500);
         }
     }
 

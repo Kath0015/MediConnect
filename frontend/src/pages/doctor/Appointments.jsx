@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Search, Clock, CheckCircle, XCircle, Eye, Plus, Filter, User, AlertCircle, RefreshCw } from 'lucide-react';
+import { Calendar, Search, XCircle, Eye, RefreshCw, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../../components/ui/dialog';
 import api from '../../api/axios';
@@ -21,15 +21,10 @@ const DoctorAppointments = () => {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [selectedAppt, setSelectedAppt] = useState(null);
-  const [isNewModalOpen, setIsNewModalOpen] = useState(false);
+  const [rescheduleAppt, setRescheduleAppt] = useState(null);
+  const [rescheduleDate, setRescheduleDate] = useState('');
+  const [rescheduleTime, setRescheduleTime] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [newAppt, setNewAppt] = useState({
-    patient: '',
-    type: 'General Consultation',
-    date: new Date().toISOString().split('T')[0],
-    time: '09:00',
-    notes: '',
-  });
 
   const loadAppointments = async () => {
     try {
@@ -40,6 +35,8 @@ const DoctorAppointments = () => {
         const start = a.start_time ? new Date(a.start_time) : null;
         return {
           id: a.id,
+          rawStartTime: a.start_time,
+          rawEndTime: a.end_time,
           patient: a.patient?.user?.name || a.patient?.name || 'Walk-In Patient',
           type: a.appointment_type?.name || a.title || 'Consultation',
           date: start ? start.toISOString().split('T')[0] : '—',
@@ -63,7 +60,9 @@ const DoctorAppointments = () => {
 
   const filtered = appts.filter((a) => {
     const matchesSearch = a.patient?.toLowerCase().includes(search.toLowerCase()) || a.type?.toLowerCase().includes(search.toLowerCase());
-    const matchesFilter = statusFilter === 'All' || a.status?.toLowerCase() === statusFilter.toLowerCase();
+    const matchesFilter = statusFilter === 'All'
+      || a.status?.toLowerCase() === statusFilter.toLowerCase()
+      || (statusFilter === 'Pending' && a.status?.toLowerCase() === 'scheduled');
     return matchesSearch && matchesFilter;
   });
 
@@ -99,6 +98,53 @@ const DoctorAppointments = () => {
     } catch (err) {
       console.error('Failed to cancel appointment:', err);
       toast.error('Failed to cancel appointment');
+    }
+  };
+
+  const openReschedule = (appt) => {
+    if (!appt.rawStartTime || !['pending', 'confirmed'].includes(appt.status.toLowerCase()) && appt.status.toLowerCase() !== 'scheduled') {
+      toast.error('Only pending or confirmed appointments can be rescheduled');
+      return;
+    }
+    const start = new Date(appt.rawStartTime);
+    if (Number.isNaN(start.getTime())) {
+      toast.error('This appointment has an invalid date');
+      return;
+    }
+    setRescheduleDate(start.toISOString().slice(0, 10));
+    setRescheduleTime(start.toTimeString().slice(0, 5));
+    setRescheduleAppt(appt);
+  };
+
+  const submitReschedule = async (event) => {
+    event.preventDefault();
+    if (!rescheduleAppt || !rescheduleDate || !rescheduleTime) return;
+
+    const start = new Date(`${rescheduleDate}T${rescheduleTime}`);
+    if (Number.isNaN(start.getTime()) || start <= new Date()) {
+      toast.error('Choose a valid future date and time');
+      return;
+    }
+
+    const oldStart = new Date(rescheduleAppt.rawStartTime);
+    const oldEnd = rescheduleAppt.rawEndTime ? new Date(rescheduleAppt.rawEndTime) : oldStart;
+    const duration = Math.max(1, oldEnd.getTime() - oldStart.getTime());
+    const end = new Date(start.getTime() + duration);
+
+    setIsSubmitting(true);
+    try {
+      await api.put(`/api/appointments/${rescheduleAppt.id}`, {
+        start_time: start.toISOString(),
+        end_time: end.toISOString(),
+      });
+      toast.success('Appointment rescheduled successfully');
+      setRescheduleAppt(null);
+      await loadAppointments();
+    } catch (err) {
+      console.error('Failed to reschedule appointment:', err);
+      toast.error(err.response?.data?.message || 'Failed to reschedule appointment');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -218,6 +264,15 @@ const DoctorAppointments = () => {
                       >
                         <Eye className="w-4 h-4" />
                       </button>
+                      {['pending', 'confirmed', 'scheduled'].includes(a.status?.toLowerCase()) && (
+                        <button
+                          onClick={() => openReschedule(a)}
+                          className="p-1.5 rounded-lg hover:bg-cyan-50 text-slate-400 hover:text-cyan-600 transition-colors"
+                          title="Reschedule"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                      )}
                       {a.status?.toLowerCase() !== 'cancelled' && a.status?.toLowerCase() !== 'completed' && (
                         <button
                           onClick={() => handleCancel(a)}
@@ -283,6 +338,50 @@ const DoctorAppointments = () => {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!rescheduleAppt} onOpenChange={(open) => !open && setRescheduleAppt(null)}>
+        <DialogContent className="max-w-md bg-white p-6 rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold text-slate-900">Reschedule Appointment</DialogTitle>
+            <DialogDescription className="text-xs text-slate-500">
+              Choose a new date and time for {rescheduleAppt?.patient || 'this patient'}.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={submitReschedule} className="space-y-4 pt-2">
+            <div>
+              <label htmlFor="doctor-reschedule-date" className="text-xs font-semibold text-slate-700 block mb-1">New Date</label>
+              <input
+                id="doctor-reschedule-date"
+                type="date"
+                required
+                min={new Date().toISOString().slice(0, 10)}
+                value={rescheduleDate}
+                onChange={(event) => setRescheduleDate(event.target.value)}
+                className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm"
+              />
+            </div>
+            <div>
+              <label htmlFor="doctor-reschedule-time" className="text-xs font-semibold text-slate-700 block mb-1">New Time</label>
+              <input
+                id="doctor-reschedule-time"
+                type="time"
+                required
+                value={rescheduleTime}
+                onChange={(event) => setRescheduleTime(event.target.value)}
+                className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm"
+              />
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <button type="button" onClick={() => setRescheduleAppt(null)} className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 text-xs font-medium">
+                Cancel
+              </button>
+              <button type="submit" disabled={isSubmitting} className="px-4 py-2 rounded-xl bg-[#7C3AED] text-white text-xs font-semibold disabled:opacity-60">
+                {isSubmitting ? 'Saving...' : 'Save Reschedule'}
+              </button>
+            </div>
+          </form>
         </DialogContent>
       </Dialog>
     </div>

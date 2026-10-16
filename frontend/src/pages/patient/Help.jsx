@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { HelpCircle, ChevronDown, ChevronUp, MessageCircle, Phone, Mail, MapPin, Search, Send, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../../components/ui/dialog';
+import { sendSupportRequest } from '../../api/Messages';
 
 const faqs = [
   { id: 1, q: 'How do I book an appointment?', a: 'Go to "My Appointments" in the sidebar, then click "Book New Appointment". Select the appointment type, date, time, and reason for your visit, then submit your request. Clinic staff will review and confirm it.' },
@@ -23,6 +24,7 @@ const Help = () => {
     category: 'Appointment Inquiry',
     message: '',
   });
+  const [sending, setSending] = useState(false);
 
   const filtered = faqs.filter(
     (f) =>
@@ -30,15 +32,26 @@ const Help = () => {
       f.a.toLowerCase().includes(search.toLowerCase())
   );
 
-  const handleSubmitTicket = (e) => {
+  const handleSubmitTicket = async (e) => {
     e.preventDefault();
+    if (sending) return;
     if (!ticket.subject.trim() || !ticket.message.trim()) {
       toast.error('Please fill in both subject and message');
       return;
     }
-    toast.success('Your support message has been sent to clinic staff! We will respond within 24 hours.');
-    setIsContactOpen(false);
-    setTicket({ subject: '', category: 'Appointment Inquiry', message: '' });
+
+    setSending(true);
+    try {
+      await sendSupportRequest(ticket);
+      toast.success('Your support message has been sent to clinic staff!');
+      setIsContactOpen(false);
+      setTicket({ subject: '', category: 'Appointment Inquiry', message: '' });
+    } catch (error) {
+      console.error('Failed to submit support message:', error);
+      toast.error(error.response?.data?.message || 'Failed to submit support message');
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
@@ -198,9 +211,10 @@ const Help = () => {
               </button>
               <button
                 type="submit"
+                disabled={sending}
                 className="px-4 py-2 rounded-xl bg-[#009DD1] hover:bg-[#01377D] text-white text-xs font-semibold flex items-center gap-1.5"
               >
-                <Send className="w-3.5 h-3.5" /> Send Message
+                <Send className="w-3.5 h-3.5" /> {sending ? 'Sending...' : 'Send Message'}
               </button>
             </div>
           </form>

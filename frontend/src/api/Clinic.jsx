@@ -16,6 +16,14 @@ export const saveClinicSettings = async (data) => {
   return api.post('/api/admin/clinic/settings', data);
 };
 
+export const getClinicianClinicSettings = async () => {
+  return api.get('/api/clinician/clinic/settings');
+};
+
+export const saveClinicianClinicSettings = async (data) => {
+  return api.post('/api/clinician/clinic/settings', data);
+};
+
 export const listClinicClosures = async () => {
   return api.get('/api/admin/clinic/closures');
 };

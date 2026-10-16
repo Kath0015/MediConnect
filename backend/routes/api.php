@@ -129,6 +129,7 @@ Route::middleware(['web', 'auth:sanctum', 'throttle:300,1'])->group(function () 
     Route::get('/messages/contacts/suggested', [MessageController::class, 'suggestedContacts']);
     Route::get('/messages/unread-count', [MessageController::class, 'unreadCount']);
     Route::get('/messages/stats', [MessageController::class, 'getMessagingStats']);
+    Route::post('/messages/support-request', [MessageController::class, 'sendSupportRequest']);
     Route::get('/messages/{userId}', [MessageController::class, 'messages']);
     Route::get('/messages/{userId}/has-conversation', [MessageController::class, 'hasConversation']);
     Route::post('/messages', [MessageController::class, 'send']);
@@ -214,6 +215,8 @@ Route::middleware(['web', 'auth:sanctum', 'throttle:300,1'])->group(function () 
     
     Route::middleware(['role:clinician'])->group(function () {
         Route::get('/clinician/dashboard/stats', [DashboardController::class, 'clinicianStats']);
+        Route::get('/clinician/clinic/settings', [ClinicController::class, 'getSettings']);
+        Route::post('/clinician/clinic/settings', [ClinicController::class, 'saveScheduleSettings']);
     });
 
     // Document Types - GET is public (for dropdowns), others are admin only

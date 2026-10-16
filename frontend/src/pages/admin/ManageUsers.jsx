@@ -7,7 +7,7 @@ import { Badge } from '../../components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { Label } from '../../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
-import { Search, Edit, UserCheck, UserX, AlertCircle, Users, Eye, Sparkles, ChevronLeft, ChevronRight, Filter, ChevronDown, Check, X, Loader2 } from 'lucide-react';
+import { Search, Edit, UserCheck, UserX, AlertCircle, Users, Eye, Sparkles, ChevronLeft, ChevronRight, Filter, ChevronDown, Check, X, Loader2, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import api from '../../api/axios';
 import AdminPageSkeleton from '../../components/admin/AdminPageSkeleton';
@@ -16,6 +16,7 @@ export const ManageUsers = () => {
   const ROLE_OPTIONS = useMemo(() => ([
     { value: 'all', label: 'All Roles' },
     { value: 'admin', label: 'Admin' },
+    { value: 'doctor', label: 'Doctor' },
     { value: 'clinician', label: 'Clinician' },
     { value: 'patient', label: 'Patient' },
   ]), []);
@@ -34,6 +35,16 @@ export const ManageUsers = () => {
   // View user modal
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [viewUser, setViewUser] = useState(null);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [creatingUser, setCreatingUser] = useState(false);
+  const [createForm, setCreateForm] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    role: 'clinician',
+    password: '',
+    password_confirmation: '',
+  });
   const roleFilterMenuRef = useRef(null);
   const filterLoadingTimeoutRef = useRef(null);
 
@@ -76,6 +87,41 @@ export const ManageUsers = () => {
       role: user.role
     });
     setEditDialogOpen(true);
+  };
+
+  const handleCreateUser = async (event) => {
+    event.preventDefault();
+    if (creatingUser) return;
+
+    if (createForm.password !== createForm.password_confirmation) {
+      toast.error('Passwords do not match');
+      return;
+    }
+
+    setCreatingUser(true);
+    try {
+      await api.post('/api/v1/admin/users', createForm);
+      toast.success('Staff account created successfully');
+      setCreateDialogOpen(false);
+      setCreateForm({
+        name: '',
+        email: '',
+        phone: '',
+        role: 'clinician',
+        password: '',
+        password_confirmation: '',
+      });
+      fetchUsers();
+    } catch (error) {
+      console.error('Error creating staff account:', error);
+      const validationErrors = error.response?.data?.errors;
+      const firstValidationError = validationErrors
+        ? Object.values(validationErrors).flat()[0]
+        : null;
+      toast.error(firstValidationError || error.response?.data?.message || 'Failed to create staff account');
+    } finally {
+      setCreatingUser(false);
+    }
   };
 
   const handleUpdateUser = async () => {
@@ -177,6 +223,7 @@ export const ManageUsers = () => {
   const getRoleBadgeColor = (role) => {
     const colors = {
       admin: 'border-blue-200 bg-blue-50 text-blue-700',
+      doctor: 'border-violet-200 bg-violet-50 text-violet-700',
       clinician: 'border-cyan-200 bg-cyan-50 text-cyan-700',
       patient: 'border-emerald-200 bg-emerald-50 text-emerald-700',
       default: 'border-slate-200 bg-slate-100 text-slate-700'
@@ -219,7 +266,12 @@ export const ManageUsers = () => {
             Access control overview
           </div>
           <h2 className="text-2xl font-semibold">Manage Users</h2>
-          <p className="max-w-2xl text-sm text-cyan-100/90">Manage account roles, activation status, and user details with a cleaner and more focused admin workspace.</p>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <p className="max-w-2xl text-sm text-cyan-100/90">Manage account roles, activation status, and user details with a cleaner and more focused admin workspace.</p>
+            <Button onClick={() => setCreateDialogOpen(true)} className="bg-[#26B170] text-white hover:bg-[#1a8a55]">
+              <Plus className="mr-2 h-4 w-4" /> Create Staff Account
+            </Button>
+          </div>
         </div>
 
         {/* Stats Cards */}
@@ -497,6 +549,60 @@ export const ManageUsers = () => {
         </Card>
 
         {/* Edit User Dialog */}
+        <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+          <DialogContent className="w-[min(92vw,560px)] max-h-[90vh] overflow-y-auto rounded-2xl border border-cyan-100 bg-white p-4 sm:p-6">
+            <DialogHeader>
+              <DialogTitle className="text-[#01377D]">Create Staff Account</DialogTitle>
+              <DialogDescription className="text-[#009DD1]">
+                Create a login for a doctor or clinic staff member.
+              </DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleCreateUser} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="create-name" className="text-[#01377D] font-semibold">Full Name</Label>
+                <Input id="create-name" required value={createForm.name} onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })} placeholder="Dr. Maria Santos" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="create-email" className="text-[#01377D] font-semibold">Email</Label>
+                <Input id="create-email" required type="email" value={createForm.email} onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })} placeholder="maria@example.com" />
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="create-phone" className="text-[#01377D] font-semibold">Phone</Label>
+                  <Input id="create-phone" value={createForm.phone} onChange={(e) => setCreateForm({ ...createForm, phone: e.target.value })} placeholder="09123456789" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="create-role" className="text-[#01377D] font-semibold">Role</Label>
+                  <Select value={createForm.role} onValueChange={(role) => setCreateForm({ ...createForm, role })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent className="bg-white">
+                      <SelectItem value="clinician">Clinic Staff</SelectItem>
+                      <SelectItem value="doctor">Doctor</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="create-password" className="text-[#01377D] font-semibold">Temporary Password</Label>
+                  <Input id="create-password" required type="password" value={createForm.password} onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="create-password-confirmation" className="text-[#01377D] font-semibold">Confirm Password</Label>
+                  <Input id="create-password-confirmation" required type="password" value={createForm.password_confirmation} onChange={(e) => setCreateForm({ ...createForm, password_confirmation: e.target.value })} />
+                </div>
+              </div>
+              <p className="text-xs text-slate-500">Give the temporary password to the staff member securely and ask them to change it after signing in.</p>
+              <div className="flex justify-end gap-3 pt-2">
+                <Button type="button" variant="outline" onClick={() => setCreateDialogOpen(false)}>Cancel</Button>
+                <Button type="submit" disabled={creatingUser} className="bg-[#26B170] text-white hover:bg-[#1a8a55]">
+                  {creatingUser ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Creating...</> : 'Create Account'}
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+
         <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
           <DialogContent className="w-[min(92vw,640px)] max-h-[86vh] overflow-y-auto rounded-2xl border border-cyan-100 bg-white p-4 sm:max-h-[90vh] sm:p-6">
             <DialogHeader>

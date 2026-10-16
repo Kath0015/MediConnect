@@ -25,6 +25,10 @@ export const sendMessage = async (data) => {
   return api.post('/api/messages', data);
 };
 
+export const sendSupportRequest = async (data) => {
+  return api.post('/api/messages/support-request', data);
+};
+
 export const getUnreadMessageCount = async () => {
   return api.get('/api/messages/unread-count');
 };

@@ -497,7 +497,7 @@ export const Profile = () => {
                         <span className="text-sm font-semibold text-[#01377D]">Department</span>
                       </div>
                       <p className="text-[#01377D] bg-[#97E7F5]/20 rounded-lg p-3">
-                        {user.department || 'University Clinic'}
+                        {user.department || 'Pareñas Medical Clinic'}
                       </p>
                     </div>
 

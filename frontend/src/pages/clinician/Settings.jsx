@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
@@ -28,6 +28,17 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import StaffRoleBanner from '../../components/staff/StaffRoleBanner';
+import { getClinicianClinicSettings, saveClinicianClinicSettings } from '../../api/Clinic';
+
+const weekdayKeys = {
+  mon: 'monday',
+  tue: 'tuesday',
+  wed: 'wednesday',
+  thu: 'thursday',
+  fri: 'friday',
+  sat: 'saturday',
+  sun: 'sunday',
+};
 
 const Settings = () => {
   const navigate = useNavigate();
@@ -54,6 +65,33 @@ const Settings = () => {
     end_time: '17:00'
   });
 
+  useEffect(() => {
+    const loadScheduleSettings = async () => {
+      try {
+        const response = await getClinicianClinicSettings();
+        const settings = response.data?.data?.settings || response.data?.settings || null;
+        if (!settings) return;
+
+        const savedDays = Array.isArray(settings.working_days)
+          ? settings.working_days.map((day) => weekdayKeys[day] || day).filter((day) => Object.values(weekdayKeys).includes(day))
+          : [];
+
+        setScheduleSettings((current) => ({
+          ...current,
+          default_appointment_duration: String(settings.appointment_interval || current.default_appointment_duration),
+          working_days: savedDays.length > 0 ? savedDays : current.working_days,
+          start_time: settings.open_time?.slice(0, 5) || current.start_time,
+          end_time: settings.close_time?.slice(0, 5) || current.end_time,
+        }));
+      } catch (error) {
+        console.error('Error loading schedule settings:', error);
+        toast.error('Failed to load schedule settings');
+      }
+    };
+
+    loadScheduleSettings();
+  }, []);
+
   const handleGoToProfile = () => {
     navigate('/auth/profile');
   };
@@ -75,12 +113,27 @@ const Settings = () => {
   };
 
   const handleSaveSchedule = async () => {
+    const maxDailyAppointments = Number(scheduleSettings.max_daily_appointments);
+    if (!Number.isInteger(maxDailyAppointments) || maxDailyAppointments < 1) {
+      toast.error('Max daily appointments must be at least 1');
+      return;
+    }
+
+    if (scheduleSettings.start_time >= scheduleSettings.end_time) {
+      toast.error('Working hours end time must be after start time');
+      return;
+    }
+
     setLoading(true);
     try {
-      // TODO: Replace with actual API call
-      // await updateScheduleSettings(scheduleSettings);
-      
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await saveClinicianClinicSettings({
+        appointment_interval: Number(scheduleSettings.default_appointment_duration),
+        open_time: scheduleSettings.start_time,
+        close_time: scheduleSettings.end_time,
+        working_days: scheduleSettings.working_days.map((day) =>
+          Object.entries(weekdayKeys).find(([, fullName]) => fullName === day)?.[0] || day
+        ),
+      });
       toast.success('Schedule settings updated');
     } catch (error) {
       console.error('Error updating schedule settings:', error);

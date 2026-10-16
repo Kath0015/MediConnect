@@ -260,8 +260,14 @@ export const Appointments = () => {
     return '';
   };
 
-  const getStartDate = (apt) => (apt?.start_time ? new Date(apt.start_time) : null);
-  const getEndDate = (apt) => (apt?.end_time ? new Date(apt.end_time) : null);
+  const parseAppointmentDate = (value) => {
+    if (!value) return null;
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date;
+  };
+
+  const getStartDate = (apt) => parseAppointmentDate(apt?.start_time);
+  const getEndDate = (apt) => parseAppointmentDate(apt?.end_time);
 
   const getAppointmentTypeMeta = (apt) => {
     if (!apt) return null;
@@ -971,8 +977,8 @@ export const Appointments = () => {
                     {formatStatus(selectedAppointment.status)}
                   </Badge>
                   <span className="text-xs text-purple-600">
-                    {selectedAppointment.updated_at 
-                      ? `Updated ${format(new Date(selectedAppointment.updated_at), 'PP')}` 
+                    {parseAppointmentDate(selectedAppointment.updated_at)
+                      ? `Updated ${format(parseAppointmentDate(selectedAppointment.updated_at), 'PP')}`
                       : ''}
                   </span>
                 </div>
