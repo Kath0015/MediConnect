@@ -127,7 +127,7 @@ export const Signup = () => {
           </CardHeader>
 
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-5">
+            <form onSubmit={handleSubmit} autoComplete="off" className="space-y-5">
               {/* Personal Information */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
@@ -150,6 +150,7 @@ export const Signup = () => {
                     id="email"
                     name="email"
                     type="email"
+                    autoComplete="off"
                     placeholder="you@example.com"
                     value={formData.email}
                     onChange={handleChange}
@@ -199,6 +200,7 @@ export const Signup = () => {
                         id="password"
                         name="password"
                         type={showPassword ? "text" : "password"}
+                        autoComplete="new-password"
                         placeholder="••••••••"
                         value={formData.password}
                         onChange={handleChange}
@@ -227,6 +229,7 @@ export const Signup = () => {
                         id="password_confirmation"
                         name="password_confirmation"
                         type={showConfirmPassword ? "text" : "password"}
+                        autoComplete="new-password"
                         placeholder="••••••••"
                         value={formData.password_confirmation}
                         onChange={handleChange}
