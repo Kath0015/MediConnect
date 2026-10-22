@@ -19,7 +19,6 @@ export const Login = () => {
   const navigate = useNavigate();
   const displayBrand = branding?.brandName;
   const displayShortBrand = branding?.shortBrandName || branding?.shortBrand;
-  const displaySystemSubtitle = branding?.systemSubtitle;
   const displayBrandLabel = displayBrand || 'Pareñas Medical Clinic';
   const displayShortBrandLabel = displayShortBrand || 'Pareñas Medical Clinic';
   const handleSubmit = async (e) => {
@@ -254,9 +253,7 @@ export const Login = () => {
             <div>
               <h3 className="font-semibold mb-4">Contact</h3>
               <ul className="space-y-2 text-[#97E7F5]">
-                <li>{displaySystemSubtitle}</li>
-                <li>{branding.contactEmail}</li>
-                <li>{branding.contactPhone || '09995014626'}</li>
+                <li>{branding.contactPhone || '0999-501-4626'}</li>
                 <li>Lomboy St., Brgy Paclasan, Roxas Oriental Mindoro, 5212</li>
               </ul>
             </div>

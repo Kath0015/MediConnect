@@ -3,18 +3,12 @@ import { FileText, Search, Eye, Download, Calendar, User, Stethoscope } from 'lu
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../../components/ui/dialog';
 
-const mockRecords = [
-  { id: 1, patient: 'Maria Santos', type: 'Consultation', doctor: 'Dr. Santos', date: '2026-08-10', diagnosis: 'Upper Respiratory Tract Infection', notes: 'Patient presented with 3-day cough and mild fever. Prescribed Amoxicillin 500mg TID.', status: 'Complete' },
-  { id: 2, patient: 'Juan dela Cruz', type: 'Follow-up', doctor: 'Dr. Reyes', date: '2026-08-08', diagnosis: 'Type 2 Diabetes – monitoring', notes: 'Fasting blood glucose 110 mg/dL. Continue Metformin 500mg BID.', status: 'Complete' },
-  { id: 3, patient: 'Ana Reyes', type: 'Consultation', doctor: 'Dr. Cruz', date: '2026-08-05', diagnosis: 'Hypertension Stage 1', notes: 'BP 140/90. Dietary sodium restriction advised. Prescribed Losartan 50mg OD.', status: 'Complete' },
-  { id: 4, patient: 'Pedro Lim', type: 'Emergency', doctor: 'Dr. Santos', date: '2026-08-15', diagnosis: 'Chest pain – evaluation', notes: 'ECG normal sinus rhythm. Referred for cardiac enzyme panel.', status: 'Pending' },
-];
-
 const AdminMedicalRecords = () => {
+  const records = [];
   const [search, setSearch] = useState('');
   const [selectedRecord, setSelectedRecord] = useState(null);
 
-  const filtered = mockRecords.filter((r) =>
+  const filtered = records.filter((r) =>
     r.patient.toLowerCase().includes(search.toLowerCase()) ||
     r.diagnosis.toLowerCase().includes(search.toLowerCase()) ||
     r.doctor.toLowerCase().includes(search.toLowerCase())
@@ -169,4 +163,3 @@ const AdminMedicalRecords = () => {
 };
 
 export default AdminMedicalRecords;
-

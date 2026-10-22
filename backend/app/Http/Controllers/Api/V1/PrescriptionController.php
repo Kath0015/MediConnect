@@ -90,6 +90,12 @@ class PrescriptionController extends Controller
 
         $prescription = Prescription::create($validated);
 
+        activity()
+            ->causedBy($request->user())
+            ->performedOn($prescription)
+            ->withProperties(['ip' => $request->ip()])
+            ->log('prescription_created');
+
         return response()->json($prescription, Response::HTTP_CREATED);
     }
 
@@ -109,11 +115,23 @@ class PrescriptionController extends Controller
 
         $prescription->update($validated);
 
+        activity()
+            ->causedBy($request->user())
+            ->performedOn($prescription)
+            ->withProperties(['ip' => $request->ip()])
+            ->log('prescription_updated');
+
         return response()->json($prescription);
     }
 
     public function destroy(Prescription $prescription)
     {
+        activity()
+            ->causedBy(request()->user())
+            ->performedOn($prescription)
+            ->withProperties(['ip' => request()->ip()])
+            ->log('prescription_deleted');
+
         $prescription->delete();
 
         return response()->json(['message' => 'Prescription deleted successfully']);

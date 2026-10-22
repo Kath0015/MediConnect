@@ -35,6 +35,7 @@ class MedCertApprovedMail extends Mailable
                 'medCert' => $this->medCert,
                 'patientName' => $this->medCert->patient?->user?->name ?? 'Patient',
                 'pickupDate' => $this->medCert->pickup_date ? \Carbon\Carbon::parse($this->medCert->pickup_date)->format('F j, Y') : 'TBD',
+                'deliveryMethod' => $this->medCert->delivery_method ?? 'pickup',
             ],
         );
     }

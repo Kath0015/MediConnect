@@ -25,10 +25,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/user/change-password', [AuthController::class, 'changePassword']);
 });
 
-// Admin routes - temporarily without role middleware for testing
-Route::middleware(['auth:sanctum'])->prefix('admin')->group(function () {
+Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(function () {
     Route::get('/users', [AdminController::class, 'getUsers']);
-    Route::post('/users', [AdminController::class, 'createStaffUser'])->middleware('role:admin');
+    Route::post('/users', [AdminController::class, 'createStaffUser']);
     Route::get('/users/{id}', [AdminController::class, 'getUser']);
     Route::put('/users/{id}', [AdminController::class, 'updateUser']);
     Route::patch('/users/{id}/toggle-status', [AdminController::class, 'toggleUserStatus']);

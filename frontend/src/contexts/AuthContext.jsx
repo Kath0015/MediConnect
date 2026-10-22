@@ -1,6 +1,5 @@
 // src/contexts/AuthContext.jsx
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import api from '../api/axios';
 import { register, login as loginAPI, logout as logoutAPI, getUser, updateProfile as updateProfileAPI, changePassword as changePasswordAPI } from '../api/Auth';
 import toast from 'react-hot-toast';
 
@@ -136,6 +135,12 @@ export function AuthProvider({ children }) {
       setLoading(true);
       const response = await loginAPI(credentials);
 
+      const accessToken = response.data.data?.access_token || response.data.access_token;
+      if (!accessToken) {
+        throw new Error('Login succeeded but no access token was returned.');
+      }
+      localStorage.setItem('auth_token', accessToken);
+
       const userData = response.data.data?.user || response.data.data || response.data.user || response.data;
       const normalizedUser = normalizeUser(userData);
 
@@ -158,6 +163,7 @@ export function AuthProvider({ children }) {
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
+      localStorage.removeItem('auth_token');
       setUser(null);
       toast.success('Logged out successfully');
     }

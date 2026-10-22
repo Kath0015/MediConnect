@@ -1,14 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { CreditCard, TrendingUp, DollarSign, Calendar, Search, Eye, Download, CheckCircle, Clock, XCircle, Plus, FileText, Printer, Trash2, RefreshCw } from 'lucide-react';
+import { CreditCard, TrendingUp, DollarSign, Calendar, Search, Eye, Download, Clock, XCircle, Plus, FileText, Printer, Trash2, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../../components/ui/dialog';
 import { getInvoices, createInvoice, markInvoicePaid, deleteInvoice } from '../../api/Invoices';
-
-const statusConfig = {
-  Paid: { icon: CheckCircle, color: 'text-emerald-600', badge: 'bg-emerald-100 text-emerald-700' },
-  Unpaid: { icon: XCircle, color: 'text-rose-500', badge: 'bg-rose-100 text-rose-700' },
-  Pending: { icon: Clock, color: 'text-amber-500', badge: 'bg-amber-100 text-amber-700' },
-};
+import { formatAdminDate, toTitleCase } from '../../utils/formatters';
+import { getStatusBadgeTokens } from '../../utils/statusTokens';
 
 const AdminBilling = () => {
   const [bills, setBills] = useState([]);
@@ -35,7 +31,7 @@ const AdminBilling = () => {
         patient: b.patient_name,
         service: b.service,
         amount: parseFloat(b.amount) || 0,
-        date: b.date || b.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
+        date: formatAdminDate(b.date || b.created_at),
         status: b.status || 'Pending',
         method: b.payment_method || '—',
         reference: b.reference_number || '—',
@@ -212,17 +208,16 @@ const AdminBilling = () => {
               </tr>
             ) : (
               filtered.map((b) => {
-                const sc = statusConfig[b.status] || statusConfig.Pending;
                 return (
                   <tr key={b.id} className="hover:bg-slate-50/50 transition-colors">
                     <td className="px-5 py-4 font-mono text-xs text-[#009DD1] font-semibold">{b.id}</td>
                     <td className="px-5 py-4 font-medium text-slate-900">{b.patient}</td>
-                    <td className="px-5 py-4 text-slate-600">{b.service}</td>
+                    <td className="px-5 py-4 text-slate-600">{toTitleCase(b.service)}</td>
                     <td className="px-5 py-4 font-semibold text-slate-800">₱{b.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                     <td className="px-5 py-4 text-slate-600 whitespace-nowrap">{b.date}</td>
                     <td className="px-5 py-4 text-slate-600">{b.method}</td>
                     <td className="px-5 py-4">
-                      <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${sc.badge}`}>{b.status}</span>
+                      <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${getStatusBadgeTokens(b.status)}`}>{b.status}</span>
                     </td>
                     <td className="px-5 py-4 flex items-center gap-1">
                       <button
@@ -378,7 +373,7 @@ const AdminBilling = () => {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-xs text-slate-500">Service Rendered:</span>
-                  <span className="text-sm text-slate-700">{selectedBill.service}</span>
+                  <span className="text-sm text-slate-700">{toTitleCase(selectedBill.service)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-xs text-slate-500">Amount:</span>
@@ -398,7 +393,7 @@ const AdminBilling = () => {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-xs text-slate-500">Status:</span>
-                  <span className={`text-xs px-2.5 py-0.5 rounded-full font-semibold ${(statusConfig[selectedBill.status] || statusConfig.Pending).badge}`}>
+                  <span className={`text-xs px-2.5 py-0.5 rounded-full font-semibold ${getStatusBadgeTokens(selectedBill.status)}`}>
                     {selectedBill.status}
                   </span>
                 </div>

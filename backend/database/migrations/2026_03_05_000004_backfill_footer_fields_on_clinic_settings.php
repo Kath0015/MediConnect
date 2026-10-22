@@ -15,13 +15,10 @@ return new class extends Migration {
             ->whereNull('footer_description')
             ->update(['footer_description' => 'Modern healthcare management for better care and operations.']);
 
-        DB::table('clinic_settings')
-            ->whereNull('contact_email')
-            ->update(['contact_email' => 'clinic@university.edu']);
 
         DB::table('clinic_settings')
             ->whereNull('contact_phone')
-            ->update(['contact_phone' => '(123) 456-7890']);
+            ->update(['contact_phone' => '0999-501-4626']);
     }
 
     public function down(): void

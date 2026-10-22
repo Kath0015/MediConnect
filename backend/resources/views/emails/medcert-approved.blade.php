@@ -70,18 +70,22 @@
                 <p><strong>Valid From:</strong> {{ \Carbon\Carbon::parse($medCert->start_date)->format('F j, Y') }}</p>
                 <p><strong>Valid Until:</strong> {{ \Carbon\Carbon::parse($medCert->end_date)->format('F j, Y') }}</p>
                 <p><strong>Duration:</strong> {{ $medCert->duration_days ?? 'N/A' }} days</p>
-                @if($pickupDate !== 'TBD')
+                @if($deliveryMethod === 'pickup' && $pickupDate !== 'TBD')
                     <p><strong>Pickup Date:</strong> {{ $pickupDate }}</p>
                 @endif
             </div>
 
-            <p>Please visit our clinic during business hours to pick up your certificate. If you have any questions or need to reschedule, please don't hesitate to contact us.</p>
+            @if($deliveryMethod === 'digital')
+                <p>Your certificate will be made available securely in your patient portal after clinic staff upload the finalized PDF.</p>
+            @else
+                <p>Please visit our clinic during business hours to pick up your certificate. If you have any questions or need to reschedule, please don't hesitate to contact us.</p>
+            @endif
 
             <p>Best regards,<br/>
-            <strong>Clinic and Laboratory</strong></p>
+            <strong>Pareñas Medical Clinic</strong></p>
         </div>
         <div class="footer">
-            <p>This is an automated email from Clinic and Laboratory. Please do not reply to this email.</p>
+            <p>This is an automated email from Pareñas Medical Clinic. Please do not reply to this email.</p>
         </div>
     </div>
 </body>

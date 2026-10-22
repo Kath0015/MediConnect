@@ -6,74 +6,10 @@ import { Input } from '../../components/ui/input';
 import { Badge } from '../../components/ui/badge';
 import { Calendar as CalendarIcon, Search, Filter, ChevronLeft, ChevronRight, Sparkles, ChevronDown, Check, X, Loader2, Layers3, Clock3, CheckCircle2, XCircle, Eye, Stethoscope } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../../components/ui/dialog';
-import { Label } from '../../components/ui/label';
-import { Calendar as DatePickerCalendar } from '../../components/ui/calendar';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { getAllAppointments } from '../../api/AdminDashboard';
-import { updateAppointment, confirmAppointment, rejectAppointment, completeAppointment, markNoShow } from '../../api/Appointments';
-import { getClinicMeta } from '../../api/Clinic';
 import { toast } from 'sonner';
-import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval } from 'date-fns';
+import { format } from 'date-fns';
 import AdminPageSkeleton from '../../components/admin/AdminPageSkeleton';
-import DoctorAvailability from '../../components/DoctorAvailability';
-
-const DEFAULT_OPEN = '08:00';
-const DEFAULT_CLOSE = '17:00';
-const DEFAULT_INTERVAL = 30;
-
-const generateTimeSlots = (openTime, closeTime, intervalMinutes) => {
-  try {
-    const slots = [];
-    const start = new Date(`1970-01-01T${openTime}:00`);
-    const end = new Date(`1970-01-01T${closeTime}:00`);
-    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end <= start) {
-      return [];
-    }
-    let pointer = new Date(start);
-    while (pointer < end) {
-      slots.push(pointer.toTimeString().slice(0, 5));
-      pointer = new Date(pointer.getTime() + intervalMinutes * 60000);
-    }
-    return slots;
-  } catch (error) {
-    return [];
-  }
-};
-
-const normalizeDate = (value) => {
-  if (!value) return '';
-  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
-    return value;
-  }
-  try {
-    const date = new Date(value);
-    if (!Number.isNaN(date.getTime())) {
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
-    }
-  } catch {
-    // Ignore parse errors.
-  }
-  return String(value).slice(0, 10);
-};
-
-const buildLocalDate = (dateStr, timeStr) => {
-  const [year, month, day] = dateStr.split('-').map(Number);
-  const [hours, minutes] = timeStr.split(':').map(Number);
-  return new Date(year, month - 1, day, hours, minutes, 0, 0);
-};
-
-const formatForApi = (dateObj) => format(dateObj, 'yyyy-MM-dd HH:mm:ss');
-
-const formatTimeSlot = (slot) => {
-  try {
-    return format(new Date(`1970-01-01T${slot}:00`), 'h:mm a');
-  } catch (error) {
-    return slot;
-  }
-};
 
 export const Appointments = () => {
   const APPOINTMENTS_PER_PAGE = 10;
@@ -81,8 +17,6 @@ export const Appointments = () => {
   const [appointments, setAppointments] = useState([]);
   const [initialLoading, setInitialLoading] = useState(true);
   const [tableLoading, setTableLoading] = useState(false);
-  const [clinicSettings, setClinicSettings] = useState(null);
-  const [closures, setClosures] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -90,15 +24,8 @@ export const Appointments = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [pageSize, setPageSize] = useState(10);
-  const [rescheduleDialogOpen, setRescheduleDialogOpen] = useState(false);
-  const [rescheduleTarget, setRescheduleTarget] = useState(null);
-  const [rescheduleDate, setRescheduleDate] = useState('');
-  const [rescheduleTime, setRescheduleTime] = useState('');
-  const [rescheduleSubmitting, setRescheduleSubmitting] = useState(false);
-  const [rescheduleMonth, setRescheduleMonth] = useState(new Date());
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState(null);
-  const [assigningDoctor, setAssigningDoctor] = useState(false);
   const filterMenuRef = useRef(null);
 
   const STATUS_OPTIONS = useMemo(() => ([
@@ -115,10 +42,6 @@ export const Appointments = () => {
   useEffect(() => {
     loadAppointments();
   }, [currentPage, statusFilter]);
-
-  useEffect(() => {
-    loadClinicMeta();
-  }, []);
 
   const loadAppointments = async () => {
     try {
@@ -150,19 +73,6 @@ export const Appointments = () => {
     } finally {
       setInitialLoading(false);
       setTableLoading(false);
-    }
-  };
-
-  const loadClinicMeta = async () => {
-    try {
-      const response = await getClinicMeta();
-      const data = response?.data?.data || {};
-      setClinicSettings(data.settings || null);
-      setClosures(Array.isArray(data.closures) ? data.closures : []);
-    } catch (err) {
-      console.error('Failed to load clinic settings:', err);
-      setClinicSettings(null);
-      setClosures([]);
     }
   };
 
@@ -269,329 +179,10 @@ export const Appointments = () => {
   const getStartDate = (apt) => parseAppointmentDate(apt?.start_time);
   const getEndDate = (apt) => parseAppointmentDate(apt?.end_time);
 
-  const getAppointmentTypeMeta = (apt) => {
-    if (!apt) return null;
-    if (apt.appointmentType && typeof apt.appointmentType === 'object') return apt.appointmentType;
-    if (apt.appointment_type && typeof apt.appointment_type === 'object') return apt.appointment_type;
-    return null;
-  };
-
-  const getAppointmentDuration = (apt) => {
-    const typeMeta = getAppointmentTypeMeta(apt);
-    const duration = Number(typeMeta?.estimated_minutes);
-    if (Number.isFinite(duration) && duration > 0) return duration;
-    return clinicSettings?.appointment_interval || DEFAULT_INTERVAL;
-  };
-
-  const isTypeAvailableForDate = (type, dateValue) => {
-    if (!type || type.is_active === false) return false;
-    if (!dateValue) return true;
-
-    const targetDate = normalizeDate(dateValue);
-    const from = type.available_from ? normalizeDate(type.available_from) : '';
-    const until = type.available_until ? normalizeDate(type.available_until) : '';
-
-    if (from && targetDate < from) return false;
-    if (until && targetDate > until) return false;
-
-    const days = Array.isArray(type.available_days) ? type.available_days : [];
-    if (days.length > 0) {
-      const dayKey = format(new Date(targetDate), 'eee').slice(0, 3).toLowerCase();
-      if (!days.includes(dayKey)) return false;
-    }
-
-    return true;
-  };
-
-  const isTypeAvailableForTime = (type, dateValue, timeValue, durationMinutes) => {
-    if (!timeValue || !type?.available_start_time || !type?.available_end_time || !dateValue) return true;
-
-    const start = buildLocalDate(dateValue, timeValue);
-    const end = new Date(start.getTime() + durationMinutes * 60000);
-
-    const startBoundary = new Date(`${dateValue}T${String(type.available_start_time).slice(0, 5)}:00`);
-    const endBoundary = new Date(`${dateValue}T${String(type.available_end_time).slice(0, 5)}:00`);
-    return start >= startBoundary && end <= endBoundary;
-  };
-
-  const clinicOpen = clinicSettings?.open_time || DEFAULT_OPEN;
-  const clinicClose = clinicSettings?.close_time || DEFAULT_CLOSE;
-  const clinicInterval = clinicSettings?.appointment_interval || DEFAULT_INTERVAL;
-
-  const baseTimeSlots = useMemo(() => {
-    const generated = generateTimeSlots(clinicOpen, clinicClose, clinicInterval);
-    if (generated.length === 0) {
-      return generateTimeSlots(DEFAULT_OPEN, DEFAULT_CLOSE, DEFAULT_INTERVAL);
-    }
-    return generated;
-  }, [clinicOpen, clinicClose, clinicInterval]);
-
-  const workingDaysSet = useMemo(() => {
-    const days = clinicSettings?.working_days;
-    return new Set(Array.isArray(days) ? days : []);
-  }, [clinicSettings]);
-
-  const closuresByDate = useMemo(() => {
-    const map = new Map();
-    closures.forEach((closure) => {
-      const key = normalizeDate(closure.date);
-      if (!key) return;
-      const list = map.get(key) || [];
-      list.push(closure);
-      map.set(key, list);
-    });
-    return map;
-  }, [closures]);
-
-  const getClosuresForDate = (dateValue) => {
-    const target = normalizeDate(dateValue);
-    if (!target) return [];
-    return closuresByDate.get(target) || [];
-  };
-
-  const hasFullDayClosure = (dateValue) =>
-    getClosuresForDate(dateValue).some((closure) => !closure.start_time && !closure.end_time);
-
-  const isWorkingDay = (dateValue) => {
-    if (!dateValue || workingDaysSet.size === 0) return true;
-    try {
-      const dayKey = format(new Date(dateValue), 'eee').slice(0, 3).toLowerCase();
-      return workingDaysSet.has(dayKey);
-    } catch (error) {
-      return false;
-    }
-  };
-
-  const isDateSelectable = (dateValue) => isWorkingDay(dateValue) && !hasFullDayClosure(dateValue);
-
-  const canReschedule = (appointment) => {
-    const status = (appointment?.status || '').toLowerCase();
-    return status === 'scheduled' || status === 'confirmed';
-  };
-
-  const getAvailableSlotsForDate = (dateValue, appointment) => {
-    if (!dateValue || !appointment) return [];
-    if (!isDateSelectable(dateValue)) return [];
-
-    const typeMeta = getAppointmentTypeMeta(appointment);
-    const durationMinutes = getAppointmentDuration(appointment);
-    if (typeMeta && !isTypeAvailableForDate(typeMeta, dateValue)) return [];
-
-    const closuresForDay = getClosuresForDate(dateValue)
-      .filter((closure) => closure.start_time && closure.end_time)
-      .map((closure) => {
-        const startTime = closure.start_time.length === 5 ? `${closure.start_time}:00` : closure.start_time;
-        const endTime = closure.end_time.length === 5 ? `${closure.end_time}:00` : closure.end_time;
-        return {
-          start: new Date(`${dateValue}T${startTime}`),
-          end: new Date(`${dateValue}T${endTime}`),
-        };
-      });
-
-    const appointmentsOnDay = appointments
-      .filter((apt) => {
-        if (!apt.start_time) return false;
-        if (appointment && Number(apt.id) === Number(appointment.id)) return false;
-        const aptDate = normalizeDate(apt.start_time);
-        const status = (apt.status || '').toLowerCase();
-        return aptDate === normalizeDate(dateValue) && ['scheduled', 'confirmed', 'in_progress'].includes(status);
-      })
-      .map((apt) => {
-        const aptStart = new Date(apt.start_time);
-        const rawEnd = apt.end_time ? new Date(apt.end_time) : new Date(aptStart.getTime() + clinicInterval * 60000);
-        const aptEndWithBuffer = new Date(rawEnd.getTime() + clinicInterval * 60000);
-        return { start: aptStart, end: aptEndWithBuffer };
-      });
-
-    return baseTimeSlots.filter((slot) => {
-      const slotStart = new Date(`${dateValue}T${slot}:00`);
-      const slotEnd = new Date(slotStart.getTime() + durationMinutes * 60000);
-      const closeBoundary = new Date(`${dateValue}T${clinicClose}:00`);
-
-      if (Number.isNaN(slotStart.getTime()) || slotEnd > closeBoundary) return false;
-
-      const noClosureConflict = closuresForDay.every((window) => slotEnd <= window.start || slotStart >= window.end);
-      const noAppointmentConflict = appointmentsOnDay.every((apt) => slotEnd <= apt.start || slotStart >= apt.end);
-
-      if (!noClosureConflict || !noAppointmentConflict) return false;
-
-      if (typeMeta && !isTypeAvailableForTime(typeMeta, dateValue, slot, durationMinutes)) return false;
-
-      return true;
-    });
-  };
-
-  const availableSlots = useMemo(() => {
-    if (!rescheduleTarget || !rescheduleDate) return [];
-    return getAvailableSlotsForDate(rescheduleDate, rescheduleTarget);
-  }, [appointments, baseTimeSlots, clinicClose, clinicInterval, closures, rescheduleDate, rescheduleTarget]);
-
-  const fullDateSet = useMemo(() => {
-    if (!rescheduleTarget) return new Set();
-    const start = startOfWeek(startOfMonth(rescheduleMonth));
-    const end = endOfWeek(endOfMonth(rescheduleMonth));
-    const days = eachDayOfInterval({ start, end });
-    const set = new Set();
-    days.forEach((day) => {
-      const key = normalizeDate(day);
-      if (!isDateSelectable(key)) return;
-      const slots = getAvailableSlotsForDate(key, rescheduleTarget);
-      if (slots.length === 0) set.add(key);
-    });
-    return set;
-  }, [appointments, baseTimeSlots, clinicClose, clinicInterval, closures, rescheduleMonth, rescheduleTarget, workingDaysSet]);
-
-  const calendarModifiers = useMemo(
-    () => ({
-      fullyBooked: (date) => fullDateSet.has(normalizeDate(date)),
-    }),
-    [fullDateSet]
-  );
-
-  const minCalendarDate = new Date();
-  minCalendarDate.setHours(0, 0, 0, 0);
-  const maxCalendarDate = new Date(minCalendarDate.getFullYear() + 1, 11, 31);
-
-  const handleRescheduleDialogChange = (open) => {
-    setRescheduleDialogOpen(open);
-    if (!open) {
-      setRescheduleTarget(null);
-      setRescheduleDate('');
-      setRescheduleTime('');
-      setRescheduleSubmitting(false);
-    }
-  };
-
-  const handleOpenReschedule = (appointment) => {
-    if (!canReschedule(appointment)) {
-      toast.error('Only scheduled or confirmed appointments can be rescheduled');
-      return;
-    }
-    const startDate = getStartDate(appointment);
-    if (startDate) {
-      setRescheduleDate(format(startDate, 'yyyy-MM-dd'));
-      setRescheduleTime(format(startDate, 'HH:mm'));
-      setRescheduleMonth(startDate);
-    } else {
-      setRescheduleDate('');
-      setRescheduleTime('');
-      setRescheduleMonth(new Date());
-    }
-    setRescheduleTarget(appointment);
-    setRescheduleDialogOpen(true);
-  };
-
-  const handleRescheduleDateChange = (value) => {
-    if (!value) {
-      setRescheduleDate('');
-      setRescheduleTime('');
-      return;
-    }
-    const formatted = format(value, 'yyyy-MM-dd');
-    if (!isDateSelectable(formatted)) {
-      toast.error('Clinic is closed on the selected day');
-      return;
-    }
-    setRescheduleDate(formatted);
-    setRescheduleTime('');
-  };
-
-  const handleReschedule = async () => {
-    if (!rescheduleTarget) return;
-    if (!rescheduleDate || !rescheduleTime) {
-      toast.error('Select a new date and time');
-      return;
-    }
-
-    if (!availableSlots.includes(rescheduleTime)) {
-      toast.error('Selected time is no longer available');
-      return;
-    }
-
-    try {
-      setRescheduleSubmitting(true);
-      const durationMinutes = getAppointmentDuration(rescheduleTarget);
-      const startDate = buildLocalDate(rescheduleDate, rescheduleTime);
-      const endDate = new Date(startDate.getTime() + durationMinutes * 60000);
-
-      await updateAppointment(rescheduleTarget.id, {
-        start_time: formatForApi(startDate),
-        end_time: formatForApi(endDate),
-      });
-
-      toast.success('Appointment rescheduled successfully');
-      handleRescheduleDialogChange(false);
-      await loadAppointments();
-    } catch (err) {
-      console.error('Failed to reschedule appointment:', err);
-      const message = err.response?.data?.message || 'Failed to reschedule appointment';
-      toast.error(message);
-    } finally {
-      setRescheduleSubmitting(false);
-    }
-  };
-
   // Handle viewing appointment details
   const handleViewDetails = (appointment) => {
     setSelectedAppointment(appointment);
     setDetailModalOpen(true);
-  };
-
-  // Handle appointment status changes
-  const handleAppointmentStatusChange = async (appointment, newStatus) => {
-    try {
-      setAssigningDoctor(true);
-      
-      switch(newStatus) {
-        case 'confirmed':
-          await confirmAppointment(appointment.id);
-          toast.success('Appointment confirmed');
-          break;
-        case 'completed':
-          await completeAppointment(appointment.id);
-          toast.success('Appointment marked as completed');
-          break;
-        case 'rejected':
-          await rejectAppointment(appointment.id);
-          toast.success('Appointment rejected');
-          break;
-        case 'no_show':
-          await markNoShow(appointment.id);
-          toast.success('Appointment marked as no-show');
-          break;
-        default:
-          return;
-      }
-      
-      await loadAppointments();
-      setDetailModalOpen(false);
-    } catch (err) {
-      console.error('Failed to update appointment:', err);
-      const errorMsg = err.response?.data?.message || err.message || 'Failed to update appointment';
-      toast.error(errorMsg);
-    } finally {
-      setAssigningDoctor(false);
-    }
-  };
-
-  // Handle assigning doctor
-  const handleAssignDoctor = async (doctor) => {
-    if (!selectedAppointment) return;
-    
-    try {
-      setAssigningDoctor(true);
-      await updateAppointment(selectedAppointment.id, {
-        clinician_id: doctor.id,
-      });
-      toast.success(`Dr. ${doctor.name} assigned to this appointment`);
-      await loadAppointments();
-      setDetailModalOpen(false);
-    } catch (err) {
-      console.error('Failed to assign doctor:', err);
-      toast.error('Failed to assign doctor');
-    } finally {
-      setAssigningDoctor(false);
-    }
   };
 
   const filteredAppointments = appointments.filter((apt) => {
@@ -857,19 +448,7 @@ export const Appointments = () => {
                             <Eye className="w-4 h-4 mr-1" />
                             Details
                           </Button>
-                          {canReschedule(appointment) ? (
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleOpenReschedule(appointment)}
-                              className="h-8 border-cyan-200 bg-cyan-50 text-cyan-700 hover:bg-cyan-100"
-                            >
-                              Reschedule
-                            </Button>
-                          ) : (
-                            <span className="text-xs text-slate-400">Not available</span>
-                          )}
+                          <span className="text-xs text-slate-500">Staff-managed scheduling</span>
                         </div>
                       </li>
                     );
@@ -921,7 +500,7 @@ export const Appointments = () => {
               <Stethoscope className="w-5 h-5 text-[#009DD1]" />
               Appointment Details
             </DialogTitle>
-            <DialogDescription>View and manage appointment details and assign physicians</DialogDescription>
+            <DialogDescription>Read-only appointment details for operational audit</DialogDescription>
           </DialogHeader>
 
           {selectedAppointment && (
@@ -984,59 +563,12 @@ export const Appointments = () => {
                 </div>
               </div>
 
-              {/* Status Action Buttons */}
-              <div className="space-y-3">
-                <p className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Change Status</p>
-                <div className="grid grid-cols-2 gap-2">
-                  <Button
-                    onClick={() => handleAppointmentStatusChange(selectedAppointment, 'confirmed')}
-                    disabled={assigningDoctor || selectedAppointment.status === 'confirmed'}
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white text-sm"
-                  >
-                    {assigningDoctor ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Check className="w-4 h-4 mr-2" />}
-                    Confirmed
-                  </Button>
-                  <Button
-                    onClick={() => handleAppointmentStatusChange(selectedAppointment, 'completed')}
-                    disabled={assigningDoctor || selectedAppointment.status === 'completed'}
-                    className="bg-blue-600 hover:bg-blue-700 text-white text-sm"
-                  >
-                    {assigningDoctor ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <CheckCircle2 className="w-4 h-4 mr-2" />}
-                    Completed
-                  </Button>
-                  <Button
-                    onClick={() => handleAppointmentStatusChange(selectedAppointment, 'rejected')}
-                    disabled={assigningDoctor || selectedAppointment.status === 'rejected'}
-                    className="bg-rose-600 hover:bg-rose-700 text-white text-sm"
-                  >
-                    {assigningDoctor ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <X className="w-4 h-4 mr-2" />}
-                    Reject
-                  </Button>
-                  <Button
-                    onClick={() => handleAppointmentStatusChange(selectedAppointment, 'no_show')}
-                    disabled={assigningDoctor || selectedAppointment.status === 'no_show'}
-                    className="bg-slate-600 hover:bg-slate-700 text-white text-sm"
-                  >
-                    {assigningDoctor ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <AlertCircle className="w-4 h-4 mr-2" />}
-                    No-show
-                  </Button>
-                </div>
-              </div>
-
-              {/* Doctor Availability */}
-              <div className="border-t pt-4">
-                <DoctorAvailability 
-                  appointment={selectedAppointment}
-                  onAssignDoctor={handleAssignDoctor}
-                />
-              </div>
-
-              {/* Currently Assigned Doctor */}
+              {/* Assigned clinician */}
               {selectedAppointment.clinician_id && (
                 <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
-                  <p className="text-xs font-semibold text-emerald-700 mb-1">✓ Physician Assigned</p>
+                  <p className="text-xs font-semibold text-emerald-700 mb-1">Assigned clinician</p>
                   <p className="text-sm text-emerald-900">
-                    Doctor ID: {selectedAppointment.clinician_id}
+                    Clinician ID: {selectedAppointment.clinician_id}
                   </p>
                 </div>
               )}
@@ -1055,120 +587,6 @@ export const Appointments = () => {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={rescheduleDialogOpen} onOpenChange={handleRescheduleDialogChange}>
-        <DialogContent className="max-w-3xl bg-white">
-          <DialogHeader>
-            <DialogTitle>Reschedule appointment</DialogTitle>
-            <DialogDescription>Choose a new date and time for this booking.</DialogDescription>
-          </DialogHeader>
-
-          {rescheduleTarget && (
-            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="font-semibold text-slate-700">
-                  {rescheduleTarget.patient?.user?.name || 'Unknown patient'}
-                </span>
-                <span>#{rescheduleTarget.id}</span>
-              </div>
-              <div className="mt-1 flex flex-wrap gap-2 text-[11px] text-slate-500">
-                <span>{resolveAppointmentType(rescheduleTarget) || 'Service'}</span>
-                <span>•</span>
-                <span>
-                  {rescheduleTarget.start_time
-                    ? format(new Date(rescheduleTarget.start_time), 'PPP • h:mm a')
-                    : 'No schedule'}
-                </span>
-              </div>
-            </div>
-          )}
-
-          <div className="grid gap-4 md:grid-cols-[1.4fr_1fr]">
-            <div className="space-y-2">
-              <Label>New date</Label>
-              <div className="rounded-xl border border-slate-200 bg-white p-2">
-                <DatePickerCalendar
-                  mode="single"
-                  selected={rescheduleDate ? new Date(`${rescheduleDate}T00:00:00`) : undefined}
-                  onSelect={handleRescheduleDateChange}
-                  month={rescheduleMonth}
-                  onMonthChange={setRescheduleMonth}
-                  fromDate={minCalendarDate}
-                  toDate={maxCalendarDate}
-                  disabled={(date) => !isDateSelectable(date) || fullDateSet.has(normalizeDate(date))}
-                  className="rounded-xl bg-white p-0"
-                  classNames={{
-                    months: 'flex flex-col',
-                    month: 'relative flex flex-col gap-0',
-                    caption: 'hidden',
-                    month_caption: 'hidden',
-                    nav: 'hidden',
-                    caption_label: 'hidden',
-                    month_grid: 'w-full border-collapse',
-                    weekdays: 'flex',
-                    weekday: 'flex-1 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-600',
-                    week: 'mt-1.5 flex w-full',
-                    day: 'flex-1 p-0 text-center text-sm',
-                    day_button:
-                      'h-9 w-full cursor-pointer rounded-xl border border-transparent p-0 text-sm font-medium text-slate-700 transition-colors hover:bg-cyan-50 aria-selected:rounded-xl aria-selected:border-cyan-400 aria-selected:bg-cyan-500 aria-selected:text-white data-[selected=true]:rounded-xl data-[selected=true]:border-cyan-400 data-[selected=true]:bg-cyan-500 data-[selected=true]:text-white',
-                    selected: 'rounded-xl bg-cyan-500 text-white hover:bg-cyan-600',
-                    today: 'rounded-xl border border-cyan-200 bg-cyan-100 text-cyan-800',
-                    outside: 'text-slate-300',
-                    disabled: 'cursor-not-allowed text-slate-300 opacity-60 pointer-events-none',
-                  }}
-                  modifiers={calendarModifiers}
-                  modifiersClassNames={{
-                    fullyBooked: 'rounded-xl border border-rose-200 bg-rose-50 text-rose-700',
-                  }}
-                />
-              </div>
-              <p className="text-xs text-slate-500">Fully booked days are highlighted and disabled.</p>
-            </div>
-
-            <div className="space-y-2">
-              <Label>New time</Label>
-              <Select value={rescheduleTime} onValueChange={setRescheduleTime} disabled={!rescheduleDate || availableSlots.length === 0}>
-                <SelectTrigger className="h-11">
-                  <SelectValue placeholder={rescheduleDate ? 'Select time slot' : 'Pick a date first'} />
-                </SelectTrigger>
-                <SelectContent className="bg-white text-slate-900">
-                  {availableSlots.map((slot) => (
-                    <SelectItem key={slot} value={slot}>
-                      {formatTimeSlot(slot)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {rescheduleDate && availableSlots.length === 0 ? (
-                <p className="text-xs text-rose-600">No available slots for this date.</p>
-              ) : (
-                <p className="text-xs text-slate-500">
-                  {rescheduleDate ? `${availableSlots.length} slots available` : 'Select a date to see slots.'}
-                </p>
-              )}
-            </div>
-          </div>
-
-          <DialogFooter className="mt-4">
-            <Button type="button" variant="outline" onClick={() => handleRescheduleDialogChange(false)}>
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              onClick={handleReschedule}
-              disabled={rescheduleSubmitting || !rescheduleDate || !rescheduleTime}
-            >
-              {rescheduleSubmitting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                'Save schedule'
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };

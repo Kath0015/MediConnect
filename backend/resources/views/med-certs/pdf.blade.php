@@ -228,7 +228,7 @@
             <div class="signature-box">
                 <div class="signature-line"></div>
                 <p class="physician-name">
-                    {{ $medCert->approver?->name ? 'Dr. ' . $medCert->approver->name : 'Attending Physician, M.D.' }}
+                    {{ $medCert->approver?->name ?: 'Attending Physician, M.D.' }}
                 </p>
                 <p class="physician-title">Licensed Physician / Clinic Authority</p>
                 <p class="physician-title">Date: {{ $medCert->approved_at ? $medCert->approved_at->format('F j, Y') : now()->format('F j, Y') }}</p>

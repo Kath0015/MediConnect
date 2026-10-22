@@ -87,6 +87,12 @@ class InvoiceController extends Controller
 
         $invoice = Invoice::create($validated);
 
+        activity()
+            ->causedBy($request->user())
+            ->performedOn($invoice)
+            ->withProperties(['ip' => $request->ip()])
+            ->log('invoice_created');
+
         return response()->json($invoice, Response::HTTP_CREATED);
     }
 
@@ -109,12 +115,25 @@ class InvoiceController extends Controller
             'reference_number' => $validated['reference_number'] ?? ($invoice->reference_number ?: 'REC-' . substr(time(), -6)),
         ]);
 
+        activity()
+            ->causedBy($request->user())
+            ->performedOn($invoice)
+            ->withProperties(['ip' => $request->ip()])
+            ->log('invoice_marked_paid');
+
         return response()->json($invoice);
     }
 
     public function destroy($id)
     {
         $invoice = Invoice::findOrFail($id);
+
+        activity()
+            ->causedBy(request()->user())
+            ->performedOn($invoice)
+            ->withProperties(['ip' => request()->ip()])
+            ->log('invoice_deleted');
+
         $invoice->delete();
 
         return response()->json(['message' => 'Invoice deleted successfully']);

@@ -82,6 +82,12 @@ class LabRequestController extends Controller
 
         $lab = LabRequest::create($validated);
 
+        activity()
+            ->causedBy($request->user())
+            ->performedOn($lab)
+            ->withProperties(['ip' => $request->ip()])
+            ->log('lab_request_created');
+
         return response()->json($lab, Response::HTTP_CREATED);
     }
 
@@ -104,11 +110,23 @@ class LabRequestController extends Controller
 
         $labRequest->update($validated);
 
+        activity()
+            ->causedBy($request->user())
+            ->performedOn($labRequest)
+            ->withProperties(['ip' => $request->ip()])
+            ->log('lab_request_updated');
+
         return response()->json($labRequest);
     }
 
     public function destroy(LabRequest $labRequest)
     {
+        activity()
+            ->causedBy(request()->user())
+            ->performedOn($labRequest)
+            ->withProperties(['ip' => request()->ip()])
+            ->log('lab_request_deleted');
+
         $labRequest->delete();
 
         return response()->json(['message' => 'Lab request deleted successfully']);

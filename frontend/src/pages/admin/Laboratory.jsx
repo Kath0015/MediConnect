@@ -1,29 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { FlaskConical, Search, Eye, Download, Plus, Clock, FileCheck, Trash2, RefreshCw } from 'lucide-react';
+import { FlaskConical, Search, Eye, Download, RefreshCw, FileSearch } from 'lucide-react';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../../components/ui/dialog';
-import { getLabRequests, createLabRequest, updateLabRequest, deleteLabRequest } from '../../api/LabRequests';
-
-const statusConfig = {
-  Completed: 'bg-emerald-100 text-emerald-700',
-  Pending: 'bg-amber-100 text-amber-700',
-  Processing: 'bg-blue-100 text-blue-700',
-  'In Progress': 'bg-blue-100 text-blue-700',
-};
+import { getLabRequests } from '../../api/LabRequests';
+import { formatAdminDate } from '../../utils/formatters';
+import { getStatusBadgeTokens } from '../../utils/statusTokens';
 
 const AdminLaboratory = () => {
   const [labs, setLabs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [isOrderOpen, setIsOrderOpen] = useState(false);
   const [selectedLab, setSelectedLab] = useState(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [newLab, setNewLab] = useState({
-    patient: '',
-    test: 'Complete Blood Count (CBC)',
-    category: 'Hematology',
-    requestedBy: 'Dr. Jose Santos',
-  });
 
   const loadAllLabs = async () => {
     try {
@@ -35,7 +22,7 @@ const AdminLaboratory = () => {
         patient: l.patient_name,
         test: l.test_name,
         requestedBy: l.requested_by || 'Dr. Physician',
-        date: l.date_requested || l.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
+        date: formatAdminDate(l.date_requested || l.created_at),
         status: l.status || 'Pending',
         result: l.status === 'Completed' ? 'Completed' : 'Pending',
         values: l.results || 'Specimen sample awaiting technician assay evaluation.',
@@ -60,63 +47,6 @@ const AdminLaboratory = () => {
     l.reqNumber?.toLowerCase().includes(search.toLowerCase())
   );
 
-  const handleOrderLab = async (e) => {
-    e.preventDefault();
-    if (!newLab.patient.trim()) {
-      toast.error('Please enter patient name');
-      return;
-    }
-    try {
-      setIsSubmitting(true);
-      await createLabRequest({
-        patient_name: newLab.patient,
-        test_name: newLab.test,
-        requested_by: newLab.requestedBy,
-        category: newLab.category,
-        status: 'Pending',
-      });
-      toast.success(`Diagnostic order for ${newLab.test} saved to database!`);
-      setIsOrderOpen(false);
-      setNewLab({ patient: '', test: 'Complete Blood Count (CBC)', category: 'Hematology', requestedBy: 'Dr. Jose Santos' });
-      await loadAllLabs();
-    } catch (err) {
-      console.error('Failed to order lab:', err);
-      toast.error('Failed to save laboratory order');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleCompleteLab = async (lab) => {
-    try {
-      await updateLabRequest(lab.id, {
-        status: 'Completed',
-        results: 'Evaluation completed. All measured parameters within reference intervals.',
-      });
-      toast.success(`Order ${lab.reqNumber || lab.id} marked Completed!`);
-      if (selectedLab?.id === lab.id) {
-        setSelectedLab({ ...selectedLab, status: 'Completed', result: 'Completed' });
-      }
-      await loadAllLabs();
-    } catch (err) {
-      console.error('Failed to update lab:', err);
-      toast.error('Failed to update laboratory order');
-    }
-  };
-
-  const handleDeleteLab = async (lab) => {
-    if (!window.confirm(`Delete lab record ${lab.reqNumber || lab.id}?`)) return;
-    try {
-      await deleteLabRequest(lab.id);
-      toast.success('Lab record deleted from database');
-      if (selectedLab?.id === lab.id) setSelectedLab(null);
-      await loadAllLabs();
-    } catch (err) {
-      console.error('Failed to delete lab:', err);
-      toast.error('Failed to delete lab');
-    }
-  };
-
   const handleDownloadReport = (lab) => {
     toast.success(`Printing diagnostic laboratory report for ${lab.patient}`);
     window.print();
@@ -129,7 +59,7 @@ const AdminLaboratory = () => {
           <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
             <FlaskConical className="w-6 h-6 text-[#009DD1]" /> Laboratory Management
           </h1>
-          <p className="text-slate-500 mt-1 text-sm">Real-time database-backed diagnostic lab testing, hematology, and pathology assays.</p>
+          <p className="text-slate-500 mt-1 text-sm">Read-only laboratory records for operational review and audit.</p>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -139,12 +69,6 @@ const AdminLaboratory = () => {
             title="Refresh"
           >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-[#009DD1]' : ''}`} />
-          </button>
-          <button
-            onClick={() => setIsOrderOpen(true)}
-            className="flex items-center gap-2 bg-[#009DD1] text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-[#01377D] transition-colors shadow-sm"
-          >
-            <Plus className="w-4 h-4" /> Order Laboratory Test
           </button>
         </div>
       </div>
@@ -186,7 +110,11 @@ const AdminLaboratory = () => {
             ) : filtered.length === 0 ? (
               <tr>
                 <td colSpan={7} className="px-5 py-8 text-center text-slate-400">
-                  No laboratory orders found in database.
+                  <div className="flex flex-col items-center justify-center gap-2">
+                    <FileSearch className="h-8 w-8 text-slate-300" />
+                    <span className="font-medium text-slate-600">No laboratory orders found</span>
+                    <span className="text-xs text-slate-400">Clinical staff orders will appear here for audit review.</span>
+                  </div>
                 </td>
               </tr>
             ) : (
@@ -198,7 +126,7 @@ const AdminLaboratory = () => {
                   <td className="px-5 py-4 text-slate-600">{l.requestedBy}</td>
                   <td className="px-5 py-4 text-slate-600 whitespace-nowrap">{l.date}</td>
                   <td className="px-5 py-4">
-                    <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${statusConfig[l.status] || 'bg-slate-100 text-slate-600'}`}>
+                    <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${getStatusBadgeTokens(l.status)}`}>
                       {l.status}
                     </span>
                   </td>
@@ -210,28 +138,12 @@ const AdminLaboratory = () => {
                     >
                       <Eye className="w-4 h-4" />
                     </button>
-                    {l.status !== 'Completed' && (
-                      <button
-                        onClick={() => handleCompleteLab(l)}
-                        className="p-1.5 rounded-lg hover:bg-emerald-50 text-slate-400 hover:text-emerald-600 transition-colors"
-                        title="Mark Completed"
-                      >
-                        <FileCheck className="w-4 h-4" />
-                      </button>
-                    )}
                     <button
                       onClick={() => handleDownloadReport(l)}
                       className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-[#009DD1] transition-colors"
                       title="Print Report"
                     >
                       <Download className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => handleDeleteLab(l)}
-                      className="p-1.5 rounded-lg hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition-colors"
-                      title="Delete"
-                    >
-                      <Trash2 className="w-4 h-4" />
                     </button>
                   </td>
                 </tr>
@@ -240,74 +152,6 @@ const AdminLaboratory = () => {
           </tbody>
         </table>
       </div>
-
-      {/* Order Modal */}
-      <Dialog open={isOrderOpen} onOpenChange={setIsOrderOpen}>
-        <DialogContent className="max-w-md bg-white p-6 rounded-2xl">
-          <DialogHeader>
-            <DialogTitle className="text-lg font-bold text-slate-900 flex items-center gap-2">
-              <FlaskConical className="w-5 h-5 text-[#009DD1]" /> Order Laboratory Test
-            </DialogTitle>
-            <DialogDescription className="text-xs text-slate-500">
-              Create an official diagnostic lab requisition in the database.
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleOrderLab} className="space-y-4 pt-2">
-            <div>
-              <label className="text-xs font-semibold text-slate-700 block mb-1">Patient Name</label>
-              <input
-                type="text"
-                required
-                placeholder="e.g. Maria Santos"
-                value={newLab.patient}
-                onChange={(e) => setNewLab({ ...newLab, patient: e.target.value })}
-                className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-[#009DD1]/30"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-slate-700 block mb-1">Laboratory Test</label>
-              <select
-                value={newLab.test}
-                onChange={(e) => setNewLab({ ...newLab, test: e.target.value })}
-                className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-[#009DD1]/30"
-              >
-                <option value="Complete Blood Count (CBC)">Complete Blood Count (CBC)</option>
-                <option value="Routine Urinalysis">Routine Urinalysis</option>
-                <option value="Fasting Blood Sugar (FBS)">Fasting Blood Sugar (FBS)</option>
-                <option value="Lipid Profile">Lipid Profile</option>
-                <option value="12-Lead Electrocardiogram (ECG)">12-Lead ECG</option>
-                <option value="Serum Creatinine / BUN">Serum Creatinine / BUN</option>
-              </select>
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-slate-700 block mb-1">Requesting Doctor</label>
-              <input
-                type="text"
-                required
-                value={newLab.requestedBy}
-                onChange={(e) => setNewLab({ ...newLab, requestedBy: e.target.value })}
-                className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-[#009DD1]/30"
-              />
-            </div>
-            <div className="flex justify-end gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setIsOrderOpen(false)}
-                className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="px-4 py-2 rounded-xl bg-[#009DD1] hover:bg-[#01377D] text-white text-xs font-semibold disabled:opacity-50"
-              >
-                {isSubmitting ? 'Saving...' : 'Submit Order'}
-              </button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
 
       {/* Details Modal */}
       <Dialog open={!!selectedLab} onOpenChange={(open) => !open && setSelectedLab(null)}>
@@ -351,7 +195,7 @@ const AdminLaboratory = () => {
                 </div>
                 <div className="flex justify-between items-center pt-1">
                   <span className="text-xs text-slate-500">Status:</span>
-                  <span className={`text-xs px-2.5 py-0.5 rounded-full font-semibold ${statusConfig[selectedLab.status]}`}>
+                  <span className={`text-xs px-2.5 py-0.5 rounded-full font-semibold ${getStatusBadgeTokens(selectedLab.status)}`}>
                     {selectedLab.status}
                   </span>
                 </div>

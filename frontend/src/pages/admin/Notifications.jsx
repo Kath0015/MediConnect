@@ -4,13 +4,6 @@ import { toast } from 'sonner';
 import NotificationItem from '../../components/NotificationItem';
 import { useNotifications } from '../../contexts/NotificationContext';
 
-const initialNotifs = [
-  { id: 1, title: 'New Appointment Booked', message: 'Maria Santos booked an appointment with Dr. Santos for Aug 20.', date: '2026-08-18', time: '09:00 AM', type: 'appointment', read: false },
-  { id: 2, title: 'User Registered', message: 'New patient Pedro Lim registered in the system.', date: '2026-08-17', time: '03:15 PM', type: 'user', read: false },
-  { id: 3, title: 'Lab Result Uploaded', message: 'Lab results for Ana Reyes have been uploaded.', date: '2026-08-16', time: '11:00 AM', type: 'lab', read: true },
-  { id: 4, title: 'System Backup Complete', message: 'Daily system backup completed successfully.', date: '2026-08-18', time: '02:00 AM', type: 'system', read: true },
-];
-
 const typeConfig = {
   appointment: { icon: Bell, bg: 'bg-[#009DD1]/10' },
   user: { icon: Bell, bg: 'bg-[#26B170]/10' },
@@ -19,7 +12,7 @@ const typeConfig = {
 };
 
 const AdminNotifications = () => {
-  const [notifs, setNotifs] = useState(initialNotifs);
+  const [notifs, setNotifs] = useState([]);
   const { updateUnreadCount } = useNotifications();
   
   const unread = notifs.filter((n) => !n.read).length;
@@ -94,4 +87,3 @@ const AdminNotifications = () => {
 };
 
 export default AdminNotifications;
-

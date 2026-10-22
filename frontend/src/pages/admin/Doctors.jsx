@@ -1,17 +1,12 @@
-import React, { useState } from 'react';
-import { Stethoscope, Search, UserPlus, Eye, Star, Calendar, Mail, Phone, X, CheckCircle2 } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Stethoscope, Search, UserPlus, Eye, Calendar, Power, KeyRound } from 'lucide-react';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../../components/ui/dialog';
-
-const initialDoctors = [
-  { id: 1, name: 'Dr. Jose Santos', specialty: 'Internal Medicine', contact: '09171110001', email: 'jsantos@mediconnect.ph', patients: 142, status: 'Active', schedule: 'Mon, Wed, Fri', room: 'Room 201' },
-  { id: 2, name: 'Dr. Elena Reyes', specialty: 'Pediatrics', contact: '09282220002', email: 'ereyes@mediconnect.ph', patients: 98, status: 'Active', schedule: 'Tue, Thu', room: 'Room 204' },
-  { id: 3, name: 'Dr. Marco Cruz', specialty: 'Cardiology', contact: '09393330003', email: 'mcruz@mediconnect.ph', patients: 75, status: 'Active', schedule: 'Mon–Fri', room: 'Room 302' },
-  { id: 4, name: 'Dr. Ana Flores', specialty: 'OB-Gynecology', contact: '09404440004', email: 'aflores@mediconnect.ph', patients: 114, status: 'On Leave', schedule: 'Wed, Fri', room: 'Room 205' },
-];
+import { getStatusBadgeTokens } from '../../utils/statusTokens';
+import api from '../../api/axios';
 
 const AdminDoctors = () => {
-  const [doctors, setDoctors] = useState(initialDoctors);
+  const [doctors, setDoctors] = useState([]);
   const [search, setSearch] = useState('');
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [selectedDoc, setSelectedDoc] = useState(null);
@@ -23,6 +18,26 @@ const AdminDoctors = () => {
     schedule: 'Mon, Wed, Fri',
     room: 'Room 201',
   });
+
+  useEffect(() => {
+    api.get('/api/v1/admin/users')
+      .then(({ data }) => {
+        setDoctors((data.data || [])
+          .filter((user) => user.role === 'doctor')
+          .map((user) => ({
+            id: user.id,
+            name: user.name,
+            specialty: 'Not specified',
+            contact: user.phone || '—',
+            email: user.email,
+            patients: 0,
+            status: user.is_active ? 'Active' : 'Inactive',
+            schedule: 'Not specified',
+            room: 'Not specified',
+          })));
+      })
+      .catch(() => toast.error('Failed to load doctors from the database.'));
+  }, []);
 
   const filtered = doctors.filter((d) =>
     d.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -103,7 +118,7 @@ const AdminDoctors = () => {
                 <div className="flex items-center gap-2">
                   <span
                     className={`text-xs px-2.5 py-1 rounded-full font-medium ${
-                      d.status === 'Active' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+                      getStatusBadgeTokens(d.status)
                     }`}
                   >
                     {d.status}
@@ -114,6 +129,20 @@ const AdminDoctors = () => {
                     title="View Doctor Details"
                   >
                     <Eye className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => setDoctors(doctors.map((doctor) => doctor.id === d.id ? { ...doctor, status: doctor.status === 'Active' ? 'Inactive' : 'Active' } : doctor))}
+                    className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-[#7C3AED] transition-colors"
+                    title="Edit Status / Active Toggle"
+                  >
+                    <Power className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => toast.info(`Reset password workflow requested for ${d.name}.`)}
+                    className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-[#7C3AED] transition-colors"
+                    title="Reset Password"
+                  >
+                    <KeyRound className="w-4 h-4" />
                   </button>
                 </div>
               </div>
@@ -274,7 +303,7 @@ const AdminDoctors = () => {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-xs text-slate-500">Status:</span>
-                  <span className="text-xs px-2 py-0.5 rounded-full font-semibold bg-emerald-100 text-emerald-700">
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${getStatusBadgeTokens(selectedDoc.status)}`}>
                     {selectedDoc.status}
                   </span>
                 </div>
@@ -296,4 +325,3 @@ const AdminDoctors = () => {
 };
 
 export default AdminDoctors;
-

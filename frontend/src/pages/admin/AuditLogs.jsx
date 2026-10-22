@@ -24,6 +24,7 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import api from '../../api/axios';
 import AdminPageSkeleton from '../../components/admin/AdminPageSkeleton';
+import { formatAdminDate } from '../../utils/formatters';
 
 export const AuditLogs = () => {
   const AUDIT_LOGS_PER_PAGE = 10;
@@ -376,7 +377,7 @@ export const AuditLogs = () => {
                       className="rounded-xl border border-slate-200/80 bg-white p-3 transition-all hover:border-cyan-200 hover:shadow-sm md:grid md:grid-cols-[minmax(0,1.05fr)_minmax(0,1.15fr)_180px_140px_minmax(0,1.25fr)] md:items-center md:gap-3"
                     >
                       <div>
-                        <p className="text-sm text-slate-800">{log.created_at ? format(new Date(log.created_at), 'PP') : 'N/A'}</p>
+                        <p className="text-sm text-slate-800">{formatAdminDate(log.created_at)}</p>
                         <p className="text-xs text-slate-500">{log.created_at ? format(new Date(log.created_at), 'pp') : 'N/A'}</p>
                       </div>
 

@@ -76,10 +76,10 @@
             <p>If you believe this decision was made in error or if you have any questions, please contact our clinic staff directly.</p>
 
             <p>Best regards,<br/>
-            <strong>Clinic and Laboratory</strong></p>
+            <strong>Pareñas Medical Clinic</strong></p>
         </div>
         <div class="footer">
-            <p>This is an automated email from Clinic and Laboratory. Please do not reply to this email.</p>
+            <p>This is an automated email from Pareñas Medical Clinic. Please do not reply to this email.</p>
         </div>
     </div>
 </body>

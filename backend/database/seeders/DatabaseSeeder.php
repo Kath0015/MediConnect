@@ -10,20 +10,25 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        // Create Roles (idempotent)
+        // Keep the production baseline limited to real roles and reference data.
         $adminRole = Role::firstOrCreate(['name' => 'admin']);
+        $doctorRole = Role::firstOrCreate(['name' => 'doctor']);
         $clinicianRole = Role::firstOrCreate(['name' => 'clinician']);
         $patientRole = Role::firstOrCreate(['name' => 'patient']);
 
         $this->command->info('Default roles created!');
 
-        // Ensure test accounts for local development
-        $this->call(TestAccountsSeeder::class);
-        
-        // Seed medical certificate reasons
-        $this->call(MedcertReasonSeeder::class);
+        $this->call(AdminSeeder::class);
 
-        // Seed appointment/laboratory services
-        $this->call(AppointmentTypeSeeder::class);
+        $this->call([
+            ClinicSettingSeeder::class,
+            DocumentTypeSeeder::class,
+            MedcertReasonSeeder::class,
+            AppointmentTypeSeeder::class,
+        ]);
+
+        if (app()->environment(['local', 'testing'])) {
+            $this->call(TestAccountsSeeder::class);
+        }
     }
 }

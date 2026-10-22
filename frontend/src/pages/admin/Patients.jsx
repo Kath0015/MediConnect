@@ -1,18 +1,12 @@
-import React, { useState } from 'react';
-import { Users, Search, Filter, Phone, Mail, Calendar, Eye, UserPlus, MapPin, Activity } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Users, Search, Eye, UserPlus, Power, KeyRound } from 'lucide-react';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../../components/ui/dialog';
-
-const initialPatients = [
-  { id: 1, name: 'Maria Santos', age: 34, gender: 'Female', contact: '09171234567', email: 'maria@email.com', address: 'Malolos, Bulacan', bloodType: 'O+', lastVisit: '2026-08-10', status: 'Active' },
-  { id: 2, name: 'Juan dela Cruz', age: 52, gender: 'Male', contact: '09281234567', email: 'juan@email.com', address: 'Guiguinto, Bulacan', bloodType: 'A+', lastVisit: '2026-08-05', status: 'Active' },
-  { id: 3, name: 'Ana Reyes', age: 28, gender: 'Female', contact: '09351234567', email: 'ana@email.com', address: 'Calumpit, Bulacan', bloodType: 'B+', lastVisit: '2026-07-28', status: 'Inactive' },
-  { id: 4, name: 'Pedro Lim', age: 61, gender: 'Male', contact: '09461234567', email: 'pedro@email.com', address: 'Plaridel, Bulacan', bloodType: 'AB+', lastVisit: '2026-08-15', status: 'Active' },
-  { id: 5, name: 'Rosa Garcia', age: 45, gender: 'Female', contact: '09571234567', email: 'rosa@email.com', address: 'Balagtas, Bulacan', bloodType: 'O-', lastVisit: '2026-07-20', status: 'Active' },
-];
+import { getStatusBadgeTokens } from '../../utils/statusTokens';
+import api from '../../api/axios';
 
 const AdminPatients = () => {
-  const [patients, setPatients] = useState(initialPatients);
+  const [patients, setPatients] = useState([]);
   const [search, setSearch] = useState('');
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState(null);
@@ -25,6 +19,27 @@ const AdminPatients = () => {
     address: '',
     bloodType: 'O+',
   });
+
+  useEffect(() => {
+    api.get('/api/v1/admin/users')
+      .then(({ data }) => {
+        setPatients((data.data || [])
+          .filter((user) => user.role === 'patient')
+          .map((user) => ({
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            age: user.patient?.date_of_birth ? new Date().getFullYear() - new Date(user.patient.date_of_birth).getFullYear() : '—',
+            gender: '—',
+            contact: user.phone || '—',
+            address: '—',
+            bloodType: '—',
+            lastVisit: '—',
+            status: user.is_active ? 'Active' : 'Inactive',
+          })));
+      })
+      .catch(() => toast.error('Failed to load patients from the database.'));
+  }, []);
 
   const filtered = patients.filter((p) =>
     p.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -117,7 +132,7 @@ const AdminPatients = () => {
                   <td className="px-5 py-4">
                     <span
                       className={`text-xs px-2.5 py-1 rounded-full font-medium ${
-                        p.status === 'Active' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'
+                        getStatusBadgeTokens(p.status)
                       }`}
                     >
                       {p.status}
@@ -130,6 +145,20 @@ const AdminPatients = () => {
                       title="View Details"
                     >
                       <Eye className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => setPatients(patients.map((patient) => patient.id === p.id ? { ...patient, status: patient.status === 'Active' ? 'Inactive' : 'Active' } : patient))}
+                      className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-[#009DD1] transition-colors"
+                      title="Edit Status / Active Toggle"
+                    >
+                      <Power className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => toast.info(`Reset password workflow requested for ${p.name}.`)}
+                      className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-[#009DD1] transition-colors"
+                      title="Reset Password"
+                    >
+                      <KeyRound className="w-4 h-4" />
                     </button>
                   </td>
                 </tr>
@@ -295,7 +324,7 @@ const AdminPatients = () => {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-xs text-slate-500">Status:</span>
-                  <span className="text-xs px-2 py-0.5 rounded-full font-semibold bg-emerald-100 text-emerald-700">
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${getStatusBadgeTokens(selectedPatient.status)}`}>
                     {selectedPatient.status}
                   </span>
                 </div>
@@ -317,4 +346,3 @@ const AdminPatients = () => {
 };
 
 export default AdminPatients;
-

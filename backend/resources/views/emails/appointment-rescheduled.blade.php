@@ -131,13 +131,13 @@
 
             <p>
                 Best regards,<br>
-                <strong>Clinic and Laboratory</strong>
+                <strong>Pareñas Medical Clinic</strong>
             </p>
         </div>
 
         <div class="footer">
-            <p>This is an automated message from Clinic and Laboratory. Please do not reply directly to this email if you're using an email system that doesn't support replies.</p>
-            <p>&copy; {{ date('Y') }} Clinic and Laboratory. All rights reserved.</p>
+            <p>This is an automated message from Pareñas Medical Clinic. Please do not reply directly to this email if you're using an email system that doesn't support replies.</p>
+            <p>&copy; {{ date('Y') }} Pareñas Medical Clinic. All rights reserved.</p>
         </div>
     </div>
 </body>

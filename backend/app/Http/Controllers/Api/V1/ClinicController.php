@@ -129,13 +129,13 @@ class ClinicController extends Controller
                     'close_time' => $data['close_time'] ?? null,
                     'working_days' => $data['working_days'] ?? [],
                     'appointment_interval' => $data['appointment_interval'] ?? 15,
-                    'brand_name' => $data['brand_name'] ?? 'Clinic and Laboratory',
+                    'brand_name' => $data['brand_name'] ?? 'Pareñas Medical Clinic',
                     'brand_short_name' => $data['brand_short_name'] ?? 'Clinic Lab',
-                    'system_title' => $data['system_title'] ?? 'Clinic and Laboratory System',
-                    'system_subtitle' => $data['system_subtitle'] ?? 'University Health Services',
+                    'system_title' => $data['system_title'] ?? 'Pareñas Medical Clinic System',
+                    'system_subtitle' => null,
                     'footer_description' => $data['footer_description'] ?? 'Modern healthcare management for better care and operations.',
-                    'contact_email' => $data['contact_email'] ?? 'clinic@university.edu',
-                    'contact_phone' => $data['contact_phone'] ?? '(123) 456-7890',
+                    'contact_email' => null,
+                    'contact_phone' => $data['contact_phone'] ?? '0999-501-4626',
                 ]);
             } else {
                 $settings->update([
@@ -146,9 +146,9 @@ class ClinicController extends Controller
                     'brand_name' => $data['brand_name'] ?? $settings->brand_name,
                     'brand_short_name' => $data['brand_short_name'] ?? $settings->brand_short_name,
                     'system_title' => $data['system_title'] ?? $settings->system_title,
-                    'system_subtitle' => $data['system_subtitle'] ?? $settings->system_subtitle,
+                    'system_subtitle' => null,
                     'footer_description' => $data['footer_description'] ?? $settings->footer_description,
-                    'contact_email' => $data['contact_email'] ?? $settings->contact_email,
+                    'contact_email' => null,
                     'contact_phone' => $data['contact_phone'] ?? $settings->contact_phone,
                 ]);
             }

@@ -12,6 +12,8 @@ use App\Traits\ApiResponses;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Carbon\Carbon;
 
 /**
@@ -58,8 +60,10 @@ class DashboardController extends Controller
             $approvedMedCerts = MedCert::where('status', 'approved')->count();
 
             // Document statistics
-            $totalDocuments = Document::count();
-            $recentDocuments = Document::where('created_at', '>=', Carbon::now()->subDays(7))->count();
+            $totalDocuments = Schema::hasTable('documents') ? Document::count() : 0;
+            $recentDocuments = Schema::hasTable('documents')
+                ? Document::where('created_at', '>=', Carbon::now()->subDays(7))->count()
+                : 0;
 
             // Recent activity (last 5 actions)
             $recentUsers = User::where('is_active', true)
@@ -80,7 +84,7 @@ class DashboardController extends Controller
                 ->take(3)
                 ->get()
                 ->map(function ($apt) {
-                    $patientName = $apt->patient->user->name ?? 'Unknown';
+                    $patientName = $apt->patient?->user?->name ?? 'Unknown';
                     return [
                         'type' => 'appointment',
                         'message' => "New appointment booked by {$patientName}",
@@ -143,6 +147,11 @@ class DashboardController extends Controller
             ]);
 
         } catch (\Exception $e) {
+            Log::error('Failed to retrieve admin dashboard statistics.', [
+                'exception' => $e,
+                'user_id' => $request->user()?->id,
+                'ip' => $request->ip(),
+            ]);
             return $this->error('Failed to retrieve dashboard statistics: ' . $e->getMessage(), 500);
         }
     }

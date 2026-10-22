@@ -482,8 +482,8 @@ class AppointmentController extends Controller
 
     private function canUpdate(User $user, Appointment $appointment): bool
     {
-        // Allow any clinician to update (assignment not required)
-        if ($user->isAdmin() || $user->hasRole('clinician')) {
+        // Scheduling and appointment changes belong to clinical staff.
+        if ($user->hasRole('clinician')) {
             return true;
         }
         
@@ -494,13 +494,13 @@ class AppointmentController extends Controller
 
     private function canDelete(User $user, Appointment $appointment): bool
     {
-        return $user->isAdmin() || $this->isAssignedClinician($user, $appointment);
+        return $this->isAssignedClinician($user, $appointment);
     }
 
     private function canCancel(User $user, Appointment $appointment): bool
     {
-        // Allow any clinician to cancel (assignment not required)
-        if ($user->isAdmin() || $user->hasRole('clinician')) {
+        // Allow clinical staff to cancel (assignment not required)
+        if ($user->hasRole('clinician')) {
             return true;
         }
         
@@ -511,11 +511,6 @@ class AppointmentController extends Controller
 
     private function canConfirm(User $user, Appointment $appointment): bool
     {
-        // Admins can confirm any appointment
-        if ($user->isAdmin()) {
-            return true;
-        }
-        
         // Any clinician can confirm appointments (not just assigned ones)
         if ($user->hasRole('clinician')) {
             return true;
@@ -526,11 +521,6 @@ class AppointmentController extends Controller
 
     private function canReject(User $user, Appointment $appointment): bool
     {
-        // Admins can reject any appointment
-        if ($user->isAdmin()) {
-            return true;
-        }
-        
         // Clinicians can reject appointments (assigned or unassigned pending ones)
         if ($user->hasRole('clinician')) {
             return true;
@@ -556,10 +546,6 @@ class AppointmentController extends Controller
 
     private function isAssignedClinician(User $user, Appointment $appointment): bool
     {
-        if ($user->isAdmin()) {
-            return true;
-        }
-
         return $user->hasRole('clinician') && (int) $appointment->clinician_id === (int) $user->id;
     }
 }

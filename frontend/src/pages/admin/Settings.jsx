@@ -354,9 +354,7 @@ export const Settings = () => {
       payload.append('brand_name', brandName || '');
       payload.append('brand_short_name', brandShortName || '');
       payload.append('system_title', systemTitle || '');
-      payload.append('system_subtitle', systemSubtitle || '');
       payload.append('footer_description', footerDescription || '');
-      payload.append('contact_email', contactEmail || '');
       payload.append('contact_phone', contactPhone || '');
       if (brandLogoFile) {
         payload.append('brand_logo', brandLogoFile);
@@ -1309,17 +1307,9 @@ export const Settings = () => {
                     <Label className={formLabelClass}>System Title</Label>
                     <Input value={systemTitle} onChange={(e) => setSystemTitle(e.target.value)} className={formInputClass} />
                   </div>
-                  <div>
-                    <Label className={formLabelClass}>System Subtitle</Label>
-                    <Input value={systemSubtitle} onChange={(e) => setSystemSubtitle(e.target.value)} className={formInputClass} />
-                  </div>
                   <div className="md:col-span-2">
                     <Label className={formLabelClass}>Footer Description</Label>
                     <Input value={footerDescription} onChange={(e) => setFooterDescription(e.target.value)} className={formInputClass} />
-                  </div>
-                  <div>
-                    <Label className={formLabelClass}>Contact Email</Label>
-                    <Input value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} className={formInputClass} />
                   </div>
                   <div>
                     <Label className={formLabelClass}>Contact Phone</Label>

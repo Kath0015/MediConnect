@@ -127,6 +127,10 @@ class AdminController extends Controller
                 return $this->error('Validation failed', 422, $validator->errors());
             }
 
+            if ($request->input('role') === 'patient' && !$user->hasRole('patient')) {
+                return $this->error('Patient accounts must be created through patient registration.', 422);
+            }
+
             // Update user basic info
             if ($request->has('name')) {
                 $user->name = $request->name;

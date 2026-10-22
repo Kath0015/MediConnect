@@ -17,15 +17,6 @@ class TestAccountsSeeder extends Seeder
         $clinicianRole = Role::firstOrCreate(['name' => 'clinician']);
         $patientRole = Role::firstOrCreate(['name' => 'patient']);
 
-        // Admin account
-        $admin = User::firstOrNew(['email' => 'admin@gmail.com']);
-        $admin->name = $admin->name ?? 'Admin User';
-        $admin->password = bcrypt('password');
-        $admin->email_verified_at = $admin->email_verified_at ?? now();
-        $admin->save();
-        $admin->assignRole('admin');
-        $admin->save();
-
         // Doctor account
         $doctor = User::firstOrNew(['email' => 'doctor@gmail.com']);
         $doctor->name = $doctor->name ?? 'Dr. Jose Santos';
@@ -37,7 +28,9 @@ class TestAccountsSeeder extends Seeder
 
         // Clinician account (Clinic Staff)
         $clinician = User::firstOrNew(['email' => 'staff@gmail.com']);
-        $clinician->name = $clinician->name ?? 'Staff Clinician';
+        if (!$clinician->name || $clinician->name === 'Staff Clinician') {
+            $clinician->name = 'Dr. Jose Santos';
+        }
         $clinician->password = bcrypt('password');
         $clinician->email_verified_at = $clinician->email_verified_at ?? now();
         $clinician->save();
@@ -83,6 +76,6 @@ class TestAccountsSeeder extends Seeder
             ]);
         }
 
-        $this->command->info('Test accounts: admin@gmail.com, doctor@gmail.com, staff@gmail.com, patient@gmail.com (password: password)');
+        $this->command->info('Test accounts: doctor@gmail.com, staff@gmail.com, patient@gmail.com (password: password)');
     }
 }

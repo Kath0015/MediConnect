@@ -114,6 +114,7 @@ class MedCertController extends Controller
 
     public function update(UpdateMedCertRequest $request, MedCert $medCert)
     {
+        $this->authorize('update', $medCert);
         $validated = $request->validated();
 
         // Recalculate duration if dates changed
@@ -123,14 +124,15 @@ class MedCertController extends Controller
             $validated['duration_days'] = $startDate->diffInDays($endDate) + 1;
         }
 
-        $medCert->update($validated);
+        DB::transaction(function () use ($request, $medCert, $validated) {
+            $medCert->update($validated);
 
-        // Audit log
-        activity()
-            ->causedBy($request->user())
-            ->performedOn($medCert)
-            ->withProperties(['ip' => $request->ip()])
-            ->log('medcert_updated');
+            activity()
+                ->causedBy($request->user())
+                ->performedOn($medCert)
+                ->withProperties(['ip' => $request->ip(), 'fields' => array_keys($validated)])
+                ->log('medcert_updated');
+        });
 
         return response()->json($medCert->load(['patient.user', 'requester', 'approver']));
     }
@@ -157,13 +159,15 @@ class MedCertController extends Controller
 
         $request->validate([
             'recommendations' => 'nullable|string|max:1000',
-            'pickup_date' => 'nullable|date|after_or_equal:today',
+            'delivery_method' => 'required|in:pickup,digital',
+            'pickup_date' => 'required_if:delivery_method,pickup|nullable|date|after_or_equal:today',
         ]);
 
         DB::transaction(function () use ($request, $medCert) {
             $medCert->approve($request->user(), [
                 'recommendations' => $request->recommendations,
                 'pickup_date' => $request->pickup_date,
+                'delivery_method' => $request->delivery_method,
             ]);
 
             // Dispatch the approved event

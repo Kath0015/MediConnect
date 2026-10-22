@@ -1,23 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Pill, Search, Eye, Download, Plus, Calendar, User, Stethoscope, Trash2, RefreshCw } from 'lucide-react';
+import { Pill, Search, Eye, Download, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../../components/ui/dialog';
-import { getPrescriptions, createPrescription, deletePrescription } from '../../api/Prescriptions';
+import { getPrescriptions } from '../../api/Prescriptions';
+import { formatAdminDate } from '../../utils/formatters';
+import { getStatusBadgeTokens } from '../../utils/statusTokens';
 
 const AdminPrescriptions = () => {
   const [prescriptions, setPrescriptions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [isIssueOpen, setIsIssueOpen] = useState(false);
   const [selectedRx, setSelectedRx] = useState(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [newRx, setNewRx] = useState({
-    patient: '',
-    medication: '',
-    doctor: 'Dr. Jose Santos',
-    dosage: '1 tablet once daily',
-    instructions: 'Take after meals.',
-  });
 
   const loadAllPrescriptions = async () => {
     try {
@@ -31,7 +24,7 @@ const AdminPrescriptions = () => {
           patient: r.patient_name,
           medication: firstMed?.name || 'Prescription',
           doctor: r.doctor_name || 'Dr. Physician',
-          date: r.date_prescribed || r.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
+          date: formatAdminDate(r.date_prescribed || r.created_at),
           dosage: firstMed ? `${firstMed.dosage || ''} ${firstMed.frequency || ''}`.trim() : r.notes || 'As prescribed',
           status: r.status || 'Active',
           instructions: firstMed?.instructions || r.notes || 'As advised.',
@@ -58,55 +51,6 @@ const AdminPrescriptions = () => {
     r.rxNumber?.toLowerCase().includes(search.toLowerCase())
   );
 
-  const handleIssueRx = async (e) => {
-    e.preventDefault();
-    if (!newRx.patient.trim() || !newRx.medication.trim()) {
-      toast.error('Please enter patient and medication details');
-      return;
-    }
-    try {
-      setIsSubmitting(true);
-      await createPrescription({
-        patient_name: newRx.patient,
-        doctor_name: newRx.doctor,
-        diagnosis: 'Consultation & Medication Order',
-        medications: [
-          {
-            name: newRx.medication,
-            dosage: newRx.dosage,
-            frequency: 'As prescribed',
-            duration: '30 Days',
-            instructions: newRx.instructions,
-          },
-        ],
-        notes: newRx.instructions,
-        status: 'Active',
-      });
-      toast.success(`e-Prescription issued for ${newRx.patient} and saved to database!`);
-      setIsIssueOpen(false);
-      setNewRx({ patient: '', medication: '', doctor: 'Dr. Jose Santos', dosage: '1 tablet once daily', instructions: 'Take after meals.' });
-      await loadAllPrescriptions();
-    } catch (err) {
-      console.error('Failed to issue prescription:', err);
-      toast.error('Failed to save prescription to database');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleDeleteRx = async (rx) => {
-    if (!window.confirm(`Delete prescription ${rx.rxNumber || rx.id}?`)) return;
-    try {
-      await deletePrescription(rx.id);
-      toast.success('Prescription deleted from database');
-      if (selectedRx?.id === rx.id) setSelectedRx(null);
-      await loadAllPrescriptions();
-    } catch (err) {
-      console.error('Failed to delete prescription:', err);
-      toast.error('Failed to delete prescription');
-    }
-  };
-
   const handleDownloadPdf = (rx) => {
     toast.success(`Printing e-Prescription for ${rx.medication}`);
     window.print();
@@ -119,7 +63,7 @@ const AdminPrescriptions = () => {
           <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
             <Pill className="w-6 h-6 text-[#009DD1]" /> Prescriptions Management
           </h1>
-          <p className="text-slate-500 mt-1 text-sm">Real-time database-backed clinic electronic prescriptions, dispensed drugs, and refills.</p>
+          <p className="text-slate-500 mt-1 text-sm">Read-only prescription records for operational review and audit.</p>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -129,12 +73,6 @@ const AdminPrescriptions = () => {
             title="Refresh"
           >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-[#009DD1]' : ''}`} />
-          </button>
-          <button
-            onClick={() => setIsIssueOpen(true)}
-            className="flex items-center gap-2 bg-[#009DD1] text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-[#01377D] transition-colors shadow-sm"
-          >
-            <Plus className="w-4 h-4" /> Issue e-Prescription
           </button>
         </div>
       </div>
@@ -191,7 +129,7 @@ const AdminPrescriptions = () => {
                   <td className="px-5 py-4 text-slate-600 whitespace-nowrap">{r.date}</td>
                   <td className="px-5 py-4">
                     <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${
-                      r.status === 'Active' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'
+                      getStatusBadgeTokens(r.status)
                     }`}>
                       {r.status}
                     </span>
@@ -211,13 +149,6 @@ const AdminPrescriptions = () => {
                     >
                       <Download className="w-4 h-4" />
                     </button>
-                    <button
-                      onClick={() => handleDeleteRx(r)}
-                      className="p-1.5 rounded-lg hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition-colors"
-                      title="Delete"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
                   </td>
                 </tr>
               ))
@@ -225,81 +156,6 @@ const AdminPrescriptions = () => {
           </tbody>
         </table>
       </div>
-
-      {/* Issue Modal */}
-      <Dialog open={isIssueOpen} onOpenChange={setIsIssueOpen}>
-        <DialogContent className="max-w-md bg-white p-6 rounded-2xl">
-          <DialogHeader>
-            <DialogTitle className="text-lg font-bold text-slate-900 flex items-center gap-2">
-              <Pill className="w-5 h-5 text-[#009DD1]" /> Issue e-Prescription
-            </DialogTitle>
-            <DialogDescription className="text-xs text-slate-500">
-              Create an official digital prescription stored in the database.
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleIssueRx} className="space-y-4 pt-2">
-            <div>
-              <label className="text-xs font-semibold text-slate-700 block mb-1">Patient Name</label>
-              <input
-                type="text"
-                required
-                placeholder="e.g. Maria Santos"
-                value={newRx.patient}
-                onChange={(e) => setNewRx({ ...newRx, patient: e.target.value })}
-                className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-[#009DD1]/30"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-slate-700 block mb-1">Medication Name & Strength</label>
-              <input
-                type="text"
-                required
-                placeholder="e.g. Amoxicillin 500mg"
-                value={newRx.medication}
-                onChange={(e) => setNewRx({ ...newRx, medication: e.target.value })}
-                className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-[#009DD1]/30"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-slate-700 block mb-1">Prescribing Doctor</label>
-              <input
-                type="text"
-                required
-                value={newRx.doctor}
-                onChange={(e) => setNewRx({ ...newRx, doctor: e.target.value })}
-                className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-[#009DD1]/30"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-slate-700 block mb-1">Dosage & Sig</label>
-              <input
-                type="text"
-                required
-                placeholder="e.g. 1 capsule 3x daily with meals for 7 days"
-                value={newRx.dosage}
-                onChange={(e) => setNewRx({ ...newRx, dosage: e.target.value })}
-                className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-[#009DD1]/30"
-              />
-            </div>
-            <div className="flex justify-end gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setIsIssueOpen(false)}
-                className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="px-4 py-2 rounded-xl bg-[#009DD1] hover:bg-[#01377D] text-white text-xs font-semibold disabled:opacity-50"
-              >
-                {isSubmitting ? 'Saving...' : 'Issue Prescription'}
-              </button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
 
       {/* Details Modal */}
       <Dialog open={!!selectedRx} onOpenChange={(open) => !open && setSelectedRx(null)}>
@@ -341,7 +197,7 @@ const AdminPrescriptions = () => {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-xs text-slate-500">Status:</span>
-                  <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">
+                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${getStatusBadgeTokens(selectedRx.status)}`}>
                     {selectedRx.status}
                   </span>
                 </div>

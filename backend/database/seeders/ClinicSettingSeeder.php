@@ -19,11 +19,11 @@ class ClinicSettingSeeder extends Seeder
                 'brand_name' => 'Pareñas Medical Clinic',
                 'brand_short_name' => 'Pareñas Clinic',
                 'system_title' => 'Pareñas Medical Clinic System',
-                'system_subtitle' => 'Lomboy St., Brgy. Paclasan, Roxas, Oriental Mindoro',
+                'system_subtitle' => null,
                 'brand_logo_path' => null,
                 'footer_description' => 'Modern healthcare management for better patient care and operations.',
-                'contact_email' => 'contact@parenasclinic.ph',
-                'contact_phone' => '0975 804 4023',
+                'contact_email' => null,
+                'contact_phone' => '0999-501-4626',
             ]
         );
 

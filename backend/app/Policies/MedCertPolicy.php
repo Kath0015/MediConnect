@@ -30,7 +30,7 @@ class MedCertPolicy
      */
     public function downloadPdf(User $user, MedCert $medCert)
     {
-        if ($user->isAdmin() || $user->isClinician()) {
+        if ($user->isClinician()) {
             return true;
         }
 
@@ -46,7 +46,7 @@ class MedCertPolicy
      */
     public function uploadPdf(User $user, MedCert $medCert)
     {
-        return $user->isAdmin() || $user->isClinician();
+        return $user->isClinician();
     }
 
     /**
@@ -54,8 +54,8 @@ class MedCertPolicy
      */
     public function approve(User $user, MedCert $medCert)
     {
-        // Only clinicians and admins can approve
-        if (!($user->isClinician() || $user->isAdmin())) {
+        // Only clinical staff can approve
+        if (!$user->isClinician()) {
             return false;
         }
 
@@ -72,8 +72,8 @@ class MedCertPolicy
      */
     public function reject(User $user, MedCert $medCert)
     {
-        // Only clinicians and admins can reject
-        if (!($user->isClinician() || $user->isAdmin())) {
+        // Only clinical staff can reject
+        if (!$user->isClinician()) {
             return false;
         }
 
@@ -90,8 +90,8 @@ class MedCertPolicy
      */
     public function update(User $user, MedCert $medCert)
     {
-        // Admins can update any medcert
-        if ($user->isAdmin()) {
+        // Clinical staff may correct request content before release.
+        if ($user->isClinician() && in_array($medCert->status, ['pending', 'approved'], true)) {
             return true;
         }
 
@@ -108,11 +108,6 @@ class MedCertPolicy
      */
     public function delete(User $user, MedCert $medCert)
     {
-        // Admins can delete any medcert
-        if ($user->isAdmin()) {
-            return true;
-        }
-
         // Patients can delete their own pending medcerts
         if ($user->isPatient() && $medCert->patient?->user_id === $user->id && $medCert->status === 'pending') {
             return true;
@@ -126,8 +121,8 @@ class MedCertPolicy
      */
     public function markNoShow(User $user, MedCert $medCert)
     {
-        // Only clinicians and admins can mark as no-show
-        if (!($user->isClinician() || $user->isAdmin())) {
+        // Only clinical staff can mark as no-show
+        if (!$user->isClinician()) {
             return false;
         }
 
@@ -144,8 +139,8 @@ class MedCertPolicy
      */
     public function markCompleted(User $user, MedCert $medCert)
     {
-        // Only clinicians and admins can mark as completed
-        if (!($user->isClinician() || $user->isAdmin())) {
+        // Only clinical staff can mark as completed
+        if (!$user->isClinician()) {
             return false;
         }
 

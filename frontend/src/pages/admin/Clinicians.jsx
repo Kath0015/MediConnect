@@ -1,17 +1,12 @@
-import React, { useState } from 'react';
-import { HeartPulse, Search, UserPlus, Calendar, Eye, Phone, Mail } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { HeartPulse, Search, UserPlus, Eye, Power, KeyRound } from 'lucide-react';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../../components/ui/dialog';
-
-const initialClinicians = [
-  { id: 1, name: 'Nurse Maria Lopez', role: 'Head Nurse', contact: '09170001111', email: 'mlopez@mediconnect.ph', status: 'Active', shift: 'Morning (6AM–2PM)', department: 'Triage & Vital Signs' },
-  { id: 2, name: 'Nurse Roberto Tan', role: 'Staff Nurse', contact: '09280002222', email: 'rtan@mediconnect.ph', status: 'Active', shift: 'Afternoon (2PM–10PM)', department: 'In-Patient Ward' },
-  { id: 3, name: 'Nurse Claire Delos Santos', role: 'Staff Nurse', contact: '09390003333', email: 'cdelos@mediconnect.ph', status: 'Active', shift: 'Morning (6AM–2PM)', department: 'Outpatient Clinic' },
-  { id: 4, name: 'Nurse Kevin Bautista', role: 'Medical Technologist', contact: '09400004444', email: 'kbautista@mediconnect.ph', status: 'On Leave', shift: 'Morning (6AM–2PM)', department: 'Diagnostic Lab' },
-];
+import { getStatusBadgeTokens } from '../../utils/statusTokens';
+import api from '../../api/axios';
 
 const AdminClinicians = () => {
-  const [clinicians, setClinicians] = useState(initialClinicians);
+  const [clinicians, setClinicians] = useState([]);
   const [search, setSearch] = useState('');
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [selectedStaff, setSelectedStaff] = useState(null);
@@ -23,6 +18,25 @@ const AdminClinicians = () => {
     shift: 'Morning (6AM–2PM)',
     department: 'Triage & Vital Signs',
   });
+
+  useEffect(() => {
+    api.get('/api/v1/admin/users')
+      .then(({ data }) => {
+        setClinicians((data.data || [])
+          .filter((user) => user.role === 'clinician')
+          .map((user) => ({
+            id: user.id,
+            name: user.name,
+            role: 'Clinic Staff',
+            contact: user.phone || '—',
+            email: user.email,
+            status: user.is_active ? 'Active' : 'Inactive',
+            shift: 'Not specified',
+            department: 'Not specified',
+          })));
+      })
+      .catch(() => toast.error('Failed to load clinic staff from the database.'));
+  }, []);
 
   const filtered = clinicians.filter((c) =>
     c.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -56,7 +70,7 @@ const AdminClinicians = () => {
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-            <HeartPulse className="w-6 h-6 text-[#26B170]" /> Clinic Staff
+            <HeartPulse className="w-6 h-6 text-[#26B170]" /> Clinic Staff &amp; Personnel
           </h1>
           <p className="text-slate-500 mt-1 text-sm">Manage nurses and clinic staff members.</p>
         </div>
@@ -110,7 +124,7 @@ const AdminClinicians = () => {
                   <td className="px-5 py-4">
                     <span
                       className={`text-xs px-2.5 py-1 rounded-full font-medium ${
-                        c.status === 'Active' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+                        getStatusBadgeTokens(c.status)
                       }`}
                     >
                       {c.status}
@@ -123,6 +137,20 @@ const AdminClinicians = () => {
                       title="View Profile"
                     >
                       <Eye className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => setClinicians(clinicians.map((staff) => staff.id === c.id ? { ...staff, status: staff.status === 'Active' ? 'Inactive' : 'Active' } : staff))}
+                      className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-[#26B170] transition-colors"
+                      title="Edit Status / Active Toggle"
+                    >
+                      <Power className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => toast.info(`Reset password workflow requested for ${c.name}.`)}
+                      className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-[#26B170] transition-colors"
+                      title="Reset Password"
+                    >
+                      <KeyRound className="w-4 h-4" />
                     </button>
                   </td>
                 </tr>
@@ -279,7 +307,7 @@ const AdminClinicians = () => {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-xs text-slate-500">Status:</span>
-                  <span className="text-xs px-2 py-0.5 rounded-full font-semibold bg-emerald-100 text-emerald-700">
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${getStatusBadgeTokens(selectedStaff.status)}`}>
                     {selectedStaff.status}
                   </span>
                 </div>
@@ -301,4 +329,3 @@ const AdminClinicians = () => {
 };
 
 export default AdminClinicians;
-

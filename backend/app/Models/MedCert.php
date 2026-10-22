@@ -27,6 +27,7 @@ class MedCert extends Model
         'rejection_reason',
         'approved_at',
         'pickup_date',
+        'delivery_method',
         'revoked_at',
         'pdf_path',
         'verification_hash',

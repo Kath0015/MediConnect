@@ -47,7 +47,7 @@ class SendMedCertApprovedNotification
                 'mail.mailers.smtp.password' => Crypt::decryptString($mailSettings->encrypted_password),
                 'mail.mailers.smtp.encryption' => $mailSettings->encryption ?? 'tls',
                 'mail.from.address' => $mailSettings->email,
-                'mail.from.name' => 'Clinic and Laboratory',
+                'mail.from.name' => 'Pareñas Medical Clinic',
                 'mail.mailer' => 'smtp', // Force SMTP mailer
             ]);
 

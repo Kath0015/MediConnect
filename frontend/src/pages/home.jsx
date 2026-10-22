@@ -147,8 +147,7 @@ const displayShortBrand = branding?.shortBrandName || branding?.shortBrand;
 const displayBrandLabel = displayBrand || 'Pareñas Medical Clinic';
 const displayShortBrandLabel = displayShortBrand || 'Pareñas Medical Clinic';
   const displaySystemTitle = branding.systemTitle;
-  const displaySystemSubtitle = branding.systemSubtitle;
-const contactPhone = branding.contactPhone || '09995014626';
+const contactPhone = branding.contactPhone || '0999-501-4626';
 const clinicAddress = 'Lomboy St., Brgy Paclasan, Roxas Oriental Mindoro, 5212';
 
   const scrollToSection = (id) => {
@@ -392,8 +391,6 @@ const clinicAddress = 'Lomboy St., Brgy Paclasan, Roxas Oriental Mindoro, 5212';
             <div>
               <h3 className="font-semibold mb-4">Contact</h3>
               <ul className="space-y-2 text-[#97E7F5]">
-                <li>{displaySystemSubtitle}</li>
-                <li>{branding.contactEmail}</li>
                 <li>
                   <a href={`tel:${contactPhone}`} className="hover:text-[#d2ffb6]">
                     {contactPhone}

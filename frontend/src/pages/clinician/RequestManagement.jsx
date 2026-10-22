@@ -8,8 +8,9 @@ import { Badge } from '../../components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '../../components/ui/popover';
 import { Calendar as DatePickerCalendar } from '../../components/ui/calendar';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../../components/ui/dialog';
-import { FileBadge, Search, CheckCircle, XCircle, Ban, Loader2, X, CalendarDays, ChevronLeft, ChevronRight, Download } from 'lucide-react';
+import { FileBadge, Search, CheckCircle, XCircle, Ban, Loader2, X, CalendarDays, ChevronLeft, ChevronRight, Download, Upload } from 'lucide-react';
 import { getMedCerts, approveMedCert, rejectMedCert, markMedCertCompleted, revokeMedCert, downloadMedCert } from '../../api/ClinicianDashboard';
+import { updateMedCert, uploadMedCertPdf } from '../../api/MedicalCertificates';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import StaffRoleBanner from '../../components/staff/StaffRoleBanner';
@@ -26,10 +27,19 @@ export const RequestManagement = () => {
   const [actionDialog, setActionDialog] = useState({ open: false, type: null });
   const [reason, setReason] = useState('');
   const [pickupDate, setPickupDate] = useState('');
+  const [deliveryMethod, setDeliveryMethod] = useState('pickup');
   const [processing, setProcessing] = useState(false);
   const [activeTab, setActiveTab] = useState('pending');
   const [completedId, setCompletedId] = useState(null);
   const [downloadingId, setDownloadingId] = useState(null);
+  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+  const [uploadTarget, setUploadTarget] = useState(null);
+  const [uploadFile, setUploadFile] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState(null);
+  const [editForm, setEditForm] = useState({ type: '', start_date: '', end_date: '', purpose: '', recommendations: '', pickup_date: '' });
+  const [savingEdit, setSavingEdit] = useState(false);
   const [isPickupPickerOpen, setIsPickupPickerOpen] = useState(false);
   const [pickupCalendarMonth, setPickupCalendarMonth] = useState(new Date());
 
@@ -65,12 +75,14 @@ export const RequestManagement = () => {
     try {
       setProcessing(true);
       await approveMedCert(selectedCert.id, {
-        pickup_date: pickupDate || null,
+        delivery_method: deliveryMethod,
+        pickup_date: deliveryMethod === 'pickup' ? pickupDate : null,
       });
       toast.success('Medical certificate approved successfully');
       setActionDialog({ open: false, type: null });
       setSelectedCert(null);
       setPickupDate('');
+      setDeliveryMethod('pickup');
       loadMedCerts();
     } catch (err) {
       console.error('Failed to approve medical certificate:', err);
@@ -159,6 +171,66 @@ export const RequestManagement = () => {
       toast.error('Unable to download certificate');
     } finally {
       setDownloadingId(null);
+    }
+  };
+
+  const handleUpload = async () => {
+    if (!uploadTarget || !uploadFile) {
+      toast.error('Please select the finalized PDF certificate');
+      return;
+    }
+
+    const isPdf = uploadFile.type === 'application/pdf' || uploadFile.name.toLowerCase().endsWith('.pdf');
+    if (!isPdf) {
+      toast.error('Only PDF files are allowed');
+      return;
+    }
+
+    try {
+      setUploading(true);
+      const formData = new FormData();
+      formData.append('file', uploadFile);
+      await uploadMedCertPdf(uploadTarget.id, formData);
+      toast.success('Finalized medical certificate uploaded');
+      setUploadDialogOpen(false);
+      setUploadTarget(null);
+      setUploadFile(null);
+      await loadMedCerts();
+    } catch (err) {
+      console.error('Failed to upload medical certificate:', err);
+      toast.error(err.response?.data?.message || 'Failed to upload medical certificate');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const openEditDialog = (cert) => {
+    setEditTarget(cert);
+    setEditForm({
+      type: cert.type || '',
+      start_date: cert.start_date || '',
+      end_date: cert.end_date || '',
+      purpose: cert.purpose || cert.medical_reason || '',
+      recommendations: cert.recommendations || '',
+      pickup_date: cert.pickup_date || '',
+    });
+    setEditDialogOpen(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editTarget) return;
+    try {
+      setSavingEdit(true);
+      await updateMedCert(editTarget.id, editForm);
+      toast.success('Medical certificate content updated');
+      setEditDialogOpen(false);
+      setEditTarget(null);
+      await loadMedCerts();
+    } catch (err) {
+      console.error('Failed to update medical certificate:', err);
+      toast.error(err.response?.data?.message || 'Failed to update medical certificate');
+    } finally {
+      setSavingEdit(false);
     }
   };
 
@@ -318,6 +390,15 @@ export const RequestManagement = () => {
                         <Button
                           size="sm"
                           variant="outline"
+                          onClick={() => openEditDialog(cert)}
+                          className="h-8 w-8 border-slate-200 bg-slate-50 p-0 text-slate-700 hover:bg-slate-100"
+                          title="Edit certificate content"
+                        >
+                          <FileBadge className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
                           onClick={() => {
                             setSelectedCert(cert);
                             setActionDialog({ open: true, type: 'approve' });
@@ -343,6 +424,28 @@ export const RequestManagement = () => {
                     )}
                     {activeTab === 'approved' && (
                       <>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => openEditDialog(cert)}
+                          className="h-8 w-8 border-slate-200 bg-slate-50 p-0 text-slate-700 hover:bg-slate-100"
+                          title="Edit certificate content"
+                        >
+                          <FileBadge className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setUploadTarget(cert);
+                            setUploadFile(null);
+                            setUploadDialogOpen(true);
+                          }}
+                          className="h-8 w-8 border-cyan-200 bg-cyan-50 p-0 text-cyan-700 hover:bg-cyan-100"
+                          title="Upload finalized certificate PDF"
+                        >
+                          <Upload className="h-3.5 w-3.5" />
+                        </Button>
                         <Button
                           size="sm"
                           variant="outline"
@@ -454,6 +557,28 @@ export const RequestManagement = () => {
                     )}
                     {activeTab === 'approved' && (
                       <div className="flex items-center gap-1.5">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => openEditDialog(cert)}
+                          className="h-8 w-8 border-slate-200 bg-slate-50 p-0 text-slate-700 hover:bg-slate-100"
+                          title="Edit certificate content"
+                        >
+                          <FileBadge className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setUploadTarget(cert);
+                            setUploadFile(null);
+                            setUploadDialogOpen(true);
+                          }}
+                          className="h-8 w-8 border-cyan-200 bg-cyan-50 p-0 text-cyan-700 hover:bg-cyan-100"
+                          title="Upload finalized certificate PDF"
+                        >
+                          <Upload className="h-3.5 w-3.5" />
+                        </Button>
                         <Button
                           size="sm"
                           variant="outline"
@@ -725,6 +850,7 @@ export const RequestManagement = () => {
           setSelectedCert(null);
           setReason('');
           setPickupDate('');
+          setDeliveryMethod('pickup');
           setIsPickupPickerOpen(false);
         }
       }}>
@@ -764,10 +890,41 @@ export const RequestManagement = () => {
               </div>
 
               {actionDialog.type === 'approve' && (
-                <div className="space-y-2">
+                <div className="space-y-4">
                   <label className="text-sm font-medium text-[#01377D] block">
-                    Pickup Date *
+                    How should the patient receive the certificate?
                   </label>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <button
+                      type="button"
+                      onClick={() => setDeliveryMethod('pickup')}
+                      className={`rounded-xl border p-3 text-left transition ${
+                        deliveryMethod === 'pickup'
+                          ? 'border-cyan-500 bg-cyan-50 ring-2 ring-cyan-100'
+                          : 'border-slate-200 bg-white hover:bg-slate-50'
+                      }`}
+                    >
+                      <p className="text-sm font-semibold text-[#01377D]">Patient pickup</p>
+                      <p className="mt-1 text-xs text-slate-500">The patient collects the certificate at the clinic.</p>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDeliveryMethod('digital')}
+                      className={`rounded-xl border p-3 text-left transition ${
+                        deliveryMethod === 'digital'
+                          ? 'border-cyan-500 bg-cyan-50 ring-2 ring-cyan-100'
+                          : 'border-slate-200 bg-white hover:bg-slate-50'
+                      }`}
+                    >
+                      <p className="text-sm font-semibold text-[#01377D]">Send digitally</p>
+                      <p className="mt-1 text-xs text-slate-500">Upload the finalized PDF for secure patient access.</p>
+                    </button>
+                  </div>
+                  {deliveryMethod === 'pickup' && (
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-[#01377D] block">
+                        Pickup Date *
+                      </label>
                   <Popover
                     open={isPickupPickerOpen}
                     onOpenChange={(open) => {
@@ -827,6 +984,13 @@ export const RequestManagement = () => {
                   <p className="text-xs text-gray-500">
                     Set the date when the patient can pick up their certificate from the clinic.
                   </p>
+                    </div>
+                  )}
+                  {deliveryMethod === 'digital' && (
+                    <p className="rounded-lg bg-cyan-50 px-3 py-2 text-xs text-cyan-800">
+                      After approval, upload the finalized PDF from the approved request row. The patient can then access the digital certificate.
+                    </p>
+                  )}
                 </div>
               )}
 
@@ -853,6 +1017,7 @@ export const RequestManagement = () => {
                     setSelectedCert(null);
                     setReason('');
                     setPickupDate('');
+                    setDeliveryMethod('pickup');
                   }}
                   disabled={processing}
                   className="h-10 w-full rounded-lg border-slate-300 sm:w-auto"
@@ -870,7 +1035,7 @@ export const RequestManagement = () => {
                   disabled={
                     processing ||
                     ((actionDialog.type === 'reject' || actionDialog.type === 'revoke') && !reason.trim()) ||
-                    (actionDialog.type === 'approve' && !pickupDate.trim())
+                    (actionDialog.type === 'approve' && deliveryMethod === 'pickup' && !pickupDate.trim())
                   }
                   className={
                     actionDialog.type === 'approve'
@@ -907,6 +1072,90 @@ export const RequestManagement = () => {
               </DialogFooter>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={uploadDialogOpen} onOpenChange={(open) => {
+        setUploadDialogOpen(open);
+        if (!open) {
+          setUploadTarget(null);
+          setUploadFile(null);
+        }
+      }}>
+        <DialogContent className="max-w-md bg-white">
+          <DialogHeader>
+            <DialogTitle>Upload finalized medical certificate</DialogTitle>
+            <DialogDescription>
+              Upload the signed PDF after approving this patient request.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-slate-600">
+              Patient: <span className="font-semibold">{uploadTarget?.patient?.user?.name || 'N/A'}</span>
+            </p>
+            <Input
+              type="file"
+              accept=".pdf,application/pdf"
+              onChange={(event) => setUploadFile(event.target.files?.[0] || null)}
+            />
+            <p className="text-xs text-slate-500">PDF only, maximum 10 MB.</p>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setUploadDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="button" onClick={handleUpload} disabled={uploading || !uploadFile}>
+              {uploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+              Upload PDF
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={editDialogOpen} onOpenChange={(open) => {
+        setEditDialogOpen(open);
+        if (!open) setEditTarget(null);
+      }}>
+        <DialogContent className="max-w-lg bg-white">
+          <DialogHeader>
+            <DialogTitle>Edit certificate content</DialogTitle>
+            <DialogDescription>
+              Correct the saved request details before generating or uploading the final PDF. This does not change the PDF template.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-slate-700">Certificate type</label>
+              <Input value={editForm.type} onChange={(event) => setEditForm({ ...editForm, type: event.target.value })} />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-slate-700">Pickup date</label>
+              <Input type="date" value={editForm.pickup_date} onChange={(event) => setEditForm({ ...editForm, pickup_date: event.target.value })} />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-slate-700">Start date</label>
+              <Input type="date" value={editForm.start_date} onChange={(event) => setEditForm({ ...editForm, start_date: event.target.value })} />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-slate-700">End date</label>
+              <Input type="date" value={editForm.end_date} onChange={(event) => setEditForm({ ...editForm, end_date: event.target.value })} />
+            </div>
+            <div className="space-y-1.5 sm:col-span-2">
+              <label className="text-sm font-medium text-slate-700">Medical reason / purpose</label>
+              <Textarea value={editForm.purpose} onChange={(event) => setEditForm({ ...editForm, purpose: event.target.value })} rows={3} />
+            </div>
+            <div className="space-y-1.5 sm:col-span-2">
+              <label className="text-sm font-medium text-slate-700">Recommendations</label>
+              <Textarea value={editForm.recommendations} onChange={(event) => setEditForm({ ...editForm, recommendations: event.target.value })} rows={3} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setEditDialogOpen(false)} disabled={savingEdit}>Cancel</Button>
+            <Button type="button" onClick={handleSaveEdit} disabled={savingEdit || !editForm.type || !editForm.start_date || !editForm.end_date || !editForm.purpose}>
+              {savingEdit ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Save content
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

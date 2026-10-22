@@ -269,7 +269,7 @@ export const ManageUsers = () => {
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <p className="max-w-2xl text-sm text-cyan-100/90">Manage account roles, activation status, and user details with a cleaner and more focused admin workspace.</p>
             <Button onClick={() => setCreateDialogOpen(true)} className="bg-[#26B170] text-white hover:bg-[#1a8a55]">
-              <Plus className="mr-2 h-4 w-4" /> Create Staff Account
+              <Plus className="mr-2 h-4 w-4" /> Create Doctor or Staff Account
             </Button>
           </div>
         </div>
@@ -552,9 +552,9 @@ export const ManageUsers = () => {
         <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
           <DialogContent className="w-[min(92vw,560px)] max-h-[90vh] overflow-y-auto rounded-2xl border border-cyan-100 bg-white p-4 sm:p-6">
             <DialogHeader>
-              <DialogTitle className="text-[#01377D]">Create Staff Account</DialogTitle>
+              <DialogTitle className="text-[#01377D]">Create Doctor or Staff Account</DialogTitle>
               <DialogDescription className="text-[#009DD1]">
-                Create a login for a doctor or clinic staff member.
+                Admins create doctor and clinic staff accounts here. Patients must use the public registration process.
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleCreateUser} className="space-y-4">
@@ -640,7 +640,7 @@ export const ManageUsers = () => {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="bg-white">
-                    <SelectItem value="patient">Patient</SelectItem>
+                    <SelectItem value="patient" disabled>Patient (registration only)</SelectItem>
                     <SelectItem value="clinician">Clinician</SelectItem>
                     <SelectItem value="admin">Administrator</SelectItem>
                   </SelectContent>
