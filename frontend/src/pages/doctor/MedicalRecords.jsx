@@ -1,43 +1,14 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { FileText, Search, Plus, Eye, Download, User, Calendar, Activity, Stethoscope } from 'lucide-react';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../../components/ui/dialog';
-
-const initialRecords = [
-  {
-    id: 1,
-    patient: 'Maria Santos',
-    date: '2026-08-10',
-    subjective: 'Patient reports occasional morning headaches and dizziness over past 2 weeks.',
-    objective: 'BP: 140/90 mmHg, HR: 78 bpm, Temp: 36.6°C, Resp: 18 cpm. Heart sounds regular.',
-    diagnosis: 'Essential Hypertension (Stage 1)',
-    plan: 'Continue Amlodipine 5mg once daily. Dietary sodium restriction. Home BP monitoring log.',
-    status: 'Final'
-  },
-  {
-    id: 2,
-    patient: 'Juan dela Cruz',
-    date: '2026-08-08',
-    subjective: 'Routine diabetes check. Denies polydipsia, polyuria, or visual disturbances.',
-    objective: 'FBS: 142 mg/dL, HbA1c: 7.1%, BMI: 27.2. Foot sensory exam normal.',
-    diagnosis: 'Type 2 Diabetes Mellitus - Moderately Controlled',
-    plan: 'Metformin 500mg BID with meals. Lifestyle & carbohydrate moderation. Repeat HbA1c in 3 months.',
-    status: 'Final'
-  },
-  {
-    id: 3,
-    patient: 'Ana Reyes',
-    date: '2026-07-28',
-    subjective: 'Productive cough x 5 days with yellowish phlegm. Low-grade fever initially.',
-    objective: 'Chest auscultation: coarse rhonchi on right middle lobe. No wheezing.',
-    diagnosis: 'Acute Bronchitis',
-    plan: 'Amoxicillin 500mg TID x 7 days. Salbutamol nebulization PRN for shortness of breath.',
-    status: 'Final'
-  },
-];
+import { getAppointments } from '../../api/Appointments';
+import api from '../../api/axios';
 
 const DoctorMedicalRecords = () => {
-  const [records, setRecords] = useState(initialRecords);
+  const [appointments, setAppointments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [isNewRecordOpen, setIsNewRecordOpen] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState(null);
@@ -48,6 +19,24 @@ const DoctorMedicalRecords = () => {
     diagnosis: '',
     plan: '',
   });
+
+  useEffect(() => {
+    getAppointments({ per_page: 100, status: 'completed' })
+      .then(({ data }) => setAppointments(data.data || []))
+      .catch(() => setError('Unable to load medical records.'))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const records = useMemo(() => appointments.map((appointment) => ({
+    id: appointment.id,
+    patient: appointment.patient?.user?.name || 'Unknown patient',
+    date: appointment.start_time ? new Date(appointment.start_time).toISOString().slice(0, 10) : '—',
+    subjective: appointment.description || 'Consultation findings recorded during the visit.',
+    objective: 'Clinical assessment completed by the attending physician.',
+    diagnosis: appointment.title || appointment.description || 'Clinical consultation',
+    plan: appointment.notes || 'Follow-up as clinically indicated.',
+    status: 'Final',
+  })), [appointments]);
 
   const filtered = records.filter((r) =>
     r.patient.toLowerCase().includes(search.toLowerCase()) ||
@@ -61,7 +50,7 @@ const DoctorMedicalRecords = () => {
       return;
     }
     const item = {
-      id: Date.now(),
+      id: `local-${Date.now()}`,
       patient: newRecord.patient,
       date: new Date().toISOString().split('T')[0],
       subjective: newRecord.subjective || 'Chief complaints recorded during consultation.',
@@ -70,7 +59,14 @@ const DoctorMedicalRecords = () => {
       plan: newRecord.plan || 'Advised follow-up as necessary.',
       status: 'Final',
     };
-    setRecords([item, ...records]);
+    setAppointments((current) => [{
+      id: item.id,
+      patient: { user: { name: item.patient } },
+      start_time: item.date,
+      description: item.subjective,
+      title: item.diagnosis,
+      notes: item.plan,
+    }, ...current]);
     setIsNewRecordOpen(false);
     setNewRecord({
       patient: '',
@@ -82,8 +78,23 @@ const DoctorMedicalRecords = () => {
     toast.success(`Medical record for ${item.patient} saved`);
   };
 
-  const handleDownloadRecord = (rec) => {
-    toast.success(`Downloading Clinical Summary PDF for ${rec.patient}`);
+  const handleDownloadRecord = async (rec) => {
+    try {
+      const response = await api.get(`/api/appointments/${rec.id}/clinical-summary`, {
+        responseType: 'blob',
+      });
+      const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `clinical-summary-${rec.id}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      toast.success(`Clinical Summary PDF downloaded for ${rec.patient}`);
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to download clinical summary.');
+    }
   };
 
   return (
@@ -115,7 +126,11 @@ const DoctorMedicalRecords = () => {
       </div>
 
       <div className="space-y-4">
-        {filtered.length === 0 ? (
+        {loading ? (
+          <div className="bg-white rounded-2xl border border-slate-100 p-8 text-center text-slate-400">Loading medical records...</div>
+        ) : error ? (
+          <div className="bg-white rounded-2xl border border-slate-100 p-8 text-center text-red-600">{error}</div>
+        ) : filtered.length === 0 ? (
           <div className="bg-white rounded-2xl border border-slate-100 p-8 text-center text-slate-400">
             No medical records found.
           </div>
@@ -309,4 +324,3 @@ const DoctorMedicalRecords = () => {
 };
 
 export default DoctorMedicalRecords;
-

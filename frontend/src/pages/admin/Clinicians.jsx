@@ -15,6 +15,8 @@ const AdminClinicians = () => {
     role: 'Staff Nurse',
     contact: '',
     email: '',
+    password: '',
+    password_confirmation: '',
     shift: 'Morning (6AM–2PM)',
     department: 'Triage & Vital Signs',
   });
@@ -43,26 +45,45 @@ const AdminClinicians = () => {
     c.role.toLowerCase().includes(search.toLowerCase())
   );
 
-  const handleAddStaff = (e) => {
+  const handleAddStaff = async (e) => {
     e.preventDefault();
     if (!newStaff.name.trim() || !newStaff.email.trim()) {
       toast.error('Please enter name and email');
       return;
     }
-    const created = {
-      id: Date.now(),
-      name: newStaff.name.startsWith('Nurse') ? newStaff.name : `Nurse ${newStaff.name}`,
-      role: newStaff.role,
-      contact: newStaff.contact || '09170000000',
-      email: newStaff.email,
-      status: 'Active',
-      shift: newStaff.shift,
-      department: newStaff.department,
-    };
-    setClinicians([created, ...clinicians]);
-    setIsAddOpen(false);
-    setNewStaff({ name: '', role: 'Staff Nurse', contact: '', email: '', shift: 'Morning (6AM–2PM)', department: 'Triage & Vital Signs' });
-    toast.success(`${created.name} added to Clinic Staff roster!`);
+    if (newStaff.password.length < 8 || newStaff.password !== newStaff.password_confirmation) {
+      toast.error('Use a password of at least 8 characters and confirm it correctly.');
+      return;
+    }
+
+    try {
+      const { data } = await api.post('/api/v1/admin/users', {
+        name: newStaff.name.trim(),
+        email: newStaff.email.trim().toLowerCase(),
+        phone: newStaff.contact || null,
+        role: 'clinician',
+        password: newStaff.password,
+        password_confirmation: newStaff.password_confirmation,
+      });
+      const user = data.data?.user;
+      const created = {
+        id: user.id,
+        name: user.name,
+        role: newStaff.role,
+        contact: user.phone || '—',
+        email: user.email,
+        status: user.is_active ? 'Active' : 'Inactive',
+        shift: newStaff.shift,
+        department: newStaff.department,
+      };
+      setClinicians((current) => [created, ...current]);
+      setIsAddOpen(false);
+      setNewStaff({ name: '', role: 'Staff Nurse', contact: '', email: '', password: '', password_confirmation: '', shift: 'Morning (6AM–2PM)', department: 'Triage & Vital Signs' });
+      toast.success(`${created.name} added to Clinic Staff roster!`);
+    } catch (error) {
+      const message = error.response?.data?.message || 'Failed to save clinic staff.';
+      toast.error(message);
+    }
   };
 
   return (
@@ -247,6 +268,30 @@ const AdminClinicians = () => {
                 <option value="Night (10PM–6AM)">Night (10PM–6AM)</option>
                 <option value="Regular (8AM–5PM)">Regular (8AM–5PM)</option>
               </select>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-semibold text-slate-700 block mb-1">Password</label>
+                <input
+                  type="password"
+                  required
+                  minLength={8}
+                  value={newStaff.password}
+                  onChange={(e) => setNewStaff({ ...newStaff, password: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-[#26B170]/30"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-slate-700 block mb-1">Confirm Password</label>
+                <input
+                  type="password"
+                  required
+                  minLength={8}
+                  value={newStaff.password_confirmation}
+                  onChange={(e) => setNewStaff({ ...newStaff, password_confirmation: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-[#26B170]/30"
+                />
+              </div>
             </div>
             <div className="flex justify-end gap-2 pt-2">
               <button

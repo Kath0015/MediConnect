@@ -81,6 +81,12 @@ Route::middleware(['web', 'auth:sanctum', 'throttle:300,1'])->group(function () 
     Route::post('/auth/user/change-password', [AuthController::class, 'changePassword']);
     Route::post('/auth/logout', [AuthController::class, 'logout']);
 
+    // Authenticated in-app notifications
+    Route::get('/notifications', [NotificationController::class, 'index']);
+    Route::post('/notifications/mark-all-read', [NotificationController::class, 'markAllAsRead']);
+    Route::patch('/notifications/{notification}', [NotificationController::class, 'update']);
+    Route::delete('/notifications/{notification}', [NotificationController::class, 'destroy']);
+
     // Directory lookups
     Route::get('/clinicians', [ClinicianDirectoryController::class, 'index']);
     Route::get('/clinic/meta', [ClinicController::class, 'meta']);
@@ -91,6 +97,7 @@ Route::middleware(['web', 'auth:sanctum', 'throttle:300,1'])->group(function () 
     Route::apiResource('patients', PatientController::class);
     
     // Appointments
+    Route::get('/appointments/{appointment}/clinical-summary', [AppointmentController::class, 'downloadClinicalSummary']);
     Route::apiResource('appointments', AppointmentController::class);
     Route::get('/appointments/calendar', [AppointmentController::class, 'calendar']);
     Route::post('/appointments/{appointment}/cancel', [AppointmentController::class, 'cancel']);

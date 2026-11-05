@@ -94,7 +94,7 @@ class MockToDatabaseSeeder extends Seeder
                 'patient_id' => $patientId,
                 'patient_name' => 'Maria Santos',
                 'prescribed_by' => $doctorUser?->id,
-                'doctor_name' => $doctorUser?->name ?? 'Dr. Jose Santos',
+                'doctor_name' => $doctorUser?->name ?? 'Dr. Roy B. Pareñas, M.D.',
                 'diagnosis' => 'Acute Upper Respiratory Tract Infection',
                 'medications' => [
                     [
@@ -128,7 +128,7 @@ class MockToDatabaseSeeder extends Seeder
                 'patient_id' => null,
                 'patient_name' => 'Pedro Lim',
                 'prescribed_by' => $doctorUser?->id,
-                'doctor_name' => $doctorUser?->name ?? 'Dr. Jose Santos',
+                'doctor_name' => $doctorUser?->name ?? 'Dr. Roy B. Pareñas, M.D.',
                 'diagnosis' => 'Essential Hypertension - Stage 1',
                 'medications' => [
                     [
@@ -157,7 +157,7 @@ class MockToDatabaseSeeder extends Seeder
                 'patient_name' => 'Maria Santos',
                 'test_name' => 'Complete Blood Count (CBC) with Platelet',
                 'category' => 'Hematology',
-                'requested_by' => 'Dr. Jose Santos',
+                'requested_by' => $doctorUser?->name ?? 'Dr. Roy B. Pareñas, M.D.',
                 'status' => 'Completed',
                 'results' => 'WBC: 7.2 x10^9/L (Normal), RBC: 4.5 x10^12/L (Normal), Hemoglobin: 13.8 g/dL (Normal), Platelets: 240 x10^9/L (Normal). Normal hematologic profile.',
                 'date_requested' => '2026-08-10',
@@ -169,7 +169,7 @@ class MockToDatabaseSeeder extends Seeder
                 'patient_name' => 'Juan dela Cruz',
                 'test_name' => 'Routine Urinalysis',
                 'category' => 'Urinalysis',
-                'requested_by' => 'Dr. Jose Santos',
+                'requested_by' => $doctorUser?->name ?? 'Dr. Roy B. Pareñas, M.D.',
                 'status' => 'Completed',
                 'results' => 'Color: Pale yellow, Transparency: Clear, Specific Gravity: 1.015, pH: 6.0, Protein: Negative, Glucose: Negative, Pus Cells: 0-2 /hpf, RBC: 0-1 /hpf.',
                 'date_requested' => '2026-08-08',
@@ -181,7 +181,7 @@ class MockToDatabaseSeeder extends Seeder
                 'patient_name' => 'Ana Reyes',
                 'test_name' => 'Fasting Blood Sugar (FBS) & HbA1c',
                 'category' => 'Blood Chemistry',
-                'requested_by' => 'Dr. Jose Santos',
+                'requested_by' => $doctorUser?->name ?? 'Dr. Roy B. Pareñas, M.D.',
                 'status' => 'Pending',
                 'results' => null,
                 'date_requested' => '2026-08-14',
@@ -193,7 +193,7 @@ class MockToDatabaseSeeder extends Seeder
                 'patient_name' => 'Pedro Lim',
                 'test_name' => 'Lipid Profile (Cholesterol, HDL, LDL, Triglycerides)',
                 'category' => 'Blood Chemistry',
-                'requested_by' => 'Dr. Jose Santos',
+                'requested_by' => $doctorUser?->name ?? 'Dr. Roy B. Pareñas, M.D.',
                 'status' => 'Processing',
                 'results' => null,
                 'date_requested' => '2026-08-15',

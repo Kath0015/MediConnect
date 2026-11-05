@@ -12,7 +12,7 @@ const DoctorAvailability = ({ appointment, onAssignDoctor }) => {
   const availableDoctors = [
     {
       id: 1,
-      name: 'Dr. Jose Santos',
+      name: 'Dr. Roy B. Pareñas, M.D.',
       specialty: 'General Practice',
       status: 'available',
       nextAvailable: 'Now',

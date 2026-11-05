@@ -1,21 +1,87 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Users, Search, Eye, FileText, Pill, Plus } from 'lucide-react';
-
-const mockPatients = [
-  { id: 1, name: 'Maria Santos', age: 34, gender: 'Female', contact: '09171234567', lastVisit: '2026-08-10', condition: 'Hypertension', status: 'Active' },
-  { id: 2, name: 'Juan dela Cruz', age: 52, gender: 'Male', contact: '09281234567', lastVisit: '2026-08-08', condition: 'Type 2 Diabetes', status: 'Active' },
-  { id: 3, name: 'Ana Reyes', age: 28, gender: 'Female', contact: '09351234567', lastVisit: '2026-07-28', condition: 'Asthma', status: 'Active' },
-  { id: 4, name: 'Pedro Lim', age: 61, gender: 'Male', contact: '09461234567', lastVisit: '2026-08-15', condition: 'Post-ECG Eval', status: 'Active' },
-];
+import { getPatients } from '../../api/Patients';
 
 const DoctorPatients = () => {
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
-  const filtered = mockPatients.filter((p) =>
-    p.name.toLowerCase().includes(search.toLowerCase()) ||
-    p.condition.toLowerCase().includes(search.toLowerCase())
-  );
+  const [patients, setPatients] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let active = true;
+
+    getPatients({ per_page: 100 })
+      .then((response) => {
+        if (active) {
+          setPatients(response.data?.data || []);
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setError('Unable to load patients.');
+        }
+      })
+      .finally(() => {
+        if (active) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const filtered = useMemo(() => patients.filter((p) => {
+    const name = p.user?.name || '';
+    const condition = p.medical_notes || '';
+
+    return name.toLowerCase().includes(search.toLowerCase()) ||
+      condition.toLowerCase().includes(search.toLowerCase());
+  }), [patients, search]);
+
+  const age = (dateOfBirth) => {
+    if (!dateOfBirth) return '—';
+    const birthDate = new Date(dateOfBirth);
+    const today = new Date();
+    let years = today.getFullYear() - birthDate.getFullYear();
+    const birthdayPassed = today.getMonth() > birthDate.getMonth() ||
+      (today.getMonth() === birthDate.getMonth() && today.getDate() >= birthDate.getDate());
+    if (!birthdayPassed) years -= 1;
+    return `${years} yrs`;
+  };
+
+  const lastVisit = (appointments = []) => {
+    const completed = appointments
+      .filter((appointment) => appointment.status === 'completed')
+      .sort((a, b) => new Date(b.start_time) - new Date(a.start_time));
+    return completed[0]?.start_time
+      ? new Date(completed[0].start_time).toISOString().slice(0, 10)
+      : '—';
+  };
+
+  const gender = (patient) => {
+    return patient.gender || '—';
+  };
+
+  const patientName = (patient) => patient.user?.name || 'Unknown patient';
+
+  const patientContact = (patient) => patient.phone || patient.user?.phone || '—';
+
+  const patientCondition = (patient) => patient.medical_notes || 'General consultation';
+
+  const displayPatients = filtered.map((patient) => ({
+    ...patient,
+    name: patientName(patient),
+    age: age(patient.date_of_birth),
+    gender: gender(patient),
+    contact: patientContact(patient),
+    lastVisit: lastVisit(patient.appointments),
+    condition: patientCondition(patient),
+  }));
 
   return (
     <div className="space-y-6">
@@ -52,10 +118,16 @@ const DoctorPatients = () => {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {filtered.map((p) => (
+            {loading && (
+              <tr><td colSpan="6" className="px-5 py-8 text-center text-slate-500">Loading patients...</td></tr>
+            )}
+            {!loading && error && (
+              <tr><td colSpan="6" className="px-5 py-8 text-center text-red-600">{error}</td></tr>
+            )}
+            {!loading && !error && displayPatients.map((p) => (
               <tr key={p.id} className="hover:bg-slate-50/50 transition-colors">
                 <td className="px-5 py-4 font-semibold text-slate-900">{p.name}</td>
-                <td className="px-5 py-4 text-slate-600">{p.age} yrs / {p.gender}</td>
+                <td className="px-5 py-4 text-slate-600">{p.age} / {p.gender}</td>
                 <td className="px-5 py-4">
                   <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-purple-50 text-[#7C3AED]">
                     {p.condition}
@@ -83,6 +155,9 @@ const DoctorPatients = () => {
                 </td>
               </tr>
             ))}
+            {!loading && !error && displayPatients.length === 0 && (
+              <tr><td colSpan="6" className="px-5 py-8 text-center text-slate-500">No patients found.</td></tr>
+            )}
           </tbody>
         </table>
       </div>
@@ -91,4 +166,3 @@ const DoctorPatients = () => {
 };
 
 export default DoctorPatients;
-

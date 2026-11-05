@@ -30,7 +30,7 @@ const AdminDoctors = () => {
             specialty: 'Not specified',
             contact: user.phone || '—',
             email: user.email,
-            patients: 0,
+            patients: Number(user.patient_count || 0),
             status: user.is_active ? 'Active' : 'Inactive',
             schedule: 'Not specified',
             room: 'Not specified',

@@ -19,7 +19,7 @@ class TestAccountsSeeder extends Seeder
 
         // Doctor account
         $doctor = User::firstOrNew(['email' => 'doctor@gmail.com']);
-        $doctor->name = $doctor->name ?? 'Dr. Jose Santos';
+        $doctor->name = $doctor->name ?? 'Dr. Roy B. Pareñas, M.D.';
         $doctor->password = bcrypt('password');
         $doctor->email_verified_at = $doctor->email_verified_at ?? now();
         $doctor->save();

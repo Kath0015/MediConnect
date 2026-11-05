@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use App\Traits\ApiResponses;
 
 class AdminController extends Controller
@@ -25,6 +26,9 @@ class AdminController extends Controller
             // Eager-load patient relationship so we can return patient-specific fields
             $users = User::with('patient', 'roles')
                 ->select('id', 'name', 'email', 'phone', 'is_active', 'created_at', 'updated_at')
+                ->withCount(['appointmentsAsClinician as patient_count' => function ($query) {
+                    $query->select(DB::raw('count(distinct patient_id)'));
+                }])
                 ->get()
                 ->map(function ($user) {
                     $roleName = 'patient'; // default role
@@ -53,6 +57,7 @@ class AdminController extends Controller
                         'phone' => $phone,
                         'role' => $roleName,
                         'is_active' => $user->is_active,
+                        'patient_count' => (int) $user->patient_count,
                         'patient' => $patientObj,
                         'created_at' => $user->created_at->toISOString(),
                         'updated_at' => $user->updated_at->toISOString(),

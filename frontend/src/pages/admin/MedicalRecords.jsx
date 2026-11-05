@@ -1,12 +1,54 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { FileText, Search, Eye, Download, Calendar, User, Stethoscope } from 'lucide-react';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../../components/ui/dialog';
+import { getAppointments } from '../../api/Appointments';
+import api from '../../api/axios';
 
 const AdminMedicalRecords = () => {
-  const records = [];
   const [search, setSearch] = useState('');
   const [selectedRecord, setSelectedRecord] = useState(null);
+  const [appointments, setAppointments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let active = true;
+
+    getAppointments({ per_page: 100 })
+      .then(({ data }) => {
+        if (active) {
+          setAppointments(data.data || []);
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setError('Unable to load medical records.');
+        }
+      })
+      .finally(() => {
+        if (active) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const records = useMemo(() => appointments
+    .filter((appointment) => appointment.status === 'completed')
+    .map((appointment) => ({
+      id: appointment.id,
+      patient: appointment.patient?.user?.name || 'Unknown patient',
+      type: appointment.type || 'Consultation',
+      doctor: appointment.clinician?.name || 'Attending physician',
+      date: appointment.start_time ? new Date(appointment.start_time).toISOString().slice(0, 10) : '—',
+      diagnosis: appointment.title || appointment.description || 'Clinical consultation',
+      status: 'Complete',
+      notes: appointment.notes || appointment.description || 'Consultation completed.',
+    })), [appointments]);
 
   const filtered = records.filter((r) =>
     r.patient.toLowerCase().includes(search.toLowerCase()) ||
@@ -14,8 +56,23 @@ const AdminMedicalRecords = () => {
     r.doctor.toLowerCase().includes(search.toLowerCase())
   );
 
-  const handleDownload = (record) => {
-    toast.success(`Downloading clinical record summary for ${record.patient}`);
+  const handleDownload = async (record) => {
+    try {
+      const response = await api.get(`/api/appointments/${record.id}/clinical-summary`, {
+        responseType: 'blob',
+      });
+      const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `clinical-summary-${record.id}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      toast.success(`Clinical Summary PDF downloaded for ${record.patient}`);
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to download clinical summary.');
+    }
   };
 
   return (
@@ -51,7 +108,11 @@ const AdminMedicalRecords = () => {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {filtered.length === 0 ? (
+            {loading ? (
+              <tr><td colSpan={7} className="px-5 py-8 text-center text-slate-400">Loading medical records...</td></tr>
+            ) : error ? (
+              <tr><td colSpan={7} className="px-5 py-8 text-center text-red-600">{error}</td></tr>
+            ) : filtered.length === 0 ? (
               <tr>
                 <td colSpan={7} className="px-5 py-8 text-center text-slate-400">
                   No medical records found.

@@ -13,6 +13,7 @@ use Carbon\Carbon;
 use App\Models\AppointmentType;
 use App\Models\User;
 use App\Events\AppointmentRescheduled;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class AppointmentController extends Controller
 {
@@ -36,6 +37,8 @@ class AppointmentController extends Controller
         } elseif ($request->user()->isClinician() && !$request->user()->isAdmin()) {
             // Clinicians see all appointments (assignment not required)
             // No additional filtering needed
+        } elseif ($request->user()->hasRole('doctor')) {
+            $query->where('clinician_id', $request->user()->id);
         }
 
         // Date range filter
@@ -59,6 +62,19 @@ class AppointmentController extends Controller
         $appointments = $query->latest()->paginate($request->get('per_page', 15));
 
         return response()->json($appointments);
+    }
+
+    public function downloadClinicalSummary(Request $request, Appointment $appointment)
+    {
+        $user = $request->user();
+        if (!$user->isAdmin() && $appointment->clinician_id !== $user->id && !$user->isClinician()) {
+            return response()->json(['message' => 'You are not authorized to download this clinical summary.'], Response::HTTP_FORBIDDEN);
+        }
+
+        $appointment->load(['patient.user', 'clinician']);
+        $pdf = Pdf::loadView('medical-records.pdf', compact('appointment'));
+
+        return $pdf->download('clinical-summary-'.$appointment->id.'.pdf');
     }
 
     public function store(StoreAppointmentRequest $request)

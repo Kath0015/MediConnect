@@ -25,6 +25,7 @@ class DatabaseSeeder extends Seeder
             DocumentTypeSeeder::class,
             MedcertReasonSeeder::class,
             AppointmentTypeSeeder::class,
+            October2026PatientSeeder::class,
         ]);
 
         if (app()->environment(['local', 'testing'])) {

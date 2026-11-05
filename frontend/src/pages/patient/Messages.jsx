@@ -393,7 +393,7 @@ const PatientMessages = () => {
               <MessageCircle className="w-12 h-12 text-slate-300 stroke-1 mb-2" />
               <h3 className="font-semibold text-slate-700">Doctor Messaging</h3>
               <p className="text-sm mt-1 max-w-sm">
-                Click "Message Doctor" to start a direct chat with Dr. Jose Santos or clinic staff.
+                Click "Message Doctor" to start a direct chat with Dr. Roy B. Pareñas, M.D. or clinic staff.
               </p>
             </div>
           )}
