@@ -123,7 +123,11 @@ export const Profile = () => {
 
     setLoading(true);
     try {
-      await changePassword({ current_password: currentPassword, password: newPassword, password_confirmation: confirmPassword });
+      await changePassword({
+        current_password: currentPassword,
+        new_password: newPassword,
+        new_password_confirmation: confirmPassword,
+      });
       toast.success('Password changed successfully');
       setCurrentPassword('');
       setNewPassword('');

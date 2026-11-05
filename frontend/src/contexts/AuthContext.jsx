@@ -193,7 +193,10 @@ export function AuthProvider({ children }) {
       return response;
     } catch (error) {
       console.error('Change password failed:', error);
-      const message = error.response?.data?.message || 'Failed to change password';
+      const message = Object.values(error.response?.data?.errors || {}).flat()[0]
+        || error.response?.data?.error
+        || error.response?.data?.message
+        || 'Failed to change password';
       throw new Error(message);
     }
   };

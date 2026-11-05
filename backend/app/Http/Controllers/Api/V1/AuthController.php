@@ -15,6 +15,7 @@ use App\Models\PasswordReset;
 use App\Mail\PasswordResetMail;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -364,17 +365,59 @@ class AuthController extends Controller
             $validated = $request->validate([
                 'name' => 'sometimes|string|max:255',
                 'email' => 'sometimes|email|max:255|unique:users,email,' . $user->id,
-                'phone' => 'sometimes|string|max:20',
-                'date_of_birth' => 'sometimes|date',
-                'address' => 'sometimes|string|max:500',
+                'phone' => 'sometimes|nullable|string|max:20',
+                'date_of_birth' => 'sometimes|nullable|date',
+                'address' => 'sometimes|nullable|string|max:500',
+                'patient_date_of_birth' => 'sometimes|nullable|date',
+                'patient_category' => 'sometimes|nullable|string|max:255',
+                'emergency_contact_name' => 'sometimes|nullable|string|max:255',
+                'emergency_contact_phone' => 'sometimes|nullable|string|max:20',
             ]);
 
-            $user->update($validated);
+            $user->update(collect($validated)->only([
+                'name',
+                'email',
+                'phone',
+            ])->all());
+
+            if ($user->patient) {
+                $patientData = [];
+
+                if (array_key_exists('patient_date_of_birth', $validated)
+                    || array_key_exists('date_of_birth', $validated)) {
+                    $patientData['date_of_birth'] = $validated['patient_date_of_birth']
+                        ?? $validated['date_of_birth']
+                        ?? null;
+                }
+                if (array_key_exists('patient_category', $validated)) {
+                    $patientData['patient_category'] = $validated['patient_category'];
+                }
+                if (array_key_exists('address', $validated)) {
+                    $patientData['address'] = $validated['address'];
+                }
+                if (array_key_exists('emergency_contact_name', $validated)
+                    || array_key_exists('emergency_contact_phone', $validated)) {
+                    $patientData['emergency_contact'] = [
+                        'name' => $validated['emergency_contact_name'] ?? null,
+                        'phone' => $validated['emergency_contact_phone'] ?? null,
+                    ];
+                }
+
+                if ($patientData) {
+                    $user->patient->update($patientData);
+                }
+            }
+
             $user->load(['roles:id,name', 'patient']);
             $user->setAttribute('role', $user->roles()->first()->name ?? 'patient');
 
             return $this->ok('Profile updated successfully', $user);
+        } catch (ValidationException $e) {
+            return $this->validationError($e->errors());
         } catch (\Exception $e) {
+            Log::error('Profile update failed: ' . $e->getMessage(), [
+                'user_id' => $request->user()?->id,
+            ]);
             return $this->error('Failed to update profile', 500);
         }
     }
@@ -396,7 +439,12 @@ class AuthController extends Controller
             $user->update(['password' => Hash::make($validated['new_password'])]);
 
             return $this->ok('Password changed successfully');
+        } catch (ValidationException $e) {
+            return $this->validationError($e->errors());
         } catch (\Exception $e) {
+            Log::error('Password change failed: ' . $e->getMessage(), [
+                'user_id' => $request->user()?->id,
+            ]);
             return $this->error('Failed to change password', 500);
         }
     }
