@@ -179,8 +179,6 @@ class AuthController extends Controller
                     'email' => $validated['email'],
                     'password' => Hash::make($validated['password']),
                     'phone' => $validated['phone'],
-                    'date_of_birth' => $validated['date_of_birth'],
-                    'address' => $validated['address'] ?? null,
                 ]);
 
                 $user->assignRole('patient');
@@ -188,7 +186,7 @@ class AuthController extends Controller
                 $user->patient()->create([
                     'date_of_birth' => $validated['date_of_birth'],
                     'phone' => $validated['phone'],
-                    'address' => $validated['address'] ?? '',
+                    'address' => $validated['address'],
                     'emergency_contact' => $validated['emergency_contact'] ?? [],
                     'is_active' => true,
                 ]);
@@ -233,7 +231,7 @@ class AuthController extends Controller
             }
 
             $user->load('roles:id,name');
-            $role = $user->roles()->first()->name ?? 'patient';
+            $role = $user->roles()->first()?->name ?? 'patient';
             $user->setAttribute('role', $role);
 
             $token = $user->createToken('auth_token', ['*'], now()->addDay())->plainTextToken;
@@ -272,7 +270,7 @@ class AuthController extends Controller
         }
 
         $user->load('roles:id,name');
-        $role = $user->roles()->first()->name ?? 'patient';
+        $role = $user->roles()->first()?->name ?? 'patient';
         $user->setAttribute('role', $role);
 
         return $this->ok('User retrieved', $user);
@@ -409,7 +407,7 @@ class AuthController extends Controller
             }
 
             $user->load(['roles:id,name', 'patient']);
-            $user->setAttribute('role', $user->roles()->first()->name ?? 'patient');
+            $user->setAttribute('role', $user->roles()->first()?->name ?? 'patient');
 
             return $this->ok('Profile updated successfully', $user);
         } catch (ValidationException $e) {

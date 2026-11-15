@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Models\CheckIn;
+use App\Models\Patient;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 
@@ -25,7 +26,11 @@ class CheckInController extends Controller
             });
         }
 
-        $checkIns = $query->orderBy('created_at', 'desc')->get();
+        $checkIns = $query
+            ->with('patient.user')
+            ->orderByRaw("CAST(SUBSTRING_INDEX(queue_number, '-', -1) AS UNSIGNED) ASC")
+            ->orderBy('created_at')
+            ->get();
 
         return response()->json([
             'data' => $checkIns,
@@ -45,6 +50,12 @@ class CheckInController extends Controller
             'purpose' => 'nullable|string|max:255',
         ]);
 
+        if (empty($validated['patient_id'])) {
+            $validated['patient_id'] = Patient::whereHas('user', function ($query) use ($validated) {
+                $query->whereRaw('LOWER(name) = ?', [mb_strtolower(trim($validated['patient_name']))]);
+            })->value('id');
+        }
+
         $todayCount = CheckIn::whereDate('created_at', now()->toDateString())->count();
         $validated['queue_number'] = 'Q-' . str_pad($todayCount + 1, 3, '0', STR_PAD_LEFT);
         $validated['status'] = 'Waiting';
@@ -52,7 +63,7 @@ class CheckInController extends Controller
 
         $checkIn = CheckIn::create($validated);
 
-        return response()->json($checkIn, Response::HTTP_CREATED);
+        return response()->json($checkIn->load('patient.user'), Response::HTTP_CREATED);
     }
 
     public function updateStatus(Request $request, $id)

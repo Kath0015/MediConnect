@@ -29,6 +29,7 @@ class RegisterUserRequest extends FormRequest
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
             'phone' => 'required|string|max:20',
             'date_of_birth' => 'required|date|before:today',
+            'address' => 'required|string|max:500',
 
             // (emergency contact removed from signup; collect later)
         ];
@@ -58,6 +59,8 @@ class RegisterUserRequest extends FormRequest
             'date_of_birth.required' => 'Date of birth is required',
             'date_of_birth.date' => 'Please provide a valid date of birth',
             'date_of_birth.before' => 'Date of birth must be in the past',
+            'address.required' => 'Address is required',
+            'address.max' => 'Address must not exceed 500 characters',
         ];
     }
 
@@ -74,6 +77,7 @@ class RegisterUserRequest extends FormRequest
             'password' => 'password',
             'phone' => 'phone number',
             'date_of_birth' => 'date of birth',
+            'address' => 'address',
         ];
     }
 

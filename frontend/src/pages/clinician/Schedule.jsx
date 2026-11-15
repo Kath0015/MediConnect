@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Textarea } from '../../components/ui/textarea';
 import { Label } from '../../components/ui/label';
 import { getClinicianAppointments, updateAppointmentStatus, rejectAppointment, confirmAppointment } from '../../api/ClinicianDashboard';
+import { getCheckIns } from '../../api/Triage';
 import { getClinicMeta } from '../../api/Clinic';
 import { toast } from 'sonner';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, startOfWeek, endOfWeek } from 'date-fns';
@@ -116,18 +117,39 @@ export const Schedule = () => {
       const monthStart = startOfMonth(targetDate);
       const monthEnd = endOfMonth(targetDate);
 
-      const response = await getClinicianAppointments({
+      const [response, checkInResponse] = await Promise.all([
+        getClinicianAppointments({
         start_date: format(monthStart, 'yyyy-MM-dd'),
         end_date: format(monthEnd, 'yyyy-MM-dd'),
         per_page: 500,
-      });
+        }),
+        getCheckIns({ status: 'all' }),
+      ]);
 
       const rows = response?.data?.data || [];
-      monthCacheRef.current.set(monthKey, rows);
+      const checkIns = checkInResponse?.data || [];
+      const walkInRows = checkIns
+        .filter((checkIn) => checkIn.checked_in_at && normalizeDate(checkIn.checked_in_at).slice(0, 7) === monthKey)
+        .map((checkIn) => ({
+          id: `walk-in-${checkIn.id}`,
+          source: 'walk_in',
+          start_time: checkIn.checked_in_at,
+          end_time: new Date(new Date(checkIn.checked_in_at).getTime() + clinicInterval * 60000).toISOString(),
+          status: checkIn.status,
+          type: 'walk_in',
+          title: 'Check-In Walk-In Patient',
+          description: checkIn.purpose || 'General Consultation',
+          patient: {
+            id: checkIn.patient_id,
+            user: { name: checkIn.patient_name },
+          },
+        }));
+      const combinedRows = [...rows, ...walkInRows];
+      monthCacheRef.current.set(monthKey, combinedRows);
 
       // Prevent stale requests from replacing current month data.
       if (!background && requestId === activeRequestRef.current) {
-        setAppointments(rows);
+        setAppointments(combinedRows);
       }
 
       if (!background) {
@@ -277,7 +299,8 @@ export const Schedule = () => {
     return (
       apt.start_time && 
       isSameDay(new Date(apt.start_time), selectedDate) &&
-      (status === 'confirmed' || status === 'in_progress' || status === 'completed')
+      (status === 'confirmed' || status === 'in_progress' || status === 'completed' ||
+        apt.source === 'walk_in')
     );
   });
 
@@ -318,6 +341,12 @@ export const Schedule = () => {
         return 'bg-green-100 text-green-800 border-green-300';
       case 'in_progress':
         return 'bg-blue-100 text-blue-800 border-blue-300';
+      case 'waiting':
+        return 'bg-emerald-100 text-emerald-800 border-emerald-300';
+      case 'in consultation':
+        return 'bg-blue-100 text-blue-800 border-blue-300';
+      case 'done':
+        return 'bg-gray-100 text-gray-800 border-gray-300';
       case 'no_show':
         return 'bg-orange-100 text-orange-800 border-orange-300';
       default:
@@ -327,6 +356,7 @@ export const Schedule = () => {
 
   const getAppointmentTypeLabel = (appointment) => {
     if (!appointment) return 'Consultation';
+    if (appointment.source === 'walk_in') return 'Check-In Walk-In Patient';
     if (appointment.appointment_type && typeof appointment.appointment_type === 'object') {
       return appointment.appointment_type.name || 'Consultation';
     }
@@ -335,6 +365,9 @@ export const Schedule = () => {
 
   const formatStatusLabel = (status) => {
     const key = (status || '').toLowerCase();
+    if (key === 'waiting') return 'Checked In (Walk-In)';
+    if (key === 'in consultation') return 'In Consultation (Walk-In)';
+    if (key === 'done') return 'Completed (Walk-In)';
     if (key === 'scheduled') return 'Waiting for approval';
     if (key === 'no_show') return 'No show';
     return (status || '').replace('_', ' ');
@@ -460,7 +493,8 @@ export const Schedule = () => {
       return (
         apt.start_time && 
         isSameDay(new Date(apt.start_time), day) &&
-        (status === 'confirmed' || status === 'in_progress' || status === 'completed')
+        (status === 'confirmed' || status === 'in_progress' || status === 'completed' ||
+          apt.source === 'walk_in')
       );
     });
   };
@@ -644,6 +678,11 @@ export const Schedule = () => {
                             <p className="text-xs text-gray-600 leading-tight">
                               {getAppointmentTypeLabel(appointment)}
                             </p>
+                            {appointment.source === 'walk_in' && (
+                              <p className="text-xs font-semibold text-emerald-700">
+                                Listed from Patient Check-In
+                              </p>
+                            )}
                           </div>
                           
                           {/* Action Buttons */}
@@ -668,7 +707,7 @@ export const Schedule = () => {
                               </select>
                             )}
 
-                            {status === 'confirmed' && (isWithin30Min || isToday(selectedDate)) && (
+                            {appointment.source !== 'walk_in' && status === 'confirmed' && (isWithin30Min || isToday(selectedDate)) && (
                               <Button 
                                 size="sm" 
                                 onClick={() => handleStartAppointment(appointment.id)}
@@ -679,7 +718,7 @@ export const Schedule = () => {
                               </Button>
                             )}
                             
-                            {status === 'in_progress' && (
+                            {appointment.source !== 'walk_in' && status === 'in_progress' && (
                               <Button 
                                 size="sm" 
                                 onClick={() => handleCompleteAppointment(appointment.id)}
@@ -690,7 +729,7 @@ export const Schedule = () => {
                               </Button>
                             )}
                             
-                            {(status === 'confirmed' || status === 'in_progress') && isPast && (
+                            {appointment.source !== 'walk_in' && (status === 'confirmed' || status === 'in_progress') && isPast && (
                               <Button 
                                 size="sm" 
                                 onClick={() => handleMarkNoShow(appointment.id)}

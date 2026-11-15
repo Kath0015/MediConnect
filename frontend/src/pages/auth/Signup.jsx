@@ -24,6 +24,7 @@ export const Signup = () => {
     password_confirmation: "",
     phone: "",
     date_of_birth: "",
+    address: "",
   });
 
   const [loading, setLoading] = useState(false);
@@ -187,6 +188,20 @@ export const Signup = () => {
                     className="border-[#97E7F5] focus:border-[#009DD1] focus:ring-[#009DD1] rounded-xl"
                   />
                 </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="address" className="text-[#01377D] text-sm">Address *</Label>
+                <Input
+                  id="address"
+                  name="address"
+                  type="text"
+                  placeholder="Complete address"
+                  value={formData.address}
+                  onChange={handleChange}
+                  required
+                  className="border-[#97E7F5] focus:border-[#009DD1] focus:ring-[#009DD1] rounded-xl"
+                />
               </div>
 
               {/* Password Section */}
