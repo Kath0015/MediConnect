@@ -1,0 +1,8 @@
+{
+    "chat.tools.terminal.autoApprove": {
+        "/^test -d frontend/node_modules && echo 'node_modules present' \\|\\| echo 'node_modules missing'$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
+    }
+}
