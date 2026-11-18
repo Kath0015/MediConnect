@@ -83,18 +83,26 @@ class DocumentController extends Controller {
     public function download(Request $request, Document $document) {
         $this->ensureDocumentAccess($request, $document);
 
-        if (!Storage::exists($document->path)) {
+        $disk = Storage::disk($document->disk ?: config('filesystems.default'));
+
+        if (!$disk->exists($document->path)) {
             return response()->json(['message' => 'File not found'], 404);
         }
 
-        return Storage::download($document->path, $document->file_name);
+        return $disk->download(
+            $document->path,
+            $document->file_name,
+            ['Content-Type' => $document->mime_type ?: 'application/octet-stream']
+        );
     }
 
     public function destroy(Request $request, Document $document) {
         $this->ensureDocumentAccess($request, $document);
 
-        if (Storage::exists($document->path)) {
-            Storage::delete($document->path);
+        $disk = Storage::disk($document->disk ?: config('filesystems.default'));
+
+        if ($disk->exists($document->path)) {
+            $disk->delete($document->path);
         }
 
         $document->delete();

@@ -226,6 +226,10 @@ Route::middleware(['web', 'auth:sanctum', 'throttle:300,1'])->group(function () 
         Route::post('/clinician/clinic/settings', [ClinicController::class, 'saveScheduleSettings']);
     });
 
+    Route::middleware(['role:doctor'])->group(function () {
+        Route::get('/doctor/dashboard/stats', [DashboardController::class, 'doctorStats']);
+    });
+
     // Document Types - GET is public (for dropdowns), others are admin only
     Route::get('/document-types', [DocumentTypeController::class, 'index']); // Public for loading document types
     

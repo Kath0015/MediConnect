@@ -13,37 +13,6 @@ import api from '../../api/axios';
 import PatientRoleBanner from '../../components/patient/PatientRoleBanner';
 import PatientPageSkeleton from '../../components/patient/PatientPageSkeleton';
 
-const mockLaboratoryDocuments = [
-  {
-    id: 'mock-lab-1',
-    name: 'Complete Blood Count Result',
-    description: 'Routine annual physical exam panel.',
-    created_at: '2026-03-03T10:20:00Z',
-    documentType: { name: 'Laboratory Result' },
-  },
-  {
-    id: 'mock-lab-2',
-    name: 'Urinalysis Report',
-    description: 'Requested for pre-employment requirements.',
-    created_at: '2026-02-20T08:15:00Z',
-    documentType: { name: 'Laboratory Result' },
-  },
-  {
-    id: 'mock-lab-3',
-    name: 'Lipid Profile',
-    description: 'Follow-up after dietary adjustment plan.',
-    created_at: '2026-01-28T13:05:00Z',
-    documentType: { name: 'Chemistry' },
-  },
-  {
-    id: 'mock-lab-4',
-    name: 'Fasting Blood Sugar',
-    description: 'Screening due to family history.',
-    created_at: '2026-01-10T09:42:00Z',
-    documentType: { name: 'Laboratory Result' },
-  },
-];
-
 const PreviousLaboratory = () => {
   const { user, loading: authLoading } = useAuth();
   const patientId = user?.patient?.id;
@@ -94,7 +63,15 @@ const PreviousLaboratory = () => {
           combined = [...combined, ...mappedLabs];
         }
 
-        setDocuments(combined);
+        const unique = new Map();
+        combined.forEach((document) => {
+          const date = document.created_at ? String(document.created_at).slice(0, 10) : '';
+          const key = document.isLabRequest
+            ? `lab:${document.name}:${date}:${document.rawResults || ''}`
+            : `document:${document.id}`;
+          if (!unique.has(key)) unique.set(key, document);
+        });
+        setDocuments([...unique.values()]);
       } catch (error) {
         console.error('Failed to load laboratory documents:', error);
         toast.error('Unable to load previous laboratory files');
@@ -142,8 +119,22 @@ const PreviousLaboratory = () => {
   }, [currentPage, totalPages]);
 
   const handleDownload = async (doc) => {
-    if (String(doc.id).startsWith('mock-')) {
-      toast.success(`Downloaded copy of ${doc.name || 'Laboratory Report'}`);
+    if (doc.isLabRequest) {
+      const content = [
+        doc.name,
+        '',
+        doc.rawResults || doc.description || `Status: ${doc.status}`,
+      ].join('\n');
+      const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+      const url = window.URL.createObjectURL(blob);
+      const link = window.document.createElement('a');
+      link.href = url;
+      link.download = `${String(doc.name).replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '') || 'laboratory-result'}.txt`;
+      window.document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      toast.success(`Downloaded ${doc.name || 'Laboratory Result'}`);
       return;
     }
     try {
@@ -168,12 +159,12 @@ const PreviousLaboratory = () => {
   };
 
   const handlePreview = async (doc) => {
-    if (String(doc.id).startsWith('mock-')) {
+    if (doc.isLabRequest) {
       setPreviewData({
         name: doc.name,
         mime: 'text/plain',
         url: null,
-        text: doc.description || 'Sample laboratory file preview.',
+        text: doc.rawResults || doc.description || `Status: ${doc.status || 'Unknown'}`,
       });
       return;
     }

@@ -230,7 +230,7 @@ class AuthController extends Controller
                 return $this->error('Your account has been deactivated. Please contact an administrator.', 403);
             }
 
-            $user->load('roles:id,name');
+            $user->load(['roles:id,name', 'patient']);
             $role = $user->roles()->first()?->name ?? 'patient';
             $user->setAttribute('role', $role);
 
@@ -269,7 +269,7 @@ class AuthController extends Controller
             return $this->error('Unauthenticated', 401);
         }
 
-        $user->load('roles:id,name');
+        $user->load(['roles:id,name', 'patient']);
         $role = $user->roles()->first()?->name ?? 'patient';
         $user->setAttribute('role', $role);
 

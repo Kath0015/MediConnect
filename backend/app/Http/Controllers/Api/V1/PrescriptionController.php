@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Models\Prescription;
+use App\Models\Patient;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 
@@ -28,7 +29,7 @@ class PrescriptionController extends Controller
         }
 
         $user = $request->user();
-        if ($user && $user->role === 'patient') {
+        if ($user && $user->isPatient()) {
             $patient = $user->patient;
             if ($patient) {
                 $query->where(function ($q) use ($patient, $user) {
@@ -75,8 +76,15 @@ class PrescriptionController extends Controller
 
         $user = $request->user();
         $validated['prescribed_by'] = $user?->id;
+
+        if (empty($validated['patient_id'])) {
+            $validated['patient_id'] = Patient::whereHas('user', function ($query) use ($validated) {
+                $query->whereRaw('LOWER(name) = ?', [mb_strtolower(trim($validated['patient_name']))]);
+            })->value('id');
+        }
+
         if (empty($validated['doctor_name'])) {
-            $validated['doctor_name'] = $user ? 'Dr. ' . $user->name : 'Dr. Attending Physician';
+            $validated['doctor_name'] = $user ? $this->formatDoctorName($user->name) : 'Dr. Attending Physician';
         }
         if (empty($validated['status'])) {
             $validated['status'] = 'Active';
@@ -135,5 +143,11 @@ class PrescriptionController extends Controller
         $prescription->delete();
 
         return response()->json(['message' => 'Prescription deleted successfully']);
+    }
+
+    private function formatDoctorName(string $name): string
+    {
+        $name = trim(preg_replace('/\s+/', ' ', $name));
+        return preg_match('/^dr\.?/i', $name) ? $name : 'Dr. ' . $name;
     }
 }

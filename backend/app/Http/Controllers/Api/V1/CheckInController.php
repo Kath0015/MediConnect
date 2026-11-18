@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Models\CheckIn;
 use App\Models\Patient;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 
@@ -12,6 +13,11 @@ class CheckInController extends Controller
 {
     public function index(Request $request)
     {
+        $request->validate([
+            'date' => ['sometimes', 'date_format:Y-m-d'],
+            'limit' => ['sometimes', 'integer', 'min:1', 'max:500'],
+        ]);
+
         $query = CheckIn::query();
 
         if ($request->filled('status') && $request->status !== 'all') {
@@ -26,10 +32,19 @@ class CheckInController extends Controller
             });
         }
 
+        if ($request->filled('date')) {
+            $date = Carbon::createFromFormat('Y-m-d', $request->date);
+            $query->whereBetween('checked_in_at', [
+                $date->copy()->startOfDay(),
+                $date->copy()->endOfDay(),
+            ]);
+        }
+
         $checkIns = $query
             ->with('patient.user')
-            ->orderByRaw("CAST(SUBSTRING_INDEX(queue_number, '-', -1) AS UNSIGNED) ASC")
-            ->orderBy('created_at')
+            ->orderBy('checked_in_at')
+            ->orderBy('id')
+            ->limit((int) $request->input('limit', 500))
             ->get();
 
         return response()->json([

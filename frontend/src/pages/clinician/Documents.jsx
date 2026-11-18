@@ -10,36 +10,6 @@ import StaffRoleBanner from '../../components/staff/StaffRoleBanner';
 import StaffPageSkeleton from '../../components/staff/StaffPageSkeleton';
 
 const PAGE_SIZE = 10;
-const mockDocuments = [
-  {
-    id: 'mock-doc-1',
-    name: 'CBC Result - March 2026.pdf',
-    file_name: 'cbc-result-march-2026.pdf',
-    mime_type: 'application/pdf',
-    documentType: { name: 'Lab Result' },
-    patient: { user: { name: 'Sample Patient One' } },
-    created_at: '2026-03-01T09:20:00.000Z',
-  },
-  {
-    id: 'mock-doc-2',
-    name: 'X-Ray Report - Chest.png',
-    file_name: 'xray-chest.png',
-    mime_type: 'image/png',
-    documentType: { name: 'Image' },
-    patient: { user: { name: 'Sample Patient Two' } },
-    created_at: '2026-03-03T14:05:00.000Z',
-  },
-  {
-    id: 'mock-doc-3',
-    name: 'Prescription Follow-up.txt',
-    file_name: 'prescription-followup.txt',
-    mime_type: 'text/plain',
-    documentType: { name: 'Prescription' },
-    patient: { user: { name: 'Sample Patient Three' } },
-    created_at: '2026-03-06T08:50:00.000Z',
-  },
-];
-
 const Documents = () => {
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -54,7 +24,6 @@ const Documents = () => {
   const [viewLoading, setViewLoading] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
-  const [hiddenMockIds, setHiddenMockIds] = useState([]);
 
   useEffect(() => {
     loadDocuments();
@@ -63,11 +32,7 @@ const Documents = () => {
 
   useEffect(() => {
     // Filter documents based on search query and selected type
-    const sourceDocuments =
-      documents.length > 0
-        ? documents
-        : mockDocuments.filter((doc) => !hiddenMockIds.includes(doc.id));
-    let filtered = sourceDocuments;
+    let filtered = documents;
 
     // Apply search filter
     if (searchQuery.trim()) {
@@ -85,11 +50,19 @@ const Documents = () => {
     }
 
     setFilteredDocuments(filtered);
-  }, [searchQuery, documents, selectedType, hiddenMockIds]);
+  }, [searchQuery, documents, selectedType]);
 
   useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery, selectedType, documents]);
+
+  useEffect(() => {
+    return () => {
+      if (documentContent.startsWith('blob:')) {
+        window.URL.revokeObjectURL(documentContent);
+      }
+    };
+  }, [documentContent]);
 
   const loadDocuments = async () => {
     try {
@@ -145,61 +118,43 @@ const Documents = () => {
   };
 
   const handleViewDocument = async (doc) => {
+    if (String(doc.id).startsWith('mock-')) {
+      toast.info('Preview is unavailable for sample documents');
+      return;
+    }
+
     try {
       setViewLoading(true);
+      if (documentContent.startsWith('blob:')) {
+        window.URL.revokeObjectURL(documentContent);
+        setDocumentContent('');
+      }
       setViewingDocument(doc);
 
-      // Determine file type and handle accordingly
       const fileType = doc.mime_type?.toLowerCase() || '';
       const fileName = doc.file_name?.toLowerCase() || '';
+      const isText = fileType.includes('text') || fileName.endsWith('.txt');
+      const isPdf = fileType.includes('pdf') || fileName.endsWith('.pdf');
+      const isImage = fileType.includes('image') || fileName.match(/\.(jpg|jpeg|png|gif|webp)$/i);
 
-      if (fileType.includes('pdf') || fileName.endsWith('.pdf')) {
-        // For PDFs, fetch from API and create data URL
-        try {
-          const response = await api.get(`/api/documents/${doc.id}/download`, {
-            responseType: 'blob',
-          });
-          const url = window.URL.createObjectURL(response.data);
-          setDocumentContent(url);
-        } catch {
-          setDocumentContent('');
-        }
-      } else if (fileType.includes('image') || fileName.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
-        // For images, fetch from API and create data URL
-        try {
-          const response = await api.get(`/api/documents/${doc.id}/download`, {
-            responseType: 'blob',
-          });
-          const url = window.URL.createObjectURL(response.data);
-          setDocumentContent(url);
-        } catch {
-          setDocumentContent('');
-        }
-      } else if (fileType.includes('text') || fileName.endsWith('.txt')) {
-        // For text files, fetch and display content
-        try {
-          const response = await api.get(`/api/documents/${doc.id}/download`, {
-            responseType: 'text',
-          });
-          setDocumentContent(response.data);
-        } catch {
-          setDocumentContent('Unable to load file content');
-        }
+      const response = await api.get(`/api/documents/${doc.id}/download`, {
+        responseType: isText ? 'text' : 'blob',
+      });
+
+      if (isText) {
+        setDocumentContent(typeof response.data === 'string' ? response.data : 'Unable to load file content');
+      } else if (isPdf || isImage) {
+        const mime = response.headers?.['content-type'] || doc.mime_type || 'application/octet-stream';
+        const url = window.URL.createObjectURL(new Blob([response.data], { type: mime }));
+        setDocumentContent(url);
       } else {
-        // For other types, try to fetch as blob and create URL
-        try {
-          const response = await api.get(`/api/documents/${doc.id}/download`, {
-            responseType: 'blob',
-          });
-          const url = window.URL.createObjectURL(response.data);
-          setDocumentContent(url);
-        } catch {
-          setDocumentContent('');
-        }
+        setDocumentContent('');
+        toast.info('Use Download to open this file type');
       }
     } catch (err) {
       console.error('Failed to view document:', err);
-      toast.error('Failed to view document');
+      setDocumentContent('');
+      toast.error(err.response?.data?.message || 'Failed to open document');
     } finally {
       setViewLoading(false);
     }
@@ -208,7 +163,6 @@ const Documents = () => {
   const handleDelete = async (documentId) => {
     const idText = String(documentId);
     if (idText.startsWith('mock-')) {
-      setHiddenMockIds((prev) => [...prev, documentId]);
       setDeleteConfirmId(null);
       toast.success('Preview document removed');
       return;

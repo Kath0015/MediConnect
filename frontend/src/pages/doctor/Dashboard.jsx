@@ -6,6 +6,7 @@ import api from '../../api/axios';
 const DoctorDashboard = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [dashboardData, setDashboardData] = useState({
     patientCount: 0,
     apptCount: 0,
@@ -17,37 +18,20 @@ const DoctorDashboard = () => {
   const loadDoctorMetrics = async () => {
     try {
       setLoading(true);
-      const [apptsRes, rxRes, labsRes, patientsRes] = await Promise.allSettled([
-        api.get('/api/appointments'),
-        api.get('/api/prescriptions'),
-        api.get('/api/lab-requests'),
-        api.get('/api/patients'),
-      ]);
-
-      const appts = apptsRes.status === 'fulfilled' && Array.isArray(apptsRes.value?.data?.data) ? apptsRes.value.data.data : [];
-      const rxList = rxRes.status === 'fulfilled' && Array.isArray(rxRes.value?.data?.data) ? rxRes.value.data.data : [];
-      const labs = labsRes.status === 'fulfilled' && Array.isArray(labsRes.value?.data?.data) ? labsRes.value.data.data : [];
-      const patients = patientsRes.status === 'fulfilled' && Array.isArray(patientsRes.value?.data?.data) ? patientsRes.value.data.data : [];
-
-      const upcoming = appts.slice(0, 4).map((a) => {
-        const d = a.start_time ? new Date(a.start_time) : null;
-        return {
-          time: d ? d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '10:00 AM',
-          patient: a.patient?.user?.name || a.patient?.name || 'Patient',
-          type: a.appointment_type?.name || a.title || 'Consultation',
-          status: a.status ? a.status.charAt(0).toUpperCase() + a.status.slice(1) : 'Confirmed',
-        };
-      });
+      setLoadError('');
+      const response = await api.get('/api/doctor/dashboard/stats');
+      const data = response.data?.data || {};
 
       setDashboardData({
-        patientCount: patients.length || 5,
-        apptCount: appts.length,
-        labCount: labs.filter((l) => l.status === 'Pending').length,
-        rxCount: rxList.length,
-        upcoming,
+        patientCount: Number(data.patientCount || 0),
+        apptCount: Number(data.appointmentCount || 0),
+        labCount: Number(data.labCount || 0),
+        rxCount: Number(data.prescriptionCount || 0),
+        upcoming: Array.isArray(data.upcoming) ? data.upcoming : [],
       });
     } catch (err) {
       console.error('Failed to load doctor metrics:', err);
+      setLoadError(err.response?.data?.message || err.response?.data?.error || 'Failed to load dashboard data');
     } finally {
       setLoading(false);
     }
@@ -82,12 +66,26 @@ const DoctorDashboard = () => {
             <h1 className="text-2xl font-bold mt-1">Doctor Dashboard</h1>
             <p className="text-purple-200 mt-1 text-sm">{new Date().toLocaleDateString('en-PH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
           </div>
-          <div className="bg-white/10 rounded-xl p-3 flex items-center gap-2">
-            <Clock className="w-4 h-4 text-purple-200" />
-            <span className="text-sm text-purple-100">Live Database Connected</span>
-          </div>
+          <button
+            type="button"
+            onClick={loadDoctorMetrics}
+            disabled={loading}
+            className="bg-white/10 rounded-xl px-3 py-2 flex items-center gap-2 disabled:opacity-60"
+          >
+            <RefreshCw className={`w-4 h-4 text-purple-200 ${loading ? 'animate-spin' : ''}`} />
+            <span className="text-sm text-purple-100">{loading ? 'Refreshing...' : 'Refresh Dashboard'}</span>
+          </button>
         </div>
       </div>
+
+      {loadError && (
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          <span>{loadError}</span>
+          <button type="button" onClick={loadDoctorMetrics} className="font-semibold underline">
+            Retry
+          </button>
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

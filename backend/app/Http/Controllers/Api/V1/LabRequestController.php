@@ -28,7 +28,7 @@ class LabRequestController extends Controller
         }
 
         $user = $request->user();
-        if ($user && $user->role === 'patient') {
+        if ($user && $user->isPatient()) {
             $patient = $user->patient;
             if ($patient) {
                 $query->where(function ($q) use ($patient, $user) {

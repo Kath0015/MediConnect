@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { CreditCard, TrendingUp, DollarSign, Calendar, Search, Eye, Download, Clock, XCircle, Plus, FileText, Printer, Trash2, RefreshCw } from 'lucide-react';
+import { CreditCard, Search, Eye, Clock, XCircle, Plus, FileText, Printer, Trash2, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../../components/ui/dialog';
 import { getInvoices, createInvoice, markInvoicePaid, deleteInvoice } from '../../api/Invoices';
@@ -148,14 +148,20 @@ const AdminBilling = () => {
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {[
-          { label: 'Total Revenue', value: `₱${totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, icon: DollarSign, color: 'text-emerald-600', bg: 'bg-emerald-50 border-emerald-100' },
+          { label: 'Total Revenue', value: `₱${totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, icon: 'peso', color: 'text-emerald-600', bg: 'bg-emerald-50 border-emerald-100' },
           { label: 'Unpaid Invoices', value: bills.filter((b) => b.status === 'Unpaid').length, icon: XCircle, color: 'text-rose-500', bg: 'bg-rose-50 border-rose-100' },
           { label: 'Pending Processing', value: bills.filter((b) => b.status === 'Pending').length, icon: Clock, color: 'text-amber-500', bg: 'bg-amber-50 border-amber-100' },
         ].map((s) => {
           const Icon = s.icon;
           return (
             <div key={s.label} className={`rounded-2xl border p-5 ${s.bg} flex items-center gap-4`}>
-              <Icon className={`w-8 h-8 ${s.color}`} />
+              {s.icon === 'peso' ? (
+                <span className={`flex h-8 w-8 items-center justify-center text-3xl font-bold ${s.color}`} aria-label="Philippine peso">
+                  ₱
+                </span>
+              ) : (
+                <Icon className={`w-8 h-8 ${s.color}`} />
+              )}
               <div>
                 <div className="text-2xl font-bold text-slate-900">{s.value}</div>
                 <div className="text-xs text-slate-500">{s.label}</div>

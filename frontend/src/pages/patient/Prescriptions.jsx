@@ -3,6 +3,8 @@ import { Pill, Search, Filter, Calendar, Clock, User, ChevronRight, Download, Ey
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../../components/ui/dialog';
 import { getPrescriptions } from '../../api/Prescriptions';
+import { formatPrescriptionDate, formatDoctorName } from '../../utils/formatters';
+import { printPrescription } from '../../utils/prescriptionPrint';
 
 const statusConfig = {
   active: { label: 'Active', color: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
@@ -17,7 +19,6 @@ const Prescriptions = () => {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('all');
   const [selectedRx, setSelectedRx] = useState(null);
-  const [refillRx, setRefillRx] = useState(null);
 
   const loadPatientPrescriptions = async () => {
     try {
@@ -27,12 +28,13 @@ const Prescriptions = () => {
         const firstMed = Array.isArray(p.medications) && p.medications[0] ? p.medications[0] : null;
         return {
           id: p.id,
+          patient: p.patient_name,
           rxNumber: p.prescription_number,
           medication: firstMed?.name || 'Prescribed Medicine',
           dosage: firstMed?.dosage || '1 dose',
           frequency: firstMed?.frequency || 'As directed',
-          prescribedBy: p.doctor_name || 'Attending Physician',
-          date: p.date_prescribed || p.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
+          prescribedBy: formatDoctorName(p.doctor_name),
+          date: formatPrescriptionDate(p.date_prescribed || p.created_at),
           status: (p.status || 'Active').toLowerCase(),
           duration: firstMed?.duration || 'Course duration',
           instructions: firstMed?.instructions || p.notes || 'Take as advised by doctor.',
@@ -64,14 +66,11 @@ const Prescriptions = () => {
   });
 
   const handleDownload = (p) => {
-    toast.success(`Printing official e-Prescription for ${p.medication}`);
-    window.print();
-  };
-
-  const handleConfirmRefill = () => {
-    if (!refillRx) return;
-    toast.success(`Refill request for ${refillRx.medication} sent to ${refillRx.prescribedBy}!`);
-    setRefillRx(null);
+    if (!printPrescription(p)) {
+      toast.error('Please allow pop-ups to print the prescription');
+      return;
+    }
+    toast.success(`Opening official e-Prescription for ${p.medication}`);
   };
 
   return (
@@ -153,7 +152,6 @@ const Prescriptions = () => {
                     </div>
                     <div>
                       <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="font-bold text-slate-900 text-base">{p.medication}</h3>
                         <span className={`text-xs px-2.5 py-0.5 rounded-full font-semibold border ${sc.color}`}>
                           {sc.label}
                         </span>
@@ -161,7 +159,17 @@ const Prescriptions = () => {
                           <span className="text-xs font-mono text-slate-400">({p.rxNumber})</span>
                         )}
                       </div>
-                      <p className="text-xs font-medium text-[#009DD1] mt-0.5">{p.dosage} — {p.frequency}</p>
+                      <p className="mt-2 text-xs font-medium text-slate-500">Diagnosis: {p.diagnosis}</p>
+                      <div className="mt-2 space-y-1.5">
+                        {(p.medications.length ? p.medications : [{ name: p.medication, dosage: p.dosage, frequency: p.frequency, duration: p.duration }]).map((medication, index) => (
+                          <div key={`${medication.name}-${index}`} className="text-sm">
+                            <span className="font-bold text-slate-900">{medication.name}</span>
+                            <span className="ml-2 text-xs text-[#009DD1]">
+                              {[medication.dosage, medication.frequency, medication.duration].filter(Boolean).join(' — ')}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
                       <p className="text-xs text-slate-500 mt-1">Prescribed by: {p.prescribedBy} on {p.date}</p>
                       <p className="text-xs text-slate-600 italic mt-1 bg-slate-50 p-2 rounded-lg border border-slate-100">
                         Instructions: {p.instructions}

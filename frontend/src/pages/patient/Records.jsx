@@ -16,67 +16,6 @@ import { normalizePaginated } from '../../api/PatientPortal';
 import PatientPageSkeleton from '../../components/patient/PatientPageSkeleton';
 import PatientRoleBanner from '../../components/patient/PatientRoleBanner';
 
-const mockDocuments = [
-  {
-    id: 'mock-doc-1',
-    name: 'CBC Result - March 2026.pdf',
-    description: 'Routine laboratory blood test results',
-    created_at: '2026-03-01T08:30:00.000Z',
-    tags: ['Laboratory', 'Verified'],
-    file_name: 'cbc-result-march-2026.pdf',
-  },
-  {
-    id: 'mock-doc-2',
-    name: 'Chest X-Ray Interpretation.pdf',
-    description: 'Radiology report for annual checkup',
-    created_at: '2026-02-20T09:45:00.000Z',
-    tags: ['Radiology'],
-    file_name: 'chest-xray-interpretation.pdf',
-  },
-];
-
-const mockCertificates = [
-  {
-    id: 'mock-cert-1',
-    type: 'fit_to_work',
-    status: 'approved',
-    created_at: '2026-03-02T08:00:00.000Z',
-    start_date: '2026-03-03',
-    end_date: '2026-03-05',
-    medical_reason: 'Viral syndrome recovery',
-    pickup_date: '2026-03-06',
-  },
-  {
-    id: 'mock-cert-2',
-    type: 'medical_leave',
-    status: 'pending',
-    created_at: '2026-03-04T10:00:00.000Z',
-    start_date: '2026-03-07',
-    end_date: '2026-03-08',
-    medical_reason: 'Follow-up consultation',
-    pickup_date: null,
-  },
-];
-
-const mockVisits = [
-  {
-    id: 'mock-visit-1',
-    title: 'Follow-up Consultation',
-    type: 'consultation',
-    status: 'completed',
-    start_time: '2026-02-15T10:30:00.000Z',
-    clinician: { name: 'Dr. Maria Santos' },
-  },
-  {
-    id: 'mock-visit-2',
-    title: 'General Checkup',
-    type: 'checkup',
-    status: 'confirmed',
-    start_time: '2026-03-12T14:00:00.000Z',
-    clinician: { name: 'Dr. John Cruz' },
-  },
-];
-
 const titleCase = (value = '') =>
   value
     .split('_')
@@ -141,9 +80,9 @@ export const Records = () => {
   }, [authLoading, patientId]);
 
   const searchLower = searchQuery.toLowerCase();
-  const docsSource = documents.data.length > 0 ? documents.data : mockDocuments;
-  const certsSource = certificates.data.length > 0 ? certificates.data : mockCertificates;
-  const visitsSource = visits.length > 0 ? visits : mockVisits;
+  const docsSource = documents.data;
+  const certsSource = certificates.data;
+  const visitsSource = visits;
 
   const filteredDocuments = useMemo(() => {
     if (!searchLower) return docsSource;
@@ -215,10 +154,6 @@ export const Records = () => {
   }, [visitsPage, visitsTotalPages]);
 
   const handleDownload = async (doc) => {
-    if (String(doc.id).startsWith('mock-')) {
-      toast.success(`Downloaded copy of ${doc.name || 'Medical Document'}`);
-      return;
-    }
     try {
       setDownloadingId(doc.id);
       const response = await downloadDocument(doc.id);
@@ -301,7 +236,7 @@ export const Records = () => {
       {!patientId && (
         <Card className={cardClass}>
           <CardContent className="py-4 text-sm text-amber-700">
-            No linked patient record on your account yet, so the visible records are limited.
+            No linked patient record is associated with this account. Please contact the clinic to link your records.
           </CardContent>
         </Card>
       )}
@@ -375,7 +310,7 @@ export const Records = () => {
                           variant="outline"
                           size="sm"
                           onClick={() => handleDownload(doc)}
-                          disabled={downloadingId === doc.id || String(doc.id).startsWith('mock-')}
+                          disabled={downloadingId === doc.id}
                           className="h-8 w-8 border-cyan-200 p-0 text-cyan-700 hover:bg-cyan-50"
                         >
                           {downloadingId === doc.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
@@ -393,7 +328,7 @@ export const Records = () => {
                           variant="outline"
                           size="sm"
                           onClick={() => handleDownload(doc)}
-                          disabled={downloadingId === doc.id || String(doc.id).startsWith('mock-')}
+                          disabled={downloadingId === doc.id}
                           className="h-8 w-8 border-cyan-200 p-0 text-cyan-700 hover:bg-cyan-50"
                         >
                           {downloadingId === doc.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}

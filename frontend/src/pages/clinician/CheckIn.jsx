@@ -20,7 +20,8 @@ const ClinicianCheckIn = () => {
   const loadQueue = async () => {
     try {
       setLoading(true);
-      const res = await getCheckIns();
+      const today = new Date().toISOString().slice(0, 10);
+      const res = await getCheckIns({ date: today, limit: 500 });
       const mapped = (res.data || []).map((c) => ({
         id: c.id,
         queueNumber: c.queue_number,

@@ -8,6 +8,8 @@ use App\Models\Patient;
 use App\Models\Appointment;
 use App\Models\MedCert;
 use App\Models\Document;
+use App\Models\Prescription;
+use App\Models\LabRequest;
 use App\Traits\ApiResponses;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -279,6 +281,56 @@ class DashboardController extends Controller
 
         } catch (\Exception $e) {
             return $this->error('Failed to retrieve clinician statistics: ' . $e->getMessage(), 500);
+        }
+    }
+
+    public function doctorStats(Request $request): \Illuminate\Http\JsonResponse
+    {
+        try {
+            /** @var \App\Models\User $doctor */
+            $doctor = $request->user();
+
+            $appointmentsQuery = Appointment::with(['patient.user', 'appointmentType'])
+                ->where('clinician_id', $doctor->id);
+
+            $appointmentCount = (clone $appointmentsQuery)->count();
+            $patientCount = (clone $appointmentsQuery)
+                ->whereNotNull('patient_id')
+                ->distinct()
+                ->count('patient_id');
+            $upcoming = (clone $appointmentsQuery)
+                ->where('start_time', '>=', Carbon::now())
+                ->whereIn('status', ['scheduled', 'confirmed'])
+                ->orderBy('start_time')
+                ->limit(4)
+                ->get()
+                ->map(function ($appointment) {
+                    return [
+                        'time' => Carbon::parse($appointment->start_time)->format('h:i A'),
+                        'patient' => $appointment->patient?->user?->name
+                            ?? $appointment->patient?->name
+                            ?? 'Patient',
+                        'type' => $appointment->appointmentType?->name
+                            ?? $appointment->title
+                            ?? 'Consultation',
+                        'status' => ucfirst($appointment->status ?: 'scheduled'),
+                    ];
+                });
+
+            $prescriptionCount = Prescription::where('prescribed_by', $doctor->id)->count();
+            $labCount = LabRequest::where('requested_by', $doctor->id)
+                ->where('status', 'Pending')
+                ->count();
+
+            return $this->success('Doctor statistics retrieved successfully', [
+                'patientCount' => $patientCount,
+                'appointmentCount' => $appointmentCount,
+                'labCount' => $labCount,
+                'prescriptionCount' => $prescriptionCount,
+                'upcoming' => $upcoming,
+            ]);
+        } catch (\Exception $e) {
+            return $this->error('Failed to retrieve doctor statistics: ' . $e->getMessage(), 500);
         }
     }
 }

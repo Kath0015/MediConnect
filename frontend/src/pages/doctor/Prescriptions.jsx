@@ -3,6 +3,8 @@ import { Pill, Search, Plus, Eye, Download, Check, FileText, Trash2, RefreshCw }
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../../components/ui/dialog';
 import { getPrescriptions, createPrescription, deletePrescription } from '../../api/Prescriptions';
+import { formatPrescriptionDate, formatDoctorName } from '../../utils/formatters';
+import { printPrescription } from '../../utils/prescriptionPrint';
 
 const DoctorPrescriptions = () => {
   const [prescriptions, setPrescriptions] = useState([]);
@@ -36,9 +38,9 @@ const DoctorPrescriptions = () => {
           frequency: firstMed?.frequency || p.notes || 'As directed',
           duration: firstMed?.duration || '14 Days',
           instructions: firstMed?.instructions || p.notes || 'Take as instructed by physician.',
-          date: p.date_prescribed || p.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
+          date: formatPrescriptionDate(p.date_prescribed || p.created_at),
           status: p.status || 'Active',
-          doctor: p.doctor_name || 'Dr. Attending Physician',
+          doctor: formatDoctorName(p.doctor_name),
           medications: p.medications || [],
         };
       });
@@ -118,8 +120,11 @@ const DoctorPrescriptions = () => {
   };
 
   const handleDownloadRx = (rx) => {
-    toast.success(`Printing official e-Prescription for ${rx.patient}`);
-    window.print();
+    if (!printPrescription(rx)) {
+      toast.error('Please allow pop-ups to print the prescription');
+      return;
+    }
+    toast.success(`Opening official e-Prescription for ${rx.patient}`);
   };
 
   return (
